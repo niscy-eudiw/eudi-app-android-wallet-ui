@@ -35,8 +35,6 @@ import eu.europa.ec.resourceslogic.theme.values.textPrimaryDark
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.TextLengthPreviewProvider
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
-import eu.europa.ec.uilogic.component.utils.ALPHA_DISABLED
-import eu.europa.ec.uilogic.component.utils.ALPHA_ENABLED
 import eu.europa.ec.uilogic.component.utils.HSpacer
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.wrap.WrapCard
@@ -69,7 +67,6 @@ fun IssuanceButton(
         ) {
 
             val iconsColor = MaterialTheme.colorScheme.primary
-            val iconsAlpha = if (enabled) ALPHA_ENABLED else ALPHA_DISABLED
 
             val textColor = if (enabled) MaterialTheme.colorScheme.textPrimaryDark
             else MaterialTheme.colorScheme.textDisabledDark
@@ -80,7 +77,7 @@ fun IssuanceButton(
                     .height(30.dp),
                 iconData = data.icon,
                 customTint = iconsColor,
-                contentAlpha = iconsAlpha
+                enabled = enabled,
             )
 
             HSpacer.Medium()
@@ -95,7 +92,7 @@ fun IssuanceButton(
             WrapIcon(
                 iconData = AppIcons.Add,
                 customTint = iconsColor,
-                contentAlpha = iconsAlpha
+                enabled = enabled,
             )
         }
     }
