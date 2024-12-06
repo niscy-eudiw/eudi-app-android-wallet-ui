@@ -52,7 +52,11 @@ data class State(
     val isBottomSheetOpen: Boolean = false,
 
     val document: DocumentUi? = null,
-    val headerData: HeaderData? = null
+    val headerData: HeaderData? = null,
+    val documentSectionTitle: String,
+
+    val isShowingFullUserInfo: Boolean = true,
+    val isDocumentBookmarked: Boolean = false,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -71,6 +75,9 @@ sealed class Event : ViewEvent {
             data object SecondaryButtonPressed : Delete()
         }
     }
+
+    data object ChangeContentVisibility : Event()
+    data class BookmarkPressed(val isBookmarked: Boolean) : Event()
 }
 
 
@@ -102,6 +109,7 @@ class DocumentDetailsViewModel(
         hasCustomTopBar = hasCustomTopBar(detailsType),
         hasBottomPadding = hasBottomPadding(detailsType),
         detailsHaveBottomGradient = detailsHaveBottomGradient(detailsType),
+        documentSectionTitle = "DOCUMENT DETAILS"
     )
 
     override fun handleEvents(event: Event) {
@@ -143,6 +151,14 @@ class DocumentDetailsViewModel(
             }
 
             is Event.DismissError -> setState { copy(error = null) }
+
+            is Event.ChangeContentVisibility -> setState {
+                copy(isShowingFullUserInfo = isShowingFullUserInfo.not())
+            }
+
+            is Event.BookmarkPressed -> setState {
+                copy(isDocumentBookmarked = isDocumentBookmarked.not())
+            }
         }
     }
 

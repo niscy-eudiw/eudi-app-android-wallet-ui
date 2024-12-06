@@ -181,7 +181,8 @@ fun <T> Field(
                         title = infoName,
                         item.value,
                     ),
-                    infoValueTextStyle = infoValueStyle
+                    infoValueTextStyle = infoValueStyle,
+                    hideSensitiveContent = false
                 )
             }
         } else {

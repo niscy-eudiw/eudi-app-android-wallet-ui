@@ -19,12 +19,15 @@ package eu.europa.ec.commonfeature.ui.document_details
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsUi
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.resourceslogic.theme.values.allCorneredShapeSmall
 import eu.europa.ec.uilogic.component.InfoTextWithNameAndImage
 import eu.europa.ec.uilogic.component.InfoTextWithNameAndImageData
 import eu.europa.ec.uilogic.component.InfoTextWithNameAndValue
@@ -33,48 +36,58 @@ import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.VSpacer
+import eu.europa.ec.uilogic.component.wrap.WrapCard
 
 @Composable
 fun DetailsContent(
     modifier: Modifier = Modifier,
     data: List<DocumentDetailsUi>,
+    hideSensitiveContent: Boolean,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
-    ) {
-        VSpacer.Large()
-        data.mapNotNull { documentDetailsUi ->
-            when (documentDetailsUi) {
-                is DocumentDetailsUi.DefaultItem -> {
-                    documentDetailsUi.itemData.infoValues
-                        ?.toTypedArray()
-                        ?.let { infoValues ->
-                            val itemData = InfoTextWithNameAndValueData.create(
-                                title = documentDetailsUi.itemData.title,
-                                *infoValues
-                            )
-                            InfoTextWithNameAndValue(
-                                modifier = Modifier.fillMaxWidth(),
-                                itemData = itemData
-                            )
-                        }
+    WrapCard(shape = MaterialTheme.shapes.allCorneredShapeSmall) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
+        ) {
+            VSpacer.Large()
+            data.mapIndexedNotNull { index, documentDetailsUi ->
+                when (documentDetailsUi) {
+                    is DocumentDetailsUi.DefaultItem -> {
+                        documentDetailsUi.itemData.infoValues
+                            ?.toTypedArray()
+                            ?.let { infoValues ->
+                                val itemData = InfoTextWithNameAndValueData.create(
+                                    title = documentDetailsUi.itemData.title,
+                                    *infoValues
+                                )
+
+                                InfoTextWithNameAndValue(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    itemData = itemData,
+                                    hideSensitiveContent = hideSensitiveContent
+                                )
+                            }
+                    }
+
+                    is DocumentDetailsUi.SignatureItem -> {
+                        InfoTextWithNameAndImage(
+                            modifier = Modifier.fillMaxWidth(),
+                            itemData = documentDetailsUi.itemData,
+                            contentDescription = stringResource(id = R.string.content_description_user_signature_icon)
+                        )
+                    }
+
+                    is DocumentDetailsUi.Unknown -> null
                 }
 
-                is DocumentDetailsUi.SignatureItem -> {
-                    InfoTextWithNameAndImage(
-                        modifier = Modifier.fillMaxWidth(),
-                        itemData = documentDetailsUi.itemData,
-                        contentDescription = stringResource(id = R.string.content_description_user_signature_icon)
-                    )
+                if (index < data.lastIndex) {
+                    HorizontalDivider()
                 }
-
-                is DocumentDetailsUi.Unknown -> null
             }
         }
+        VSpacer.Large()
     }
-    VSpacer.Large()
 }
 
 @ThemeModePreviews
@@ -99,7 +112,8 @@ private fun DetailsContentPreview() {
     )
     PreviewTheme {
         DetailsContent(
-            data = data
+            data = data,
+            hideSensitiveContent = false
         )
     }
 }

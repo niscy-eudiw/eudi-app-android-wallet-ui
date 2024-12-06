@@ -51,15 +51,13 @@ import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
 import eu.europa.ec.commonfeature.ui.document_details.DetailsContent
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.uilogic.component.ActionTopBar
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.HeaderData
-import eu.europa.ec.uilogic.component.HeaderLarge
 import eu.europa.ec.uilogic.component.content.ContentGradient
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.content.ContentTitle
 import eu.europa.ec.uilogic.component.content.GradientEdge
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
-import eu.europa.ec.uilogic.component.content.ToolbarAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
@@ -69,6 +67,7 @@ import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapButton
+import eu.europa.ec.uilogic.component.wrap.WrapIconButton
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -98,24 +97,6 @@ fun DocumentDetailsScreen(
         contentErrorConfig = state.error,
         navigatableAction = state.navigatableAction,
         onBack = state.onBackAction,
-        topBar = if (state.hasCustomTopBar) {
-            {
-                ActionTopBar(
-                    contentColor = topBarColor,
-                    iconColor = MaterialTheme.colorScheme.primary,
-                    iconData = AppIcons.Close,
-                    toolbarActions = listOf(
-                        ToolbarAction(
-                            icon = AppIcons.Delete,
-                            onClick = { viewModel.setEvent(Event.DeleteDocumentPressed) },
-                            enabled = !state.isLoading
-                        )
-                    )
-                ) { viewModel.setEvent(Event.Pop) }
-            }
-        } else {
-            null
-        }
     ) { paddingValues ->
         Content(
             state = state,
@@ -192,23 +173,12 @@ private fun Content(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    bottom = rememberContentBottomPadding(
-                        hasBottomPadding = state.hasBottomPadding,
-                        paddingValues = paddingValues
-                    )
-                )
+                .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
         ) {
-            // Header
-            HeaderLarge(
-                data = headerData,
-                containerColor = headerColor,
-                contentPadding = PaddingValues(
-                    start = SPACING_LARGE.dp,
-                    end = SPACING_LARGE.dp,
-                    bottom = SPACING_LARGE.dp,
-                    top = paddingValues.calculateTopPadding()
-                )
+            // Screen Title
+            ContentTitle(
+                title = headerData.title
             )
 
             // Main Content
@@ -218,15 +188,22 @@ private fun Content(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
                 ) {
+                    // Section Title
+                    DocumentDetailsSectionTitle(
+                        state = state,
+                        sectionTitle = state.documentSectionTitle,
+                        onEventSend = onEventSend
+                    )
+
                     DetailsContent(
                         modifier = Modifier
                             .padding(
                                 start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                                 end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
                             ),
-                        data = documentUi.documentDetails
+                        data = documentUi.documentDetails,
+                        hideSensitiveContent = state.isShowingFullUserInfo.not()
                     )
                 }
             }
@@ -322,6 +299,45 @@ private fun ColumnScope.MainContent(
 }
 
 @Composable
+private fun DocumentDetailsSectionTitle(
+    sectionTitle: String,
+    state: State,
+    onEventSend: (Event) -> Unit
+) {
+    ContentTitle(
+        subtitle = sectionTitle,
+        subTitleStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+        subtitleTrailingContent = {
+            val bookmarkIcon = when (state.isDocumentBookmarked) {
+                true -> AppIcons.BookmarkFilled
+                false -> AppIcons.Bookmark
+            }
+
+            WrapIconButton(
+                iconData = bookmarkIcon,
+                enabled = !state.isLoading,
+                customTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                throttleClicks = false,
+                onClick = { onEventSend(Event.BookmarkPressed(isBookmarked = state.isDocumentBookmarked)) }
+            )
+
+            val visibilityIcon = when (state.isShowingFullUserInfo) {
+                true -> AppIcons.VisibilityOff
+                false -> AppIcons.Visibility
+            }
+
+            WrapIconButton(
+                iconData = visibilityIcon,
+                enabled = !state.isLoading,
+                customTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                throttleClicks = false,
+                onClick = { onEventSend(Event.ChangeContentVisibility) }
+            )
+        }
+    )
+}
+
+@Composable
 private fun rememberContentBottomPadding(
     hasBottomPadding: Boolean,
     paddingValues: PaddingValues
@@ -347,6 +363,7 @@ private fun IssuanceDocumentDetailsScreenPreview() {
             hasCustomTopBar = false,
             hasBottomPadding = true,
             detailsHaveBottomGradient = true,
+            documentSectionTitle = "DOCUMENT DETAILS",
             document = DocumentUi(
                 documentId = "2",
                 documentName = "National ID",
@@ -391,6 +408,7 @@ private fun DashboardDocumentDetailsScreenPreview() {
             hasCustomTopBar = true,
             hasBottomPadding = false,
             detailsHaveBottomGradient = false,
+            documentSectionTitle = "DOCUMENT DETAILS",
             document = DocumentUi(
                 documentId = "2",
                 documentName = "National ID",

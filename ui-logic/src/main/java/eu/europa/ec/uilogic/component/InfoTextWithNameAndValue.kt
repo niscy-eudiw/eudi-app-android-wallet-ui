@@ -16,14 +16,19 @@
 
 package eu.europa.ec.uilogic.component
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -95,9 +100,11 @@ fun InfoTextWithNameAndValue(
     modifier: Modifier = Modifier,
     infoNameTextStyle: TextStyle = defaultInfoNameTextStyle,
     infoValueTextStyle: TextStyle = defaultInfoValueTextStyle,
+    hideSensitiveContent: Boolean
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .padding(vertical = 12.dp),
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.Start
     ) {
@@ -111,7 +118,18 @@ fun InfoTextWithNameAndValue(
                 infoValues.forEach { infoValue ->
                     VSpacer.ExtraSmall()
 
+                    // API check
+                    val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    val blurModifier = remember(hideSensitiveContent) {
+                        if (supportsBlur && hideSensitiveContent) {
+                            Modifier.blur(10.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                        } else {
+                            Modifier
+                        }
+                    }
+
                     Text(
+                        modifier = blurModifier,
                         text = infoValue,
                         style = infoValueTextStyle
                     )
@@ -182,7 +200,10 @@ private fun InfoTextWithNameAndValuePreview() {
     )
 
     PreviewTheme {
-        InfoTextWithNameAndValue(itemData = itemData)
+        InfoTextWithNameAndValue(
+            itemData = itemData,
+            hideSensitiveContent = false
+        )
     }
 }
 
