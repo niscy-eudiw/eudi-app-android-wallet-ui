@@ -26,14 +26,21 @@ enum class TopSpacing {
     WithToolbar, WithoutToolbar
 }
 
+enum class BottomSpacing {
+    WithStickyBottom, WithoutStickyBottom
+}
+
 fun screenPaddings(
     append: PaddingValues? = null,
-    topSpacing: TopSpacing = TopSpacing.WithToolbar
+    topSpacing: TopSpacing = TopSpacing.WithToolbar,
+    bottomSpacing: BottomSpacing// = BottomSpacing.WithoutStickyBottom
 ) = PaddingValues(
     start = SPACING_LARGE.dp,
     top = calculateTopSpacing(topSpacing).dp + (append?.calculateTopPadding() ?: 0.dp),
     end = SPACING_LARGE.dp,
-    bottom = SPACING_LARGE.dp + (append?.calculateBottomPadding() ?: 0.dp)
+    //bottom = SPACING_LARGE.dp + (append?.calculateBottomPadding() ?: 0.dp)
+    bottom = calculateBottomSpacing(bottomSpacing).dp + (append?.calculateBottomPadding() ?: 0.dp)
+    //bottom = 0.dp
 )
 
 internal fun stickyBottomPaddings(
@@ -51,4 +58,9 @@ internal fun stickyBottomPaddings(
 private fun calculateTopSpacing(topSpacing: TopSpacing): Int = when (topSpacing) {
     TopSpacing.WithToolbar -> SPACING_SMALL
     TopSpacing.WithoutToolbar -> SPACING_EXTRA_LARGE
+}
+
+private fun calculateBottomSpacing(bottomSpacing: BottomSpacing): Int = when (bottomSpacing) {
+    BottomSpacing.WithStickyBottom -> 0
+    BottomSpacing.WithoutStickyBottom -> SPACING_LARGE
 }

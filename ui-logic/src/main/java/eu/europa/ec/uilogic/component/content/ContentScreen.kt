@@ -48,6 +48,7 @@ import eu.europa.ec.uilogic.component.IconData
 import eu.europa.ec.uilogic.component.loader.LoadingIndicator
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.utils.BottomSpacing
 import eu.europa.ec.uilogic.component.utils.MAX_TOOLBAR_ACTIONS
 import eu.europa.ec.uilogic.component.utils.TopSpacing
 import eu.europa.ec.uilogic.component.utils.Z_STICKY
@@ -206,13 +207,22 @@ fun ContentScreen(
             if (contentErrorConfig != null) {
                 ContentError(
                     config = contentErrorConfig,
-                    paddingValues = screenPaddings(padding)
+                    paddingValues = screenPaddings(
+                        padding,
+                        bottomSpacing = BottomSpacing.WithoutStickyBottom
+                    )
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
 
                     Box(modifier = Modifier.weight(1f)) {
-                        bodyContent(screenPaddings(padding, topSpacing))
+                        bodyContent(
+                            screenPaddings(
+                                padding,
+                                topSpacing,
+                                bottomSpacing = if (stickyBottom != null) BottomSpacing.WithStickyBottom else BottomSpacing.WithoutStickyBottom
+                            )
+                        )
                     }
 
                     stickyBottom?.let { stickyBottomContent ->
@@ -224,7 +234,10 @@ fun ContentScreen(
                         ) {
                             stickyBottomContent(
                                 stickyBottomPaddings(
-                                    contentScreenPaddings = screenPaddings(padding),
+                                    contentScreenPaddings = screenPaddings(
+                                        padding,
+                                        bottomSpacing = BottomSpacing.WithoutStickyBottom
+                                    ),
                                     layoutDirection = LocalLayoutDirection.current
                                 )
                             )
