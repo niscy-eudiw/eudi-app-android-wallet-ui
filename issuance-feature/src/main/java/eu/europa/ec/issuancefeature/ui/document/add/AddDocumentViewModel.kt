@@ -420,7 +420,12 @@ class AddDocumentViewModel(
             }
 
             IssuanceFlowUiConfig.EXTRA_DOCUMENT -> {
-                { setEvent(Event.Pop) }
+                {
+                    if (viewState.value.error == null) setEvent(Event.Pop)
+                    else setEvent(Event.DismissError)
+                    //setEvent(Event.Pop)
+                    //TODO (recheck this)
+                }
             }
         }
     }
