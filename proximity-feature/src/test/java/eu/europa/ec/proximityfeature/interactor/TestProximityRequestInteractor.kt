@@ -19,7 +19,7 @@ package eu.europa.ec.proximityfeature.interactor
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.ui.request.Event
-import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentsUi
 import eu.europa.ec.commonfeature.util.TestsData.createTransformedRequestDataUi
 import eu.europa.ec.commonfeature.util.TestsData.mockedRequestElementIdentifierNotAvailable
 import eu.europa.ec.commonfeature.util.TestsData.mockedRequestRequiredFieldsTitle
@@ -319,7 +319,7 @@ class TestProximityRequestInteractor {
 
     // Case 7 Expected Result:
     // ProximityRequestInteractorPartialState.Success state, with:
-    // 1. a list with the transformed basic fields to RequestDataUi items,
+    // 1. a list with the transformed basic fields to RequestDocumentsUi items,
     // 2. the same not null String for verifier name,
     // 3. true for verifierIsTrusted.
     @Test
@@ -375,7 +375,7 @@ class TestProximityRequestInteractor {
 
     // Case 8 Expected Result:
     // ProximityRequestInteractorPartialState.Success state, with:
-    // 1. a list with the transformed basic fields to RequestDataUi items,
+    // 1. a list with the transformed basic fields to RequestDocumentsUi items,
     // 2. the same not null String for verifier name,
     // 3. true for verifierIsTrusted.
     @Test
@@ -431,7 +431,7 @@ class TestProximityRequestInteractor {
 
     // Case 9 Expected Result:
     // ProximityRequestInteractorPartialState.Success state, with:
-    // 1. a list with the transformed basic fields to RequestDataUi items, for both Documents
+    // 1. a list with the transformed basic fields to RequestDocumentsUi items, for both Documents
     // 2. the same not null String for verifier name,
     // 3. true for verifierIsTrusted.
     @Test
@@ -492,7 +492,7 @@ class TestProximityRequestInteractor {
 
     // Case 10 Expected Result:
     // ProximityRequestInteractorPartialState.Success state, with:
-    // 1. a list with the transformed basic fields to RequestDataUi items, for both Documents
+    // 1. a list with the transformed basic fields to RequestDocumentsUi items, for both Documents
     // 2. the same not null String for verifier name,
     // 3. true for verifierIsTrusted.
     @Test
@@ -640,7 +640,7 @@ class TestProximityRequestInteractor {
     //region updateRequestedDocuments
     @Test
     fun `Verify that updateRequestedDocuments calls walletCorePresentationController#updateRequestedDocuments`() {
-        val uiItems: List<RequestDataUi<Event>> = createTransformedRequestDataUi(
+        val uiItems: List<RequestDocumentsUi<Event>> = createTransformedRequestDataUi(
             items = listOf(
                 mockedTransformedRequestDataUiForMdlWithBasicFields
             )

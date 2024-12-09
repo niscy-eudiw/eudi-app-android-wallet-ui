@@ -21,14 +21,6 @@ import eu.europa.ec.commonfeature.model.DocumentOptionItemUi
 import eu.europa.ec.commonfeature.model.DocumentUi
 import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
 import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsUi
-import eu.europa.ec.commonfeature.ui.request.Event
-import eu.europa.ec.commonfeature.ui.request.model.DocumentItemDomainPayload
-import eu.europa.ec.commonfeature.ui.request.model.DocumentItemUi
-import eu.europa.ec.commonfeature.ui.request.model.OptionalFieldItemUi
-import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
-import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
-import eu.europa.ec.commonfeature.ui.request.model.RequiredFieldsItemUi
-import eu.europa.ec.corelogic.model.DocType
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.eudi.iso18013.transfer.DocItem
 import eu.europa.ec.eudi.iso18013.transfer.DocRequest
@@ -610,20 +602,20 @@ object TestsData {
         requiredFields = mockedRequiredFieldsForPidWithBasicFields
     )
 
-    fun createTransformedRequestDataUi(
+    /*fun createTransformedRequestDataUi(
         items: List<TestTransformedRequestDataUi>
-    ): List<RequestDataUi<Event>> {
-        val resultList = mutableListOf<RequestDataUi<Event>>()
+    ): List<RequestDocumentsUi<Event>> {
+        val resultList = mutableListOf<RequestDocumentsUi<Event>>()
 
         items.forEachIndexed { itemsIndex, transformedRequestDataUi ->
             resultList.add(
-                RequestDataUi.Document(
+                RequestDocumentsUi.Document(
                     documentItemUi = DocumentItemUi(
                         title = transformedRequestDataUi.documentTitle
                     )
                 )
             )
-            resultList.add(RequestDataUi.Space())
+            resultList.add(RequestDocumentsUi.Space())
 
             transformedRequestDataUi.optionalFields.forEachIndexed { index, testFieldUi ->
                 val optionalField = when (transformedRequestDataUi.documentIdentifierUi) {
@@ -654,16 +646,16 @@ object TestsData {
                     is DocumentIdentifier.SAMPLE, is DocumentIdentifier.OTHER -> throw NotSupportedDocumentTypeException
                 }
 
-                resultList.add(RequestDataUi.Space())
+                resultList.add(RequestDocumentsUi.Space())
                 resultList.add(optionalField)
 
                 if (index != (transformedRequestDataUi.optionalFields.size + transformedRequestDataUi.requiredFields.size) - 1) {
-                    resultList.add(RequestDataUi.Space())
-                    resultList.add(RequestDataUi.Divider())
+                    resultList.add(RequestDocumentsUi.Space())
+                    resultList.add(RequestDocumentsUi.Divider())
                 }
             }
 
-            resultList.add(RequestDataUi.Space())
+            resultList.add(RequestDocumentsUi.Space())
 
             if (transformedRequestDataUi.requiredFields.isNotEmpty()) {
                 resultList.add(
@@ -673,12 +665,12 @@ object TestsData {
                         requiredFields = transformedRequestDataUi.requiredFields
                     )
                 )
-                resultList.add(RequestDataUi.Space())
+                resultList.add(RequestDocumentsUi.Space())
             }
         }
 
         return resultList
-    }
+    }*/
 
     val mockedTransformedRequestDataUiForMdlWithBasicFields = TestTransformedRequestDataUi(
         documentId = mockedMdlId,
@@ -688,13 +680,13 @@ object TestsData {
         requiredFields = emptyList()
     )
 
-    private fun mockCreateOptionalFieldForPid(
+    /*private fun mockCreateOptionalFieldForPid(
         docId: String,
         elementIdentifier: String,
         value: String,
         checked: Boolean = true,
         enabled: Boolean = true,
-    ): RequestDataUi.OptionalField<Event> {
+    ): RequestDocumentsUi.OptionalField<Event> {
         val uniqueId = mockedPidDocType + elementIdentifier + docId
         return mockCreateOptionalField(
             documentIdentifierUi = DocumentIdentifier.PID,
@@ -713,7 +705,7 @@ object TestsData {
         value: String,
         checked: Boolean = true,
         enabled: Boolean = true,
-    ): RequestDataUi.OptionalField<Event> {
+    ): RequestDocumentsUi.OptionalField<Event> {
         val uniqueId = mockedPhotoIdDocType + elementIdentifier + docId
         return mockCreateOptionalField(
             documentIdentifierUi = DocumentIdentifier.PHOTOID,
@@ -732,7 +724,7 @@ object TestsData {
         value: String,
         checked: Boolean = true,
         enabled: Boolean = true,
-    ): RequestDataUi.OptionalField<Event> {
+    ): RequestDocumentsUi.OptionalField<Event> {
         val uniqueId = mockedMdlDocType + elementIdentifier + docId
         return mockCreateOptionalField(
             documentIdentifierUi = DocumentIdentifier.MDL,
@@ -751,7 +743,7 @@ object TestsData {
         value: String,
         checked: Boolean = true,
         enabled: Boolean = true,
-    ): RequestDataUi.OptionalField<Event> {
+    ): RequestDocumentsUi.OptionalField<Event> {
         val uniqueId = mockedAgeVerificationDocType + elementIdentifier + docId
         return mockCreateOptionalField(
             documentIdentifierUi = DocumentIdentifier.AGE,
@@ -772,8 +764,8 @@ object TestsData {
         checked: Boolean,
         enabled: Boolean,
         event: Event,
-    ): RequestDataUi.OptionalField<Event> {
-        return RequestDataUi.OptionalField(
+    ): RequestDocumentsUi.OptionalField<Event> {
+        return RequestDocumentsUi.OptionalField(
             optionalFieldItemUi = OptionalFieldItemUi(
                 requestDocumentItemUi = mockCreateRequestDocumentItemUi(
                     documentIdentifierUi = documentIdentifierUi,
@@ -860,7 +852,7 @@ object TestsData {
         docId: String,
         requiredFieldsWholeSectionId: Int,
         requiredFields: List<TestFieldUi>,
-    ): RequestDataUi.RequiredFields<Event> {
+    ): RequestDocumentsUi.RequiredFields<Event> {
         val requestDocumentItemsUi: MutableList<RequestDocumentItemUi<Event>> = mutableListOf()
         requiredFields.forEach {
             val uniqueId = mockedPidDocType + it.elementIdentifier + docId
@@ -877,7 +869,7 @@ object TestsData {
             )
         }
 
-        return RequestDataUi.RequiredFields(
+        return RequestDocumentsUi.RequiredFields(
             requiredFieldsItemUi = RequiredFieldsItemUi(
                 id = requiredFieldsWholeSectionId,
                 requestDocumentItemsUi = requestDocumentItemsUi,
@@ -886,5 +878,5 @@ object TestsData {
                 event = Event.ExpandOrCollapseRequiredDataList(id = requiredFieldsWholeSectionId)
             )
         )
-    }
+    }*/
 }

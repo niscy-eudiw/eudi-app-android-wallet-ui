@@ -16,19 +16,15 @@
 
 package eu.europa.ec.commonfeature.ui.request.transformer
 
-import eu.europa.ec.commonfeature.model.toUiName
 import eu.europa.ec.commonfeature.ui.request.Event
 import eu.europa.ec.commonfeature.ui.request.model.DocumentItemDomainPayload
-import eu.europa.ec.commonfeature.ui.request.model.DocumentItemUi
-import eu.europa.ec.commonfeature.ui.request.model.OptionalFieldItemUi
-import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
-import eu.europa.ec.commonfeature.ui.request.model.RequiredFieldsItemUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentsUi
 import eu.europa.ec.commonfeature.ui.request.model.produceDocUID
 import eu.europa.ec.commonfeature.ui.request.model.toRequestDocumentItemUi
+import eu.europa.ec.commonfeature.util.keyIsBase64
 import eu.europa.ec.commonfeature.util.parseKeyValueUi
 import eu.europa.ec.corelogic.model.DocumentIdentifier
-import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocument
 import eu.europa.ec.eudi.iso18013.transfer.DisclosedDocuments
 import eu.europa.ec.eudi.iso18013.transfer.DocItem
@@ -37,6 +33,10 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.nameSpacedDataJSONObject
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.uilogic.component.AppIcons
+import eu.europa.ec.uilogic.component.ListItemData
+import eu.europa.ec.uilogic.component.ListItemTrailingContentData
+import eu.europa.ec.uilogic.component.wrap.CheckboxData
 import org.json.JSONObject
 
 private fun getMandatoryFields(documentIdentifier: DocumentIdentifier): List<String> =
@@ -70,21 +70,21 @@ object RequestTransformer {
         storageDocuments: List<IssuedDocument> = emptyList(),
         resourceProvider: ResourceProvider,
         requestDocuments: List<RequestDocument>,
-        requiredFieldsTitle: String
-    ): List<RequestDataUi<Event>> {
-        val items = mutableListOf<RequestDataUi<Event>>()
-
+    ): List<RequestDocumentsUi<Event>> {
+        val documentsUi = mutableListOf<RequestDocumentsUi<Event>>()
+        val documents = mutableListOf<RequestDocumentItemUi<Event>>()
         requestDocuments.forEachIndexed { docIndex, requestDocument ->
             // Add document item.
-            items += RequestDataUi.Document(
+            /*items += RequestDocumentsUi.Document(
                 documentItemUi = DocumentItemUi(
                     title = requestDocument.toUiName(resourceProvider)
                 )
             )
-            items += RequestDataUi.Space()
+            items += RequestDocumentsUi.Space()*/
 
             val required = mutableListOf<RequestDocumentItemUi<Event>>()
             val storageDocument = storageDocuments.first { it.id == requestDocument.documentId }
+
 
             // Add optional field items.
             requestDocument.docRequest.requestItems.forEachIndexed { itemIndex, docItem ->
@@ -104,7 +104,50 @@ object RequestTransformer {
                     (resourceProvider.getString(R.string.request_element_identifier_not_available) to false)
                 }
 
-                if (
+
+                val itemId = requestDocument.docRequest.produceDocUID(
+                    elementIdentifier = docItem.elementIdentifier,
+                    documentId = requestDocument.documentId
+                )
+
+                val listItem = ListItemData(
+                    itemId = itemId,
+                    mainText = value,
+                    overlineText = value,//TODO()
+                    supportingText = null,
+                    leadingIcon = if (keyIsBase64(key = docItem.elementIdentifier)) AppIcons.User else null, //TODO extract from RequestDocumentItemUi.keyIsBase64 or remove it alltogether? Also, show actual user image here?
+                    trailingContentData = ListItemTrailingContentData.Checkbox(
+                        checkboxData = CheckboxData(
+                            isChecked = isAvailable,
+                            enabled = isAvailable,
+                            onCheckedChange = {
+                                println("Giannis Checked changed for ${docItem.elementIdentifier}")
+                                //TODO
+                                //onCheckedChange(docId)
+                            }
+                        )
+
+                    )
+                )
+
+                //items.add(RequestDocumentsUi(documentDetails = document))
+
+                val document: RequestDocumentItemUi<Event> = toRequestDocumentItemUi(
+                    uID = itemIndex.toString(),// TODO do we need better way to calculate documentUi id?
+                    docPayload = DocumentItemDomainPayload(
+                        docId = requestDocument.documentId,
+                        docRequest = requestDocument.docRequest,
+                        docType = requestDocument.docType,
+                        namespace = docItem.namespace,
+                        elementIdentifier = docItem.elementIdentifier,
+                    ),
+                    documentDetailsUiItem = listItem,
+                    event = Event.UserIdentificationClicked(itemId = itemId) //TODO?
+                )
+
+                documents.add(document)
+
+                /*if (
                     getMandatoryFields(documentIdentifier = requestDocument.toDocumentIdentifier())
                         .contains(docItem.elementIdentifier)
                 ) {
@@ -134,8 +177,8 @@ object RequestTransformer {
                         requestDocument.documentId
                     )
 
-                    items += RequestDataUi.Space()
-                    items += RequestDataUi.OptionalField(
+                    items += RequestDocumentsUi.Space()
+                    items += RequestDocumentsUi.OptionalField(
                         optionalFieldItemUi = OptionalFieldItemUi(
                             requestDocumentItemUi = docItem.toRequestDocumentItemUi(
                                 uID = uID,
@@ -156,17 +199,24 @@ object RequestTransformer {
                     )
 
                     if (itemIndex != requestDocument.docRequest.requestItems.lastIndex) {
-                        items += RequestDataUi.Space()
-                        items += RequestDataUi.Divider()
+                        items += RequestDocumentsUi.Space()
+                        items += RequestDocumentsUi.Divider()
                     }
-                }
+                }*/
             }
 
-            items += RequestDataUi.Space()
+            //documentsUi.add(documents)
+            documentsUi.add(
+                RequestDocumentsUi(
+                    documentsUi = documents
+                )
+            )
+
+            /*items += RequestDocumentsUi.Space()
 
             // Add required fields item.
             if (required.isNotEmpty()) {
-                items += RequestDataUi.RequiredFields(
+                items += RequestDocumentsUi.RequiredFields(
                     requiredFieldsItemUi = RequiredFieldsItemUi(
                         id = docIndex,
                         requestDocumentItemsUi = required,
@@ -175,32 +225,23 @@ object RequestTransformer {
                         event = Event.ExpandOrCollapseRequiredDataList(id = docIndex)
                     )
                 )
-                items += RequestDataUi.Space()
-            }
+                items += RequestDocumentsUi.Space()
+            }*/
         }
 
-        return items
+        return documentsUi
     }
 
-    fun transformToDomainItems(uiItems: List<RequestDataUi<Event>>): DisclosedDocuments {
+    fun transformToDomainItems(uiItems: List<RequestDocumentsUi<Event>>): DisclosedDocuments {
         val selectedUiItems = uiItems
             .flatMap {
-                when (it) {
-                    is RequestDataUi.RequiredFields -> {
-                        it.requiredFieldsItemUi.requestDocumentItemsUi
-                    }
-
-                    is RequestDataUi.OptionalField -> {
-                        listOf(it.optionalFieldItemUi.requestDocumentItemUi)
-                    }
-
-                    else -> {
-                        emptyList()
-                    }
-                }
+                it.documentsUi
             }
             // Get selected
-            .filter { it.checked }
+            .filter {
+                it.documentDetailsUiItem.trailingContentData is ListItemTrailingContentData.Checkbox
+                        && (it.documentDetailsUiItem.trailingContentData as? ListItemTrailingContentData.Checkbox)?.checkboxData?.isChecked == true
+            }
             // Create a Map with document as a key
             .groupBy {
                 it.domainPayload

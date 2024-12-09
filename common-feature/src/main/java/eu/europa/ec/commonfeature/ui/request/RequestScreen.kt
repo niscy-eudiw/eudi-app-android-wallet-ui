@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
@@ -52,6 +51,7 @@ import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.StickyBottomConfig
 import eu.europa.ec.uilogic.component.wrap.StickyBottomType
+import eu.europa.ec.uilogic.component.wrap.WrapListItems
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import kotlinx.coroutines.CoroutineScope
@@ -180,7 +180,7 @@ private fun Content(
         )
 
         // Screen Main Content.
-        Request(
+        /*Request(
             modifier = Modifier.weight(1f).background(Color.Red),
             items = state.items,
             noData = state.noItems,
@@ -188,6 +188,17 @@ private fun Content(
             onEventSend = onEventSend,
             listState = rememberLazyListState(),
             contentPadding = paddingValues
+        )*/
+
+        WrapListItems(
+            modifier = Modifier.weight(1f).background(Color.Red),
+            items = state.items.flatMap {
+                it.documentsUi.map {
+                    it.documentDetailsUiItem
+                }
+            },
+            //noData = state.noItems,
+            //contentPadding = paddingValues
         )
     }
 
