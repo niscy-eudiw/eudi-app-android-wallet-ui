@@ -52,6 +52,7 @@ data class ListItemData(
     val supportingText: String? = null,
     val leadingIcon: IconData? = null,
     val trailingContentData: ListItemTrailingContentData? = null,
+    val base64Image: String? = null,
 )
 
 sealed class ListItemTrailingContentData {

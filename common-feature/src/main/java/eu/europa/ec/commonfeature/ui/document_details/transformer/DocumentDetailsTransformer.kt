@@ -34,6 +34,7 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.InfoTextWithNameAndImageData
 import eu.europa.ec.uilogic.component.InfoTextWithNameAndValueData
+import eu.europa.ec.uilogic.component.toListItemData
 import org.json.JSONObject
 
 object DocumentDetailsTransformer {
@@ -85,6 +86,14 @@ object DocumentDetailsTransformer {
 
         val docHasExpired = documentHasExpired(documentExpirationDate)
 
+        val detailsItemsData = detailsItems.mapNotNull { documentUi ->
+            when (documentUi) {
+                is DocumentDetailsUi.DefaultItem -> documentUi.itemData.toListItemData()
+                is DocumentDetailsUi.SignatureItem -> documentUi.itemData.toListItemData()
+                is DocumentDetailsUi.Unknown -> null
+            }
+        }
+
         return DocumentUi(
             documentId = document.id,
             documentName = document.toUiName(resourceProvider),
@@ -93,6 +102,7 @@ object DocumentDetailsTransformer {
             documentHasExpired = docHasExpired,
             documentImage = documentImage,
             documentDetails = detailsItems,
+            documentDetailsItemData = detailsItemsData,
             userFullName = extractFullNameFromDocumentOrEmpty(document),
             documentIssuanceState = DocumentUiIssuanceState.Issued,
         )

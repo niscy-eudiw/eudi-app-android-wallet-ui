@@ -280,6 +280,7 @@ class DashboardInteractorImpl(
                     documentExpirationDateFormatted = documentExpirationDate,
                     documentHasExpired = docHasExpired,
                     documentDetails = emptyList(),
+                    documentDetailsItemData = emptyList(),
                     documentIssuanceState = DocumentUiIssuanceState.Issued
                 ) to UserInfo(
                     userFirstName = userFirstName,
@@ -296,6 +297,7 @@ class DashboardInteractorImpl(
                     documentExpirationDateFormatted = "",
                     documentHasExpired = false,
                     documentDetails = emptyList(),
+                    documentDetailsItemData = emptyList(),
                     documentIssuanceState = DocumentUiIssuanceState.Pending
                 ) to UserInfo(
                     userFirstName = "",

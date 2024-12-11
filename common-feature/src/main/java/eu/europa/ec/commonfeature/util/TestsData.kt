@@ -191,6 +191,7 @@ object TestsData {
         documentHasExpired = mockedDocumentHasExpired,
         documentImage = "",
         documentDetails = emptyList(),
+        documentDetailsItemData = emptyList(),
         documentIssuanceState = DocumentUiIssuanceState.Issued,
     )
 
@@ -278,6 +279,7 @@ object TestsData {
         documentHasExpired = mockedDocumentHasExpired,
         documentImage = "",
         documentDetails = emptyList(),
+        documentDetailsItemData = emptyList(),
         documentIssuanceState = DocumentUiIssuanceState.Issued,
     )
 

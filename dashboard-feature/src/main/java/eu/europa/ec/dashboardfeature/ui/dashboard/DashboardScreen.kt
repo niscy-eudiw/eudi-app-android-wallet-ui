@@ -831,6 +831,7 @@ private fun DashboardScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image0",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Issued
             ),
             DocumentUi(
@@ -841,6 +842,7 @@ private fun DashboardScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image1",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Issued
             ),
             DocumentUi(
@@ -851,6 +853,7 @@ private fun DashboardScreenPreview() {
                 documentHasExpired = true,
                 documentImage = "image2",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Issued
             ),
             DocumentUi(
@@ -861,6 +864,7 @@ private fun DashboardScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image3",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Pending
             ),
             DocumentUi(
@@ -874,6 +878,7 @@ private fun DashboardScreenPreview() {
                 documentHasExpired = true,
                 documentImage = "image4",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Pending
             ),
             DocumentUi(
@@ -884,6 +889,7 @@ private fun DashboardScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image5",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Failed
             ),
         )

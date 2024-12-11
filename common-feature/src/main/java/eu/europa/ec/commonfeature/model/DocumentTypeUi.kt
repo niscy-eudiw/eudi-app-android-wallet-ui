@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.uilogic.component.ListItemData
 
 enum class DocumentUiIssuanceState {
     Issued, Pending, Failed
@@ -37,6 +38,7 @@ data class DocumentUi(
     val documentHasExpired: Boolean,
     val documentImage: String,
     val documentDetails: List<DocumentDetailsUi>,
+    val documentDetailsItemData: List<ListItemData>,
     val userFullName: String? = null,
     val documentId: DocumentId,
 )

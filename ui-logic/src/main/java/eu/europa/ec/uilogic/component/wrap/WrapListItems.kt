@@ -17,6 +17,9 @@
 package eu.europa.ec.uilogic.component.wrap
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -46,39 +49,79 @@ fun WrapListItems(
     shape: Shape? = null,
     throttleClicks: Boolean = true,
     onItemClick: ((ListItemData) -> Unit)? = null,
+    isNestedList: Boolean = false,
 ) {
-    WrapCard(shape = shape) {
-        LazyColumn(
-            modifier = modifier,
-            userScrollEnabled = false,
-        ) {
-            itemsIndexed(items) { index, item ->
-                val itemModifier = Modifier
-                    .then(
-                        if (clickable) {
-                            if (throttleClicks) {
-                                Modifier.throttledClickable { onItemClick?.invoke(item) }
+    WrapCard(
+        modifier = Modifier,
+        shape = shape
+    ) {
+        if (isNestedList) {
+            Column(
+                modifier = modifier
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp)
+            ) {
+                items.mapIndexed { index, item ->
+                    val itemModifier = Modifier
+                        .then(
+                            if (clickable) {
+                                if (throttleClicks) {
+                                    Modifier.throttledClickable { onItemClick?.invoke(item) }
+                                } else {
+                                    Modifier.clickable { onItemClick?.invoke(item) }
+                                }
                             } else {
-                                Modifier.clickable { onItemClick?.invoke(item) }
+                                Modifier
                             }
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .padding(
-                        top = if (index == 0) SPACING_SMALL.dp else 0.dp,
-                        bottom = if (index == items.lastIndex) SPACING_SMALL.dp else 0.dp,
+                        )
+                        .padding(SPACING_SMALL.dp)
+
+                    ListItem(
+                        item = item,
+                        modifier = itemModifier,
+                        hideSensitiveContent = hideSensitiveContent,
+                        mainTextVerticalPadding = mainTextVerticalPadding,
                     )
 
-                ListItem(
-                    item = item,
-                    modifier = itemModifier,
-                    hideSensitiveContent = hideSensitiveContent,
-                    mainTextVerticalPadding = mainTextVerticalPadding,
-                )
+                    if (index < items.lastIndex) {
+                        HorizontalDivider()
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = modifier,
+                userScrollEnabled = false,
+            ) {
+                itemsIndexed(items) { index, item ->
 
-                if (index < items.lastIndex) {
-                    HorizontalDivider()
+                    val itemModifier = Modifier
+                        .then(
+                            if (clickable) {
+                                if (throttleClicks) {
+                                    Modifier.throttledClickable { onItemClick?.invoke(item) }
+                                } else {
+                                    Modifier.clickable { onItemClick?.invoke(item) }
+                                }
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .padding(
+                            top = if (index == 0) SPACING_SMALL.dp else 0.dp,
+                            bottom = if (index == items.lastIndex) SPACING_SMALL.dp else 0.dp,
+                        )
+
+                    ListItem(
+                        item = item,
+                        modifier = itemModifier,
+                        hideSensitiveContent = hideSensitiveContent,
+                        mainTextVerticalPadding = mainTextVerticalPadding,
+                    )
+
+                    if (index < items.lastIndex) {
+                        HorizontalDivider()
+                    }
                 }
             }
         }

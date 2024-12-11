@@ -23,8 +23,10 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.issuancefeature.interactor.document.DocumentDetailsInteractor
 import eu.europa.ec.issuancefeature.interactor.document.DocumentDetailsInteractorDeleteDocumentPartialState
 import eu.europa.ec.issuancefeature.interactor.document.DocumentDetailsInteractorPartialState
+import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.HeaderData
+import eu.europa.ec.uilogic.component.IconData
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.mvi.MviViewModel
@@ -32,7 +34,6 @@ import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.StartupScreens
 import kotlinx.coroutines.launch
 import org.koin.android.annotation.KoinViewModel
@@ -42,7 +43,7 @@ data class State(
     val detailsType: IssuanceFlowUiConfig,
     val navigatableAction: ScreenNavigateAction,
     val onBackAction: (() -> Unit)? = null,
-    val shouldShowPrimaryButton: Boolean,
+    val shouldShowActionButtons: Boolean,
     val hasCustomTopBar: Boolean,
     val hasBottomPadding: Boolean,
     val detailsHaveBottomGradient: Boolean,
@@ -52,13 +53,20 @@ data class State(
     val isBottomSheetOpen: Boolean = false,
 
     val document: DocumentUi? = null,
-    val headerData: HeaderData? = null
+    val headline: String? = null,
+    val isDocumentBookmarked: Boolean = false,
+    val isShowingFullUserInfo: Boolean = true,
+    val documentDetailsSectionTitle: String,
+
+    val bookmarkIcon: IconData = AppIcons.Bookmark,
+    val sensitiveInfoIcon: IconData = AppIcons.VisibilityOff
 ) : ViewState
 
 sealed class Event : ViewEvent {
     data object Init : Event()
     data object Pop : Event()
     data object PrimaryButtonPressed : Event()
+    data object SecondaryButtonPressed : Event()
     data object DeleteDocumentPressed : Event()
 
     data object DismissError : Event()
@@ -71,6 +79,9 @@ sealed class Event : ViewEvent {
             data object SecondaryButtonPressed : Delete()
         }
     }
+
+    data object ChangeContentVisibility : Event()
+    data class BookmarkPressed(val isBookmarked: Boolean) : Event()
 }
 
 
@@ -91,6 +102,7 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class DocumentDetailsViewModel(
     private val documentDetailsInteractor: DocumentDetailsInteractor,
+    private val resourceProvider: ResourceProvider,
     @InjectedParam private val detailsType: IssuanceFlowUiConfig,
     @InjectedParam private val documentId: DocumentId,
 ) : MviViewModel<Event, State, Effect>() {
@@ -98,10 +110,11 @@ class DocumentDetailsViewModel(
         detailsType = detailsType,
         navigatableAction = getNavigatableAction(detailsType),
         onBackAction = getOnBackAction(detailsType),
-        shouldShowPrimaryButton = shouldShowPrimaryButton(detailsType),
+        shouldShowActionButtons = shouldShowActionButtons(detailsType),
         hasCustomTopBar = hasCustomTopBar(detailsType),
         hasBottomPadding = hasBottomPadding(detailsType),
         detailsHaveBottomGradient = detailsHaveBottomGradient(detailsType),
+        documentDetailsSectionTitle = resourceProvider.getString(R.string.issuance_document_details_main_section_text)
     )
 
     override fun handleEvents(event: Event) {
@@ -114,13 +127,11 @@ class DocumentDetailsViewModel(
             }
 
             is Event.PrimaryButtonPressed -> {
-                setEffect {
-                    Effect.Navigation.SwitchScreen(
-                        screenRoute = DashboardScreens.Dashboard.screenRoute,
-                        popUpToScreenRoute = IssuanceScreens.DocumentDetails.screenRoute,
-                        inclusive = true
-                    )
-                }
+                // TODO: will redirect to transactions screen
+            }
+
+            is Event.SecondaryButtonPressed -> {
+                showBottomSheet()
             }
 
             is Event.DeleteDocumentPressed -> {
@@ -143,6 +154,22 @@ class DocumentDetailsViewModel(
             }
 
             is Event.DismissError -> setState { copy(error = null) }
+
+            is Event.ChangeContentVisibility -> setState {
+                copy(
+                    isShowingFullUserInfo = isShowingFullUserInfo.not(),
+                    sensitiveInfoIcon = AppIcons.VisibilityOff.takeIf { isShowingFullUserInfo.not() }
+                        ?: AppIcons.Visibility
+                )
+            }
+
+            is Event.BookmarkPressed -> setState {
+                copy(
+                    isDocumentBookmarked = isDocumentBookmarked.not(),
+                    bookmarkIcon = AppIcons.Bookmark.takeIf { event.isBookmarked }
+                        ?: AppIcons.BookmarkFilled
+                )
+            }
         }
     }
 
@@ -166,13 +193,7 @@ class DocumentDetailsViewModel(
                                 isLoading = false,
                                 error = null,
                                 document = documentUi,
-                                headerData = HeaderData(
-                                    title = documentUi.documentName,
-                                    subtitle = documentUi.userFullName.orEmpty(),
-                                    documentHasExpired = documentUi.documentHasExpired,
-                                    base64Image = documentUi.documentImage,
-                                    icon = AppIcons.IdStroke
-                                )
+                                headline = documentUi.documentName,
                             )
                         }
                     }
@@ -269,14 +290,14 @@ class DocumentDetailsViewModel(
     private fun getNavigatableAction(detailsType: IssuanceFlowUiConfig): ScreenNavigateAction {
         return when (detailsType) {
             IssuanceFlowUiConfig.NO_DOCUMENT -> ScreenNavigateAction.NONE
-            IssuanceFlowUiConfig.EXTRA_DOCUMENT -> ScreenNavigateAction.CANCELABLE
+            IssuanceFlowUiConfig.EXTRA_DOCUMENT -> ScreenNavigateAction.BACKABLE
         }
     }
 
-    private fun shouldShowPrimaryButton(detailsType: IssuanceFlowUiConfig): Boolean {
+    private fun shouldShowActionButtons(detailsType: IssuanceFlowUiConfig): Boolean {
         return when (detailsType) {
             IssuanceFlowUiConfig.NO_DOCUMENT -> true
-            IssuanceFlowUiConfig.EXTRA_DOCUMENT -> false
+            IssuanceFlowUiConfig.EXTRA_DOCUMENT -> true
         }
     }
 

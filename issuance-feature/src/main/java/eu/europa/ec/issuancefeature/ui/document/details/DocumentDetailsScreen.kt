@@ -36,7 +36,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -44,32 +43,32 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
-import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.commonfeature.config.IssuanceFlowUiConfig
 import eu.europa.ec.commonfeature.model.DocumentUi
 import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
-import eu.europa.ec.commonfeature.ui.document_details.DetailsContent
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.uilogic.component.ActionTopBar
-import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.HeaderData
-import eu.europa.ec.uilogic.component.HeaderLarge
 import eu.europa.ec.uilogic.component.content.ContentGradient
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.content.ContentTitle
 import eu.europa.ec.uilogic.component.content.GradientEdge
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.content.ToolbarAction
+import eu.europa.ec.uilogic.component.content.ToolbarConfig
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
+import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextData
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
+import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.WrapButton
+import eu.europa.ec.uilogic.component.wrap.WrapListItems
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
+import eu.europa.ec.uilogic.component.wrap.WrapText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -85,7 +84,6 @@ fun DocumentDetailsScreen(
     viewModel: DocumentDetailsViewModel
 ) {
     val state = viewModel.viewState.value
-    val topBarColor = MaterialTheme.colorScheme.secondary
 
     val isBottomSheetOpen = state.isBottomSheetOpen
     val scope = rememberCoroutineScope()
@@ -98,24 +96,27 @@ fun DocumentDetailsScreen(
         contentErrorConfig = state.error,
         navigatableAction = state.navigatableAction,
         onBack = state.onBackAction,
-        topBar = if (state.hasCustomTopBar) {
-            {
-                ActionTopBar(
-                    contentColor = topBarColor,
-                    iconColor = MaterialTheme.colorScheme.primary,
-                    iconData = AppIcons.Close,
-                    toolbarActions = listOf(
-                        ToolbarAction(
-                            icon = AppIcons.Delete,
-                            onClick = { viewModel.setEvent(Event.DeleteDocumentPressed) },
-                            enabled = !state.isLoading
+        toolBarConfig = ToolbarConfig(
+            actions = listOf(
+                ToolbarAction(
+                    icon = state.bookmarkIcon,
+                    customTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = {
+                        viewModel.setEvent(
+                            Event.BookmarkPressed(isBookmarked = state.isDocumentBookmarked)
                         )
-                    )
-                ) { viewModel.setEvent(Event.Pop) }
-            }
-        } else {
-            null
-        }
+                    },
+                    enabled = !state.isLoading
+                ),
+                ToolbarAction(
+                    icon = state.sensitiveInfoIcon,
+                    customTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = { viewModel.setEvent(Event.ChangeContentVisibility) },
+                    enabled = !state.isLoading
+                )
+            ),
+            navigationIconTint = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
     ) { paddingValues ->
         Content(
             state = state,
@@ -125,7 +126,6 @@ fun DocumentDetailsScreen(
                 handleNavigationEffect(navigationEffect, navController)
             },
             paddingValues = paddingValues,
-            headerColor = topBarColor,
             coroutineScope = scope,
             modalBottomSheetState = bottomSheetState,
         )
@@ -184,73 +184,85 @@ private fun Content(
     onEventSend: (Event) -> Unit,
     onNavigationRequested: (Effect.Navigation) -> Unit,
     paddingValues: PaddingValues,
-    headerColor: Color,
     coroutineScope: CoroutineScope,
     modalBottomSheetState: SheetState,
 ) {
-    safeLet(state.document, state.headerData) { documentUi, headerData ->
+    state.document?.let { documentUi ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    bottom = rememberContentBottomPadding(
-                        hasBottomPadding = state.hasBottomPadding,
-                        paddingValues = paddingValues
-                    )
-                )
-        ) {
-            // Header
-            HeaderLarge(
-                data = headerData,
-                containerColor = headerColor,
-                contentPadding = PaddingValues(
-                    start = SPACING_LARGE.dp,
-                    end = SPACING_LARGE.dp,
-                    bottom = SPACING_LARGE.dp,
-                    top = paddingValues.calculateTopPadding()
+            modifier = Modifier.padding(
+                start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+                end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+                top = paddingValues.calculateTopPadding(),
+                bottom = rememberContentBottomPadding(
+                    hasBottomPadding = state.hasBottomPadding,
+                    paddingValues = paddingValues
                 )
             )
+        ) {
+            // Screen Headline
+            ContentTitle(
+                title = state.headline
+            )
 
-            // Main Content
-            MainContent(
-                detailsHaveBottomGradient = state.detailsHaveBottomGradient,
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
+                // Main Content
+                MainContent(
+                    detailsHaveBottomGradient = state.detailsHaveBottomGradient,
                 ) {
-                    DetailsContent(
-                        modifier = Modifier
-                            .padding(
-                                start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
-                                end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
-                            ),
-                        data = documentUi.documentDetails
-                    )
-                }
-            }
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        SectionTitle(
+                            modifier = Modifier.padding(vertical = SPACING_MEDIUM.dp),
+                            sectionTitle = state.documentDetailsSectionTitle
+                        )
 
-            // Sticky Button
-            if (state.shouldShowPrimaryButton) {
-                WrapButton(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
-                            end = paddingValues.calculateEndPadding(LayoutDirection.Ltr)
-                        ),
-                    buttonConfig = ButtonConfig(
-                        type = ButtonType.PRIMARY,
-                        onClick = {
-                            onEventSend(Event.PrimaryButtonPressed)
-                        }
-                    )
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.issuance_document_details_primary_button_text),
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                        WrapListItems(
+                            items = documentUi.documentDetailsItemData,
+                            hideSensitiveContent = state.isShowingFullUserInfo.not(),
+                            isNestedList = true
+                        )
+                    }
+                }
+
+                if (state.shouldShowActionButtons) {
+                    WrapButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        buttonConfig = ButtonConfig(
+                            type = ButtonType.PRIMARY,
+                            isContainerTransparent = true,
+                            onClick = {
+                                onEventSend(Event.PrimaryButtonPressed)
+                            }
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.issuance_document_details_primary_button_text),
+                            style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary)
+                        )
+                    }
+
+                    WrapButton(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = SPACING_MEDIUM.dp),
+                        buttonConfig = ButtonConfig(
+                            type = ButtonType.SECONDARY,
+                            isWarning = true,
+                            onClick = {
+                                onEventSend(Event.SecondaryButtonPressed)
+                            }
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.issuance_document_details_secondary_button_text),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
                 }
             }
         }
@@ -277,6 +289,22 @@ private fun Content(
             }
         }.collect()
     }
+}
+
+@Composable
+private fun SectionTitle(
+    modifier: Modifier,
+    sectionTitle: String,
+    sectionTitleTextConfig: TextConfig = TextConfig(
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+) {
+    WrapText(
+        modifier = modifier,
+        text = sectionTitle,
+        textConfig = sectionTitleTextConfig,
+    )
 }
 
 @Composable
@@ -343,10 +371,11 @@ private fun IssuanceDocumentDetailsScreenPreview() {
         val state = State(
             detailsType = IssuanceFlowUiConfig.NO_DOCUMENT,
             navigatableAction = ScreenNavigateAction.NONE,
-            shouldShowPrimaryButton = true,
+            shouldShowActionButtons = true,
             hasCustomTopBar = false,
             hasBottomPadding = true,
             detailsHaveBottomGradient = true,
+            documentDetailsSectionTitle = "DOCUMENT DETAILS",
             document = DocumentUi(
                 documentId = "2",
                 documentName = "National ID",
@@ -355,15 +384,9 @@ private fun IssuanceDocumentDetailsScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image3",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Issued,
             ),
-            headerData = HeaderData(
-                title = "Title",
-                subtitle = "subtitle",
-                documentHasExpired = false,
-                base64Image = "",
-                icon = AppIcons.IdStroke
-            )
         )
 
         Content(
@@ -372,7 +395,6 @@ private fun IssuanceDocumentDetailsScreenPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(SPACING_LARGE.dp),
-            headerColor = MaterialTheme.colorScheme.secondary,
             coroutineScope = rememberCoroutineScope(),
             modalBottomSheetState = rememberModalBottomSheetState(),
         )
@@ -387,10 +409,11 @@ private fun DashboardDocumentDetailsScreenPreview() {
         val state = State(
             detailsType = IssuanceFlowUiConfig.EXTRA_DOCUMENT,
             navigatableAction = ScreenNavigateAction.CANCELABLE,
-            shouldShowPrimaryButton = false,
+            shouldShowActionButtons = false,
             hasCustomTopBar = true,
             hasBottomPadding = false,
             detailsHaveBottomGradient = false,
+            documentDetailsSectionTitle = "DOCUMENT DETAILS",
             document = DocumentUi(
                 documentId = "2",
                 documentName = "National ID",
@@ -399,15 +422,9 @@ private fun DashboardDocumentDetailsScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image3",
                 documentDetails = emptyList(),
+                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Issued,
             ),
-            headerData = HeaderData(
-                title = "Title",
-                subtitle = "subtitle",
-                documentHasExpired = false,
-                base64Image = "",
-                icon = AppIcons.IdStroke
-            )
         )
 
         Content(
@@ -416,7 +433,6 @@ private fun DashboardDocumentDetailsScreenPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(SPACING_LARGE.dp),
-            headerColor = MaterialTheme.colorScheme.secondary,
             coroutineScope = rememberCoroutineScope(),
             modalBottomSheetState = rememberModalBottomSheetState(),
         )

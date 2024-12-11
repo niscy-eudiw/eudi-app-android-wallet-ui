@@ -89,6 +89,20 @@ data class InfoTextWithNameAndImageData(
     val base64Image: String
 )
 
+fun InfoTextWithNameAndValueData.toListItemData(): ListItemData {
+    return ListItemData(
+        overlineText = title,
+        mainText = infoValues?.joinToString(separator = "\n").orEmpty()
+    )
+}
+
+fun InfoTextWithNameAndImageData.toListItemData(): ListItemData {
+    return ListItemData(
+        mainText = title,
+        base64Image = base64Image
+    )
+}
+
 @Composable
 fun InfoTextWithNameAndValue(
     itemData: InfoTextWithNameAndValueData,

@@ -35,9 +35,9 @@
     <string name="generic_qr_scan_subtitle">Place the QR code within the frame to start scanning</string>
     <string name="generic_deferred_success_title">In progress</string>
     <string name="generic_bottom_sheet_delete_title">Delete %1$s?</string>
-    <string name="generic_bottom_sheet_delete_subtitle">You will not be able to use your %1$s for future verifications</string>
-    <string name="generic_bottom_sheet_delete_primary_button_text">yes</string>
-    <string name="generic_bottom_sheet_delete_secondary_button_text">no</string>
+    <string name="generic_bottom_sheet_delete_subtitle">This document will be permanently deleted from your wallet and may affect access to services.</string>
+    <string name="generic_bottom_sheet_delete_primary_button_text">Delete</string>
+    <string name="generic_bottom_sheet_delete_secondary_button_text">Cancel</string>
     <string name="generic_search_bar_placeholder_text">Search documents</string>
 
     <!-- Content Description -->
@@ -226,6 +226,10 @@
     <string name="document_details_bottom_sheet_delete_primary_button_text">@string/generic_bottom_sheet_delete_primary_button_text</string>
     <string name="document_details_bottom_sheet_delete_secondary_button_text">@string/generic_bottom_sheet_delete_secondary_button_text</string>
 
+    <string name="issuance_document_details_main_section_text">DOCUMENT DETAILS</string>
+    <string name="issuance_document_details_primary_button_text">View all transactions</string>
+    <string name="issuance_document_details_secondary_button_text">Delete document</string>
+
     <!-- Proximity QR -->
     <string name="proximity_qr_title">Show QR or Tap</string>
     <string name="proximity_qr_subtitle">Show this QR code to access the necessary information for sharing</string>
@@ -254,9 +258,6 @@
     <string name="issuance_success_title">@string/generic_success</string>
     <string name="issuance_success_subtitle">You can now add your %1$s</string>
     <string name="issuance_success_primary_button_text">NEXT</string>
-
-    <!-- Issuance Documents Details Screen -->
-    <string name="issuance_document_details_primary_button_text">@string/generic_continue_capitalized</string>
 
     <!-- Issuance Qr Scan -->
     <string name="issuance_qr_scan_title">@string/generic_qr_scan_title</string>
