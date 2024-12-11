@@ -316,6 +316,18 @@ fun ListItem(
     }
 }
 
+/**
+@Composable
+fun ShowContentWhenAllConditionsTrue(
+    vararg conditions: Boolean,
+    content: @Composable () -> Unit
+) {
+    if (conditions.all { it }) {
+        content()
+    }
+}
+*/
+
 /*
 @ThemeModePreviews
 @Composable

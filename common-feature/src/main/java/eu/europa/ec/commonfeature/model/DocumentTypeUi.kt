@@ -16,7 +16,6 @@
 
 package eu.europa.ec.commonfeature.model
 
-import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsUi
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.isSupported
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
@@ -24,6 +23,7 @@ import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.uilogic.component.ListItemData
 
 enum class DocumentUiIssuanceState {
     Issued, Pending, Failed
@@ -36,7 +36,7 @@ data class DocumentUi(
     val documentExpirationDateFormatted: String,
     val documentHasExpired: Boolean,
     val documentImage: String,
-    val documentDetails: List<DocumentDetailsUi>,
+    val documentDetails: List<ListItemData>,
     val userFullName: String? = null,
     val documentId: DocumentId,
 )
