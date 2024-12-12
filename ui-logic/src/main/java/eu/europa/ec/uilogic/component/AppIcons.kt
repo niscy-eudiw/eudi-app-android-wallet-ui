@@ -351,4 +351,10 @@ object AppIcons {
         contentDescriptionId = R.string.content_description_info_icon,
         imageVector = null
     )
+
+    val IssuerPlaceholder: IconData = IconData(
+        resourceId = R.drawable.issuer_placeholder,
+        contentDescriptionId = R.string.content_description_issuer_icon,
+        imageVector = null
+    )
 }

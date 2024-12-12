@@ -54,7 +54,8 @@ data class State(
 
     val document: DocumentUi? = null,
     val headline: String? = null,
-    val documentDetailsSectionTitle: String,
+    val documentDetailsSectionTitle: String? = null,
+    val documentIssuerSectionTitle: String? = null,
 
     val isDocumentBookmarked: Boolean = false,
     val sensitiveInfoIcon: IconData = AppIcons.VisibilityOff,
@@ -85,6 +86,7 @@ sealed class Event : ViewEvent {
 
     data object ChangeContentVisibility : Event()
     data class BookmarkPressed(val isBookmarked: Boolean) : Event()
+    data object IssuerCardPressed : Event()
 }
 
 
@@ -105,6 +107,7 @@ sealed class Effect : ViewSideEffect {
 sealed class DocumentDetailsBottomSheetContent {
     data object BookmarkStoredInfo : DocumentDetailsBottomSheetContent()
     data object DeleteDocumentConfirmation : DocumentDetailsBottomSheetContent()
+    data object IssuerInfo : DocumentDetailsBottomSheetContent()
 }
 
 @KoinViewModel
@@ -122,7 +125,8 @@ class DocumentDetailsViewModel(
         hasCustomTopBar = hasCustomTopBar(detailsType),
         hasBottomPadding = hasBottomPadding(detailsType),
         detailsHaveBottomGradient = detailsHaveBottomGradient(detailsType),
-        documentDetailsSectionTitle = resourceProvider.getString(R.string.issuance_document_details_main_section_text)
+        documentDetailsSectionTitle = resourceProvider.getString(R.string.document_details_main_section_text),
+        documentIssuerSectionTitle = resourceProvider.getString(R.string.document_details_issuer_section_text)
     )
 
     override fun handleEvents(event: Event) {
@@ -176,6 +180,12 @@ class DocumentDetailsViewModel(
                 if (viewState.value.isDocumentBookmarked) {
                     showBottomSheet(sheetContent = DocumentDetailsBottomSheetContent.BookmarkStoredInfo)
                 }
+            }
+
+            is Event.IssuerCardPressed -> {
+                showBottomSheet(
+                    sheetContent = DocumentDetailsBottomSheetContent.IssuerInfo
+                )
             }
         }
     }
@@ -306,8 +316,7 @@ class DocumentDetailsViewModel(
 
     private fun shouldShowActionButtons(detailsType: IssuanceFlowUiConfig): Boolean {
         return when (detailsType) {
-            IssuanceFlowUiConfig.NO_DOCUMENT -> true
-            IssuanceFlowUiConfig.EXTRA_DOCUMENT -> true
+            IssuanceFlowUiConfig.NO_DOCUMENT, IssuanceFlowUiConfig.EXTRA_DOCUMENT -> true
         }
     }
 

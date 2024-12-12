@@ -94,6 +94,12 @@
     <string name="content_description_wallet_activated_icon">Wallet activated</string>
     <string name="content_description_wallet_secured_icon">Wallet secured</string>
     <string name="content_description_info_icon">Info</string>
+    <string name="content_description_issuer_icon">Issuer</string>
+
+    <!-- Placeholder content-->
+    <string name="placeholder_content_issuer">Placeholder Issuer</string>
+    <string name="placeholder_content_category">Government agency</string>
+    <string name="placeholder_content_location">Athens - Greece</string>
 
     <!-- Document Types -->
     <string name="pid">National ID</string>
@@ -226,12 +232,17 @@
     <string name="document_details_bottom_sheet_delete_primary_button_text">@string/generic_bottom_sheet_delete_primary_button_text</string>
     <string name="document_details_bottom_sheet_delete_secondary_button_text">@string/generic_bottom_sheet_delete_secondary_button_text</string>
 
-    <string name="issuance_document_details_main_section_text">DOCUMENT DETAILS</string>
-    <string name="issuance_document_details_primary_button_text">View all transactions</string>
-    <string name="issuance_document_details_secondary_button_text">Delete document</string>
+    <string name="document_details_main_section_text">DOCUMENT DETAILS</string>
+    <string name="document_details_issuer_section_text">ISSUER</string>
+    <string name="document_details_primary_button_text">View all transactions</string>
+    <string name="document_details_secondary_button_text">Delete document</string>
 
     <string name="document_details_bottom_sheet_bookmark_info_title">Saved to favourites</string>
     <string name="document_details_bottom_sheet_bookmark_info_message">The document was successfully added to your favourites list.</string>
+
+    <string name="document_details_bottom_sheet_badge_title">Trusted relying party</string>
+    <string name="document_details_bottom_sheet_badge_subtitle">A Relying Party is considered trusted when it meets
+        predefined criteria for security, data protection, compliance, and responsible data handling.</string>
 
     <!-- Proximity QR -->
     <string name="proximity_qr_title">Show QR or Tap</string>

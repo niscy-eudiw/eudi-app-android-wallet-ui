@@ -77,8 +77,6 @@ fun WrapListItems(
                         .padding(
                             top = if (index == 0) SPACING_SMALL.dp else 0.dp,
                             bottom = if (index == items.lastIndex) SPACING_SMALL.dp else 0.dp,
-                            start = SPACING_SMALL.dp,
-                            end = SPACING_SMALL.dp,
                         )
 
                     ListItem(

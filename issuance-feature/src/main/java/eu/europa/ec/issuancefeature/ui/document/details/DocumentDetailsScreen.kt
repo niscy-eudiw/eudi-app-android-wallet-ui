@@ -51,8 +51,11 @@ import eu.europa.ec.commonfeature.model.DocumentUi
 import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.uilogic.component.AppIcons
+import eu.europa.ec.uilogic.component.IssuerDetailsCard
+import eu.europa.ec.uilogic.component.IssuerDetailsCardData
 import eu.europa.ec.uilogic.component.SectionTitle
 import eu.europa.ec.uilogic.component.content.ContentGradient
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -225,15 +228,38 @@ private fun Content(
                     Column(
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Document Details title and content
                         SectionTitle(
                             modifier = Modifier.padding(vertical = SPACING_MEDIUM.dp),
-                            sectionTitle = state.documentDetailsSectionTitle
+                            sectionTitle = state.documentDetailsSectionTitle.orEmpty()
                         )
 
                         WrapListItems(
                             items = documentUi.documentDetails,
                             hideSensitiveContent = state.isShowingFullUserInfo.not(),
                             isNestedList = true
+                        )
+
+                        // Issuer title and content
+                        SectionTitle(
+                            modifier = Modifier.padding(
+                                top = SPACING_LARGE.dp,
+                                bottom = SPACING_MEDIUM.dp,
+                            ),
+                            sectionTitle = state.documentIssuerSectionTitle.orEmpty()
+                        )
+
+                        IssuerDetailsCard(
+                            item = IssuerDetailsCardData(
+                                issuerName = stringResource(R.string.placeholder_content_issuer),
+                                issuerLogo = AppIcons.IssuerPlaceholder,
+                                issuerCategory = stringResource(R.string.placeholder_content_category),
+                                issuerLocation = stringResource(R.string.placeholder_content_location),
+                                issuerIsVerified = true,
+                            ),
+                            onClick = {
+                                onEventSend(Event.IssuerCardPressed)
+                            }
                         )
                     }
                 }
@@ -252,7 +278,7 @@ private fun Content(
                         )
                     ) {
                         Text(
-                            text = stringResource(id = R.string.issuance_document_details_primary_button_text),
+                            text = stringResource(id = R.string.document_details_primary_button_text),
                             style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary)
                         )
                     }
@@ -270,7 +296,7 @@ private fun Content(
                         )
                     ) {
                         Text(
-                            text = stringResource(id = R.string.issuance_document_details_secondary_button_text),
+                            text = stringResource(id = R.string.document_details_secondary_button_text),
                             style = MaterialTheme.typography.titleSmall
                         )
                     }
@@ -330,7 +356,7 @@ private fun SheetContent(
                 onNegativeClick = { onEventSent(Event.BottomSheet.Delete.SecondaryButtonPressed) }
             )
 
-        DocumentDetailsBottomSheetContent.BookmarkStoredInfo -> {
+        is DocumentDetailsBottomSheetContent.BookmarkStoredInfo -> {
             GenericBaseSheetContent(
                 titleContent = {
                     Row(
@@ -355,7 +381,37 @@ private fun SheetContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                })
+                }
+            )
+        }
+
+        is DocumentDetailsBottomSheetContent.IssuerInfo -> {
+            GenericBaseSheetContent(
+                titleContent = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp)
+                    ) {
+                        WrapIcon(
+                            iconData = AppIcons.Verified,
+                            customTint = MaterialTheme.colorScheme.success
+                        )
+                        Text(
+                            text = stringResource(R.string.document_details_bottom_sheet_badge_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }, bodyContent = {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(R.string.document_details_bottom_sheet_badge_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            )
         }
     }
 }
@@ -406,6 +462,7 @@ private fun IssuanceDocumentDetailsScreenPreview() {
             hasBottomPadding = true,
             detailsHaveBottomGradient = true,
             documentDetailsSectionTitle = "DOCUMENT DETAILS",
+            documentIssuerSectionTitle = "ISSUER",
             document = DocumentUi(
                 documentId = "2",
                 documentName = "National ID",
@@ -443,6 +500,7 @@ private fun DashboardDocumentDetailsScreenPreview() {
             hasBottomPadding = false,
             detailsHaveBottomGradient = false,
             documentDetailsSectionTitle = "DOCUMENT DETAILS",
+            documentIssuerSectionTitle = "ISSUER",
             document = DocumentUi(
                 documentId = "2",
                 documentName = "National ID",

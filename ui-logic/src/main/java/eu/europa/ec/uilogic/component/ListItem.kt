@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,7 +109,7 @@ fun ListItem(
     with(item) {
         Row(
             modifier = modifier.padding(
-                horizontal = SPACING_SMALL.dp
+                horizontal = SPACING_MEDIUM.dp
             ),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
@@ -119,9 +120,11 @@ fun ListItem(
                     WrapImage(
                         bitmap = rememberBase64DecodedBitmap(base64Image = image),
                         modifier = modifier
+                            .padding(end = SPACING_SMALL.dp)
                             .size(ICON_SIZE_56.dp)
                             .then(blurModifier),
-                        contentDescription = stringResource(id = R.string.content_description_user_image_icon)
+                        contentDescription = stringResource(id = R.string.content_description_user_image_icon),
+                        contentScale = ContentScale.Fit
                     )
                 }
             }
