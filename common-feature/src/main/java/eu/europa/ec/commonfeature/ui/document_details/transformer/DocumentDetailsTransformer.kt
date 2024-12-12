@@ -21,20 +21,21 @@ import eu.europa.ec.businesslogic.util.toList
 import eu.europa.ec.commonfeature.model.DocumentUi
 import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
 import eu.europa.ec.commonfeature.model.toUiName
-import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsUi
+import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsItemData
 import eu.europa.ec.commonfeature.ui.document_details.model.DocumentJsonKeys
+import eu.europa.ec.commonfeature.ui.document_details.model.toListItemData
 import eu.europa.ec.commonfeature.util.documentHasExpired
 import eu.europa.ec.commonfeature.util.extractFullNameFromDocumentOrEmpty
 import eu.europa.ec.commonfeature.util.extractValueFromDocumentOrEmpty
 import eu.europa.ec.commonfeature.util.parseKeyValueUi
+import eu.europa.ec.commonfeature.util.sortListWithPortraitItemToTop
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.nameSpacedDataJSONObject
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.InfoTextWithNameAndImageData
 import eu.europa.ec.uilogic.component.InfoTextWithNameAndValueData
-import eu.europa.ec.uilogic.component.toListItemData
+import eu.europa.ec.uilogic.component.PortraitWithImageData
 import org.json.JSONObject
 
 object DocumentDetailsTransformer {
@@ -67,11 +68,19 @@ object DocumentDetailsTransformer {
             .map {
                 val value = it.value.value
                 val key = it.key.toString()
-                transformToDocumentDetailsUi(
+
+                transformToDocumentDetailsItemData(
                     key = key,
                     item = value,
                     resourceProvider = resourceProvider
                 )
+            }.mapNotNull {
+                when (it) {
+                    is DocumentDetailsItemData.DocumentItemFieldWithValue -> it.itemData.toListItemData()
+                    is DocumentDetailsItemData.DocumentItemFieldWithImageData -> it.itemData.toListItemData()
+                    is DocumentDetailsItemData.DocumentItemPortraitImage -> it.itemData.toListItemData()
+                    is DocumentDetailsItemData.Unknown -> null
+                }
             }
 
         val documentImage = extractValueFromDocumentOrEmpty(
@@ -86,13 +95,7 @@ object DocumentDetailsTransformer {
 
         val docHasExpired = documentHasExpired(documentExpirationDate)
 
-        val detailsItemsData = detailsItems.mapNotNull { documentUi ->
-            when (documentUi) {
-                is DocumentDetailsUi.DefaultItem -> documentUi.itemData.toListItemData()
-                is DocumentDetailsUi.SignatureItem -> documentUi.itemData.toListItemData()
-                is DocumentDetailsUi.Unknown -> null
-            }
-        }
+        val detailsItemsSorted = detailsItems.sortListWithPortraitItemToTop()
 
         return DocumentUi(
             documentId = document.id,
@@ -101,20 +104,18 @@ object DocumentDetailsTransformer {
             documentExpirationDateFormatted = documentExpirationDate.toDateFormatted().orEmpty(),
             documentHasExpired = docHasExpired,
             documentImage = documentImage,
-            documentDetails = detailsItems,
-            documentDetailsItemData = detailsItemsData,
+            documentDetails = detailsItemsSorted,
             userFullName = extractFullNameFromDocumentOrEmpty(document),
             documentIssuanceState = DocumentUiIssuanceState.Issued,
         )
     }
-
 }
 
-private fun transformToDocumentDetailsUi(
+private fun transformToDocumentDetailsItemData(
     key: String,
     item: Any,
     resourceProvider: ResourceProvider
-): DocumentDetailsUi {
+): DocumentDetailsItemData {
 
     val uiKey = resourceProvider.getReadableElementIdentifier(key)
 
@@ -129,7 +130,7 @@ private fun transformToDocumentDetailsUi(
 
     return when (key) {
         DocumentJsonKeys.SIGNATURE -> {
-            DocumentDetailsUi.SignatureItem(
+            DocumentDetailsItemData.DocumentItemFieldWithImageData(
                 itemData = InfoTextWithNameAndImageData(
                     title = uiKey,
                     base64Image = groupedValues
@@ -137,17 +138,15 @@ private fun transformToDocumentDetailsUi(
             )
         }
 
-        DocumentJsonKeys.PORTRAIT -> {
-            DocumentDetailsUi.DefaultItem(
-                itemData = InfoTextWithNameAndValueData.create(
-                    title = uiKey,
-                    infoValues = arrayOf(resourceProvider.getString(R.string.document_details_portrait_readable_identifier))
-                )
+        DocumentJsonKeys.PORTRAIT -> DocumentDetailsItemData.DocumentItemPortraitImage(
+            itemData = PortraitWithImageData(
+                title = uiKey,
+                base64Image = groupedValues
             )
-        }
+        )
 
         else -> {
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData.create(
                     title = uiKey,
                     infoValues = arrayOf(groupedValues)

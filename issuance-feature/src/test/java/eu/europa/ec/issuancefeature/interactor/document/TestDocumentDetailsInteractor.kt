@@ -18,7 +18,8 @@ package eu.europa.ec.issuancefeature.interactor.document
 
 import eu.europa.ec.commonfeature.model.DocumentUi
 import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
-import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsUi
+import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsItemData
+import eu.europa.ec.commonfeature.ui.document_details.model.toListItemData
 import eu.europa.ec.commonfeature.util.TestsData
 import eu.europa.ec.commonfeature.util.TestsData.mockedBasicMdlUi
 import eu.europa.ec.commonfeature.util.TestsData.mockedBasicPidUi
@@ -252,12 +253,12 @@ class TestDocumentDetailsInteractor {
                             documentHasExpired = TestsData.mockedDocumentHasExpired,
                             documentImage = "",
                             documentDetails = listOf(
-                                DocumentDetailsUi.DefaultItem(
+                                DocumentDetailsItemData.DocumentItemFieldWithValue(
                                     itemData = InfoTextWithNameAndValueData.create(
                                         title = "no_data_item",
                                         infoValues = arrayOf("0")
                                     )
-                                )
+                                ).itemData.toListItemData()
                             ),
                             userFullName = "",
                             documentIssuanceState = DocumentUiIssuanceState.Issued

@@ -31,13 +31,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.DEFAULT_ICON_SIZE
 import eu.europa.ec.uilogic.component.utils.ICON_SIZE_40
+import eu.europa.ec.uilogic.component.utils.ICON_SIZE_56
 import eu.europa.ec.uilogic.component.utils.SIZE_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
@@ -53,6 +56,8 @@ data class ListItemData(
     val leadingIcon: IconData? = null,
     val trailingContentData: ListItemTrailingContentData? = null,
     val base64Image: String? = null,
+    val isPortrait: Boolean = false,
+    val isSignature: Boolean = false,
 )
 
 sealed class ListItemTrailingContentData {
@@ -97,14 +102,30 @@ fun ListItem(
         }
     }
 
+    // Portrait image
+    val portraitImage = item.base64Image
+
     with(item) {
         Row(
             modifier = modifier.padding(
-                horizontal = SPACING_MEDIUM.dp
+                horizontal = SPACING_SMALL.dp
             ),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Portrait Image
+            if (item.isPortrait) {
+                portraitImage?.let { image ->
+                    WrapImage(
+                        bitmap = rememberBase64DecodedBitmap(base64Image = image),
+                        modifier = modifier
+                            .size(ICON_SIZE_56.dp)
+                            .then(blurModifier),
+                        contentDescription = stringResource(id = R.string.content_description_user_image_icon)
+                    )
+                }
+            }
+
             // Leading Icon
             leadingIconData?.let { safeLeadingIcon ->
                 WrapImage(

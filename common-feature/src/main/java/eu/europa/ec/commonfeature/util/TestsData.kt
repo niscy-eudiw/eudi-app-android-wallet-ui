@@ -20,7 +20,8 @@ import androidx.annotation.VisibleForTesting
 import eu.europa.ec.commonfeature.model.DocumentOptionItemUi
 import eu.europa.ec.commonfeature.model.DocumentUi
 import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
-import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsUi
+import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsItemData
+import eu.europa.ec.commonfeature.ui.document_details.model.toListItemData
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
 import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuth
@@ -191,7 +192,6 @@ object TestsData {
         documentHasExpired = mockedDocumentHasExpired,
         documentImage = "",
         documentDetails = emptyList(),
-        documentDetailsItemData = emptyList(),
         documentIssuanceState = DocumentUiIssuanceState.Issued,
     )
 
@@ -211,63 +211,63 @@ object TestsData {
 
     val mockedBasicPidUi = mockedFullPidUi.copy(
         documentDetails = listOf(
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "birth_city",
                         infoValues = arrayOf("KATRINEHOLM")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "gender",
                         infoValues = arrayOf("male")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "age_over_18",
                         infoValues = arrayOf("yes")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "age_birth_year",
                         infoValues = arrayOf("1985")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "expiry_date",
                         infoValues = arrayOf("30 Mar 2050")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "given_name",
                         infoValues = arrayOf("JAN")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "family_name",
                         infoValues = arrayOf("ANDERSSON")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "age_over_65",
                         infoValues = arrayOf("no")
                     )
             ),
-        ),
+        ).map { it.itemData.toListItemData() },
         userFullName = "JAN ANDERSSON"
     )
 
@@ -279,7 +279,6 @@ object TestsData {
         documentHasExpired = mockedDocumentHasExpired,
         documentImage = "",
         documentDetails = emptyList(),
-        documentDetailsItemData = emptyList(),
         documentIssuanceState = DocumentUiIssuanceState.Issued,
     )
 
@@ -289,7 +288,7 @@ object TestsData {
 
     val mockedBasicMdlUi = mockedFullMdlUi.copy(
         documentDetails = listOf(
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "driving_privileges",
@@ -303,55 +302,62 @@ object TestsData {
                         )
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "expiry_date",
                         infoValues = arrayOf("30 Mar 2050")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "sex",
                         infoValues = arrayOf("male")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "birth_place",
                         infoValues = arrayOf("SWEDEN")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "given_name",
                         infoValues = arrayOf("JAN")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "portrait",
                         infoValues = arrayOf("Shown above")
                     )
             ),
-            DocumentDetailsUi.DefaultItem(
+            DocumentDetailsItemData.DocumentItemFieldWithValue(
                 itemData = InfoTextWithNameAndValueData
                     .create(
                         title = "family_name",
                         infoValues = arrayOf("ANDERSSON")
                     )
             ),
-            DocumentDetailsUi.SignatureItem(
+            DocumentDetailsItemData.DocumentItemFieldWithImageData(
                 itemData = InfoTextWithNameAndImageData(
                     title = "signature_usual_mark",
                     base64Image = "SE"
                 )
             ),
-        ),
+        ).mapNotNull {
+            when (it) {
+                is DocumentDetailsItemData.DocumentItemFieldWithValue -> it.itemData.toListItemData()
+                is DocumentDetailsItemData.DocumentItemFieldWithImageData -> it.itemData.toListItemData()
+                is DocumentDetailsItemData.DocumentItemPortraitImage -> it.itemData.toListItemData()
+                is DocumentDetailsItemData.Unknown -> null
+            }
+        },
         userFullName = "JAN ANDERSSON"
     )
 

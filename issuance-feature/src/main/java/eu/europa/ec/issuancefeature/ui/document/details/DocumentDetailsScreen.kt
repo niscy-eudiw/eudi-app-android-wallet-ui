@@ -16,9 +16,11 @@
 
 package eu.europa.ec.issuancefeature.ui.document.details
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -48,6 +51,8 @@ import eu.europa.ec.commonfeature.model.DocumentUi
 import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.resourceslogic.theme.values.warning
+import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentGradient
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ContentTitle
@@ -58,14 +63,18 @@ import eu.europa.ec.uilogic.component.content.ToolbarConfig
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
+import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_SMALL
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
+import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextData
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
+import eu.europa.ec.uilogic.component.wrap.GenericBaseSheetContent
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.WrapButton
+import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.component.wrap.WrapListItems
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapText
@@ -143,6 +152,7 @@ fun DocumentDetailsScreen(
             ) {
                 SheetContent(
                     documentTypeUiName = state.document?.documentName.orEmpty(),
+                    sheetContent = state.sheetContent,
                     onEventSent = {
                         viewModel.setEvent(it)
                     }
@@ -222,7 +232,7 @@ private fun Content(
                         )
 
                         WrapListItems(
-                            items = documentUi.documentDetailsItemData,
+                            items = documentUi.documentDetails,
                             hideSensitiveContent = state.isShowingFullUserInfo.not(),
                             isNestedList = true
                         )
@@ -231,10 +241,12 @@ private fun Content(
 
                 if (state.shouldShowActionButtons) {
                     WrapButton(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = SPACING_EXTRA_SMALL.dp),
                         buttonConfig = ButtonConfig(
                             type = ButtonType.PRIMARY,
-                            isContainerTransparent = true,
+                            isWithoutContainerBackground = true,
                             onClick = {
                                 onEventSend(Event.PrimaryButtonPressed)
                             }
@@ -310,24 +322,59 @@ private fun SectionTitle(
 @Composable
 private fun SheetContent(
     documentTypeUiName: String,
+    sheetContent: DocumentDetailsBottomSheetContent,
     onEventSent: (event: Event) -> Unit
 ) {
-    DialogBottomSheet(
-        textData = BottomSheetTextData(
-            title = stringResource(
-                id = R.string.document_details_bottom_sheet_delete_title,
-                documentTypeUiName
-            ),
-            message = stringResource(
-                id = R.string.document_details_bottom_sheet_delete_subtitle,
-                documentTypeUiName
-            ),
-            positiveButtonText = stringResource(id = R.string.document_details_bottom_sheet_delete_primary_button_text),
-            negativeButtonText = stringResource(id = R.string.document_details_bottom_sheet_delete_secondary_button_text),
-        ),
-        onPositiveClick = { onEventSent(Event.BottomSheet.Delete.PrimaryButtonPressed) },
-        onNegativeClick = { onEventSent(Event.BottomSheet.Delete.SecondaryButtonPressed) }
-    )
+    when (sheetContent) {
+        is DocumentDetailsBottomSheetContent.DeleteDocumentConfirmation ->
+            DialogBottomSheet(
+                textData = BottomSheetTextData(
+                    title = stringResource(
+                        id = R.string.document_details_bottom_sheet_delete_title,
+                        documentTypeUiName
+                    ),
+                    message = stringResource(
+                        id = R.string.document_details_bottom_sheet_delete_subtitle,
+                        documentTypeUiName
+                    ),
+                    positiveButtonText = stringResource(id = R.string.document_details_bottom_sheet_delete_primary_button_text),
+                    negativeButtonText = stringResource(id = R.string.document_details_bottom_sheet_delete_secondary_button_text),
+                    isPositiveButtonWarning = true
+                ),
+                leadingIcon = AppIcons.Delete,
+                leadingIconTint = MaterialTheme.colorScheme.error,
+                onPositiveClick = { onEventSent(Event.BottomSheet.Delete.PrimaryButtonPressed) },
+                onNegativeClick = { onEventSent(Event.BottomSheet.Delete.SecondaryButtonPressed) }
+            )
+
+        DocumentDetailsBottomSheetContent.BookmarkStoredInfo -> {
+            GenericBaseSheetContent(
+                titleContent = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp)
+                    ) {
+                        WrapIcon(
+                            iconData = AppIcons.BookmarkFilled,
+                            customTint = MaterialTheme.colorScheme.warning
+                        )
+                        Text(
+                            text = stringResource(R.string.document_details_bottom_sheet_bookmark_info_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }, bodyContent = {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(R.string.document_details_bottom_sheet_bookmark_info_message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                })
+        }
+    }
 }
 
 @Composable
@@ -384,7 +431,6 @@ private fun IssuanceDocumentDetailsScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image3",
                 documentDetails = emptyList(),
-                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Issued,
             ),
         )
@@ -422,7 +468,6 @@ private fun DashboardDocumentDetailsScreenPreview() {
                 documentHasExpired = false,
                 documentImage = "image3",
                 documentDetails = emptyList(),
-                documentDetailsItemData = emptyList(),
                 documentIssuanceState = DocumentUiIssuanceState.Issued,
             ),
         )

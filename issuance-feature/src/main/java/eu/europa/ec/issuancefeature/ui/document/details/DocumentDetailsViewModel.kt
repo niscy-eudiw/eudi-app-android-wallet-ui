@@ -54,20 +54,23 @@ data class State(
 
     val document: DocumentUi? = null,
     val headline: String? = null,
-    val isDocumentBookmarked: Boolean = false,
-    val isShowingFullUserInfo: Boolean = true,
     val documentDetailsSectionTitle: String,
 
-    val bookmarkIcon: IconData = AppIcons.Bookmark,
-    val sensitiveInfoIcon: IconData = AppIcons.VisibilityOff
-) : ViewState
+    val isDocumentBookmarked: Boolean = false,
+    val sensitiveInfoIcon: IconData = AppIcons.VisibilityOff,
+    val isShowingFullUserInfo: Boolean = true,
+
+    val sheetContent: DocumentDetailsBottomSheetContent = DocumentDetailsBottomSheetContent.BookmarkStoredInfo
+) : ViewState {
+    val bookmarkIcon: IconData
+        get() = if (isDocumentBookmarked) AppIcons.BookmarkFilled else AppIcons.Bookmark
+}
 
 sealed class Event : ViewEvent {
     data object Init : Event()
     data object Pop : Event()
     data object PrimaryButtonPressed : Event()
     data object SecondaryButtonPressed : Event()
-    data object DeleteDocumentPressed : Event()
 
     data object DismissError : Event()
 
@@ -97,6 +100,11 @@ sealed class Effect : ViewSideEffect {
 
     data object ShowBottomSheet : Effect()
     data object CloseBottomSheet : Effect()
+}
+
+sealed class DocumentDetailsBottomSheetContent {
+    data object BookmarkStoredInfo : DocumentDetailsBottomSheetContent()
+    data object DeleteDocumentConfirmation : DocumentDetailsBottomSheetContent()
 }
 
 @KoinViewModel
@@ -131,11 +139,7 @@ class DocumentDetailsViewModel(
             }
 
             is Event.SecondaryButtonPressed -> {
-                showBottomSheet()
-            }
-
-            is Event.DeleteDocumentPressed -> {
-                showBottomSheet()
+                showBottomSheet(sheetContent = DocumentDetailsBottomSheetContent.DeleteDocumentConfirmation)
             }
 
             is Event.BottomSheet.UpdateBottomSheetState -> {
@@ -163,12 +167,15 @@ class DocumentDetailsViewModel(
                 )
             }
 
-            is Event.BookmarkPressed -> setState {
-                copy(
-                    isDocumentBookmarked = isDocumentBookmarked.not(),
-                    bookmarkIcon = AppIcons.Bookmark.takeIf { event.isBookmarked }
-                        ?: AppIcons.BookmarkFilled
-                )
+            is Event.BookmarkPressed -> {
+                setState {
+                    copy(
+                        isDocumentBookmarked = isDocumentBookmarked.not(),
+                    )
+                }
+                if (viewState.value.isDocumentBookmarked) {
+                    showBottomSheet(sheetContent = DocumentDetailsBottomSheetContent.BookmarkStoredInfo)
+                }
             }
         }
     }
@@ -275,7 +282,10 @@ class DocumentDetailsViewModel(
         }
     }
 
-    private fun showBottomSheet() {
+    private fun showBottomSheet(sheetContent: DocumentDetailsBottomSheetContent) {
+        setState {
+            copy(sheetContent = sheetContent)
+        }
         setEffect {
             Effect.ShowBottomSheet
         }

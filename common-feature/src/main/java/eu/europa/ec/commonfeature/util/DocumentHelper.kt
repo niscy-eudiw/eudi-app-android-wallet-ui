@@ -26,6 +26,7 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.nameSpacedDataJSONObject
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.uilogic.component.ListItemData
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -187,3 +188,16 @@ fun documentHasExpired(
         currentDate.isAfter(it)
     } ?: false
 }
+
+internal fun List<ListItemData>.sortListWithPortraitItemToTop(): List<ListItemData> {
+    return this.sortedWith(
+        compareByDescending {
+            it.base64Image != null && it.mainText.equals(
+                PORTRAIT_IDENTIFIER,
+                ignoreCase = true
+            )
+        }
+    )
+}
+
+private const val PORTRAIT_IDENTIFIER = "Portrait"

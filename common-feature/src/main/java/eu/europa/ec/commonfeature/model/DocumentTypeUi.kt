@@ -16,7 +16,6 @@
 
 package eu.europa.ec.commonfeature.model
 
-import eu.europa.ec.commonfeature.ui.document_details.model.DocumentDetailsUi
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.isSupported
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
@@ -37,8 +36,7 @@ data class DocumentUi(
     val documentExpirationDateFormatted: String,
     val documentHasExpired: Boolean,
     val documentImage: String,
-    val documentDetails: List<DocumentDetailsUi>,
-    val documentDetailsItemData: List<ListItemData>,
+    val documentDetails: List<ListItemData>,
     val userFullName: String? = null,
     val documentId: DocumentId,
 )

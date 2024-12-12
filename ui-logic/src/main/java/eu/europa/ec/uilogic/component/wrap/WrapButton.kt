@@ -27,7 +27,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -54,7 +53,7 @@ data class ButtonConfig(
     val isWarning: Boolean = false,
     val shape: Shape = buttonsShape,
     val contentPadding: PaddingValues = buttonsContentPadding,
-    val isContainerTransparent: Boolean = false,
+    val isWithoutContainerBackground: Boolean = false,
 )
 
 @Composable
@@ -88,8 +87,8 @@ private fun WrapPrimaryButton(
         ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.error
         )
-    } else if (buttonConfig.isContainerTransparent) {
-        ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+    } else if (buttonConfig.isWithoutContainerBackground) {
+        ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.background)
     } else {
         ButtonDefaults.buttonColors()
     }
