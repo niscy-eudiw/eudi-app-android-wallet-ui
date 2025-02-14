@@ -16,14 +16,17 @@
 
 package eu.europa.ec.commonfeature.ui.request.model
 
+import eu.europa.ec.commonfeature.ui.request.transformer.toPath
 import eu.europa.ec.commonfeature.util.keyIsBase64
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
+import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.ElementIdentifier
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
 
 data class RequestDocumentItemUi<T>(
     val id: String,
@@ -37,7 +40,11 @@ data class RequestDocumentItemUi<T>(
 ) {
     val keyIsBase64: Boolean
         get() {
-            return keyIsBase64(docItem.elementIdentifier)
+            return when (docItem) {
+                is MsoMdocItem -> keyIsBase64(docItem.elementIdentifier)
+                is SdJwtVcItem -> keyIsBase64(docItem.path.last())
+                else -> false
+            }
         }
 }
 
@@ -45,7 +52,8 @@ data class DocumentItemDomainPayload(
     val docId: String,
     val formatType: FormatType,
     val namespace: String?,
-    val elementIdentifier: ElementIdentifier
+    val elementIdentifier: ElementIdentifier,
+    val path: List<String>
 ) {
     // We need to override equals in order for "groupBy" internal comparisons
     override fun equals(other: Any?): Boolean {

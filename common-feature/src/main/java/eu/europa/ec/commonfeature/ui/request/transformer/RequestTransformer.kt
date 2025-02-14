@@ -32,9 +32,15 @@ import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
+import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.format.DocumentClaim
+import eu.europa.ec.eudi.wallet.document.format.MsoMdocClaim
+import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
+import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.SdJwtVcItem
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -89,24 +95,19 @@ object RequestTransformer {
             // Add optional field items.
             requestDocument.requestedItems.keys.forEachIndexed { itemIndex, docItem ->
 
-                val nameSpace = when (docItem) {
-                    is MsoMdocItem -> docItem.namespace
-                    else -> null
-                }
+                val item = storageDocument.findClaimFromDocItem(docItem)
+                val nameSpace = (item as? MsoMdocClaim)?.nameSpace
+                val identifier = item?.identifier ?: return@forEachIndexed
 
-                val item = storageDocument.data.claims.firstOrNull {
-                    it.identifier == docItem.elementIdentifier
-                }
-
-                val elementIdentifier = item?.metadata?.display?.firstOrNull {
+                val elementIdentifier = item.metadata?.display?.firstOrNull {
                     resourceProvider.getLocale().compareLocaleLanguage(it.locale)
-                }?.name ?: docItem.elementIdentifier
+                }?.name ?: identifier
 
                 val (value, isAvailable) = try {
                     val values = StringBuilder()
                     parseKeyValueUi(
-                        item = item?.value!!,
-                        groupIdentifier = docItem.elementIdentifier,
+                        item = item.value!!,
+                        groupIdentifier = identifier,
                         resourceProvider = resourceProvider,
                         allItems = values
                     )
@@ -117,12 +118,12 @@ object RequestTransformer {
 
                 if (
                     getMandatoryFields(documentIdentifier = storageDocument.toDocumentIdentifier())
-                        .contains(docItem.elementIdentifier)
+                        .contains(identifier)
                 ) {
                     required.add(
                         docItem.toRequestDocumentItemUi(
                             uID = produceDocUID(
-                                elementIdentifier = docItem.elementIdentifier,
+                                elementIdentifier = identifier,
                                 documentId = storageDocument.id,
                                 docType = storageDocument.formatType
                             ),
@@ -130,7 +131,8 @@ object RequestTransformer {
                                 docId = storageDocument.id,
                                 formatType = storageDocument.formatType,
                                 namespace = nameSpace,
-                                elementIdentifier = docItem.elementIdentifier,
+                                elementIdentifier = identifier,
+                                path = docItem.toPath()
                             ),
                             optional = false,
                             isChecked = isAvailable,
@@ -141,7 +143,7 @@ object RequestTransformer {
                     )
                 } else {
                     val uID = produceDocUID(
-                        elementIdentifier = docItem.elementIdentifier,
+                        elementIdentifier = identifier,
                         documentId = storageDocument.id,
                         docType = storageDocument.formatType
                     )
@@ -155,7 +157,8 @@ object RequestTransformer {
                                     docId = storageDocument.id,
                                     formatType = storageDocument.formatType,
                                     namespace = nameSpace,
-                                    elementIdentifier = docItem.elementIdentifier,
+                                    elementIdentifier = identifier,
+                                    path = docItem.toPath()
                                 ),
                                 optional = isAvailable,
                                 isChecked = isAvailable,
@@ -224,9 +227,7 @@ object RequestTransformer {
                     documentId = document.docId,
                     disclosedItems = selectedDocumentItems.map {
                         when (it.domainPayload.namespace) {
-                            null -> SdJwtVcItem(
-                                it.domainPayload.elementIdentifier
-                            )
+                            null -> SdJwtVcItem(it.domainPayload.path)
 
                             else -> MsoMdocItem(
                                 it.domainPayload.namespace,
@@ -238,5 +239,40 @@ object RequestTransformer {
                 )
             }
         )
+    }
+}
+
+fun IssuedDocument.findClaimFromDocItem(docItem: DocItem) =
+    findClaimFromPath(docItem.toPath())
+
+fun DocItem.toPath(): List<String> {
+    return when (this) {
+        is MsoMdocItem -> return listOf(this.namespace, this.elementIdentifier)
+        is SdJwtVcItem -> return this.path
+        else -> emptyList()
+    }
+}
+
+fun IssuedDocument.findClaimFromPath(path: List<String>): DocumentClaim? {
+    return when (format) {
+        is MsoMdocFormat -> {
+            if (path.size == 2) null
+            val nameSpace = path.first()
+            val elementIdentifier = path.last()
+            data.claims.filterIsInstance<MsoMdocClaim>().firstOrNull {
+                it.identifier == elementIdentifier && it.nameSpace == nameSpace
+            }
+
+        }
+
+        is SdJwtVcFormat -> {
+            var claim: SdJwtVcClaim? = null
+            for (claimId in path) {
+                claim = claim?.children?.firstOrNull { it.identifier == claimId }
+                    ?: data.claims.filterIsInstance<SdJwtVcClaim>()
+                        .firstOrNull { it.identifier == claimId }
+            }
+            claim
+        }
     }
 }
