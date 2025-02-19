@@ -49,4 +49,5 @@ data class RequestDocumentClaim(
     val readableName: String,
     val isRequired: Boolean,
     val isAvailable: Boolean,
+    val path: List<String>,
 )
