@@ -79,7 +79,7 @@ internal class WalletCoreConfigImpl(
                         withUseDPoPIfSupported(true)
                     }
 
-                    configureReaderTrustStore(
+                    /*configureReaderTrustStore(
                         context,
                         R.raw.pid_issuer_cacz01,
                         R.raw.pid_issuer_caee01,
@@ -88,7 +88,7 @@ internal class WalletCoreConfigImpl(
                         R.raw.pid_issuer_canl01,
                         R.raw.pid_issuer_capt01,
                         R.raw.pid_issuer_caut01
-                    )
+                    )*/
                 }
             }
             return _config!!

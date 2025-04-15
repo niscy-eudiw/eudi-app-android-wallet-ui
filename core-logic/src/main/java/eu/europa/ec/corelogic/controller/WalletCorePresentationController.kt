@@ -17,7 +17,6 @@
 package eu.europa.ec.corelogic.controller
 
 import androidx.activity.ComponentActivity
-import com.android.identity.crypto.Algorithm
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.extension.addOrReplace
 import eu.europa.ec.businesslogic.extension.safeAsync
@@ -49,6 +48,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.koin.core.annotation.Scope
 import org.koin.core.annotation.Scoped
 import java.net.URI
@@ -333,14 +333,16 @@ class WalletCorePresentationControllerImpl(
 
                 for ((doc, kud) in keyUnlockDataMap) {
                     authenticationData.add(
-                        AuthenticationData(
-                            BiometricCrypto(kud?.getCryptoObjectForSigning(Algorithm.ES256)),
-                            onAuthenticationSuccess = {
-                                disclosedDocuments?.addOrReplace(doc.copy(keyUnlockData = kud)) {
-                                    it.documentId == doc.documentId
+                        runBlocking {
+                            AuthenticationData(
+                                BiometricCrypto(kud?.getCryptoObjectForSigning()),
+                                onAuthenticationSuccess = {
+                                    disclosedDocuments?.addOrReplace(doc.copy(keyUnlockData = kud)) {
+                                        it.documentId == doc.documentId
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     )
                 }
 

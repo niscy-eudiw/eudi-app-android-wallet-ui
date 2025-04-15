@@ -94,7 +94,7 @@ class DocumentIssuanceSuccessInteractorImpl(
                     val domainClaims = transformPathsToDomainClaims(
                         paths = claimsPaths,
                         claims = document.data.claims,
-                        metadata = document.metadata,
+                        metadata = document.issuerMetaData,
                         resourceProvider = resourceProvider,
                     )
 

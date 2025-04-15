@@ -83,7 +83,7 @@ class ProximitySuccessInteractorImpl(
                     val disclosedClaims = transformPathsToDomainClaims(
                         paths = disclosedClaimPaths,
                         claims = document.data.claims,
-                        metadata = document.metadata,
+                        metadata = document.issuerMetaData,
                         resourceProvider = resourceProvider,
                     )
 

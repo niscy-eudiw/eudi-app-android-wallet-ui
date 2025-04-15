@@ -31,7 +31,7 @@ import eu.europa.ec.eudi.wallet.document.format.DocumentClaim
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcData
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetaData
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import java.time.Instant
@@ -93,7 +93,7 @@ private fun getGenderValue(value: String, resourceProvider: ResourceProvider): S
     }
 
 fun getReadableNameFromIdentifier(
-    metadata: DocumentMetaData?,
+    metadata: IssuerMetaData?,
     userLocale: Locale,
     identifier: String,
 ): String {
@@ -112,7 +112,7 @@ fun createKeyValue(
     childKey: String = "",
     disclosurePath: ClaimPath,
     resourceProvider: ResourceProvider,
-    metadata: DocumentMetaData?,
+    metadata: IssuerMetaData?,
     allItems: MutableList<DomainClaim>,
 ) {
     when (item) {
@@ -233,7 +233,7 @@ private fun insertPath(
     path: ClaimPath,
     disclosurePath: ClaimPath,
     claims: List<DocumentClaim>,
-    metadata: DocumentMetaData?,
+    metadata: IssuerMetaData?,
     resourceProvider: ResourceProvider,
 ): List<DomainClaim> {
     if (path.value.isEmpty()) return tree
@@ -307,7 +307,7 @@ private fun insertPath(
 fun transformPathsToDomainClaims(
     paths: List<ClaimPath>,
     claims: List<DocumentClaim>,
-    metadata: DocumentMetaData?,
+    metadata: IssuerMetaData?,
     resourceProvider: ResourceProvider,
 ): List<DomainClaim> {
     return paths.fold<ClaimPath, List<DomainClaim>>(initial = emptyList()) { acc, path ->

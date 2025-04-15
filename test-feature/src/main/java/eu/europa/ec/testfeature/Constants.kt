@@ -16,13 +16,14 @@
 
 package eu.europa.ec.testfeature
 
-import com.android.identity.document.NameSpacedData
-import com.android.identity.securearea.software.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import kotlinx.coroutines.runBlocking
+import org.multipaz.document.NameSpacedData
+import org.multipaz.securearea.software.SoftwareSecureArea
+import org.multipaz.storage.ephemeral.EphemeralStorage
 import java.time.Instant
 import java.util.Locale
 
@@ -352,7 +353,8 @@ const val mockedPidNameSpace = "eu.europa.ec.eudi.pid.1"
 const val mockedMdlDocType = "org.iso.18013.5.1.mDL"
 const val mockedMdlNameSpace = "org.iso.18013.5.1"
 
-val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
+val storage = EphemeralStorage()
+val secureArea = runBlocking { SoftwareSecureArea.create(storage) }
 
 fun createMockedNamespaceData(
     documentNamespace: String,
@@ -379,7 +381,7 @@ val mockedFullPid = IssuedDocument(
     issuerProvidedData = byteArrayOf(),
     data = MsoMdocData(
         format = MsoMdocFormat(mockedPidNameSpace),
-        metadata = null,
+        issuerMetadata = null,
         nameSpacedData = createMockedNamespaceData(
             mockedPidNameSpace,
             mockedPidFields
@@ -396,7 +398,7 @@ val mockedUnsignedPid = UnsignedDocument(
     isCertified = false,
     keyAlias = "movet",
     secureArea = secureArea,
-    metadata = null
+    issuerMetaData = null
 )
 
 val mockedMainPid = mockedFullPid
@@ -404,7 +406,7 @@ val mockedMainPid = mockedFullPid
 val mockedPidWithBasicFields = mockedFullPid.copy(
     data = MsoMdocData(
         format = MsoMdocFormat(mockedPidNameSpace),
-        metadata = null,
+        issuerMetadata = null,
         nameSpacedData = createMockedNamespaceData(
             mockedPidNameSpace,
             mockedPidBasicFields
@@ -420,7 +422,7 @@ val mockedOldestPidWithBasicFields = mockedPidWithBasicFields.copy(
 val mockedEmptyPid = mockedFullPid.copy(
     data = MsoMdocData(
         format = MsoMdocFormat(mockedPidNameSpace),
-        metadata = null,
+        issuerMetadata = null,
         nameSpacedData = createMockedNamespaceData(
             mockedPidNameSpace,
             emptyMap()
@@ -442,7 +444,7 @@ val mockedFullMdl = IssuedDocument(
     issuerProvidedData = byteArrayOf(),
     data = MsoMdocData(
         format = MsoMdocFormat(mockedMdlDocType),
-        metadata = null,
+        issuerMetadata = null,
         nameSpacedData = createMockedNamespaceData(
             mockedMdlNameSpace,
             mockedMdlFields
@@ -453,7 +455,7 @@ val mockedFullMdl = IssuedDocument(
 val mockedMdlWithBasicFields = mockedFullMdl.copy(
     data = MsoMdocData(
         format = MsoMdocFormat(mockedMdlDocType),
-        metadata = null,
+        issuerMetadata = null,
         nameSpacedData = createMockedNamespaceData(
             mockedMdlNameSpace,
             mockedMdlBasicFields
@@ -464,7 +466,7 @@ val mockedMdlWithBasicFields = mockedFullMdl.copy(
 val mockedMdlWithNoExpirationDate: IssuedDocument = mockedFullMdl.copy(
     data = MsoMdocData(
         format = MsoMdocFormat(mockedMdlDocType),
-        metadata = null,
+        issuerMetadata = null,
         nameSpacedData = createMockedNamespaceData(
             mockedMdlNameSpace,
             mockedMdlFields
@@ -476,7 +478,7 @@ val mockedMdlWithNoExpirationDate: IssuedDocument = mockedFullMdl.copy(
 val mockedMdlWithNoUserNameAndNoUserImage: IssuedDocument = mockedFullMdl.copy(
     data = MsoMdocData(
         format = MsoMdocFormat(mockedMdlDocType),
-        metadata = null,
+        issuerMetadata = null,
         nameSpacedData = createMockedNamespaceData(
             mockedMdlNameSpace,
             mockedMdlFields

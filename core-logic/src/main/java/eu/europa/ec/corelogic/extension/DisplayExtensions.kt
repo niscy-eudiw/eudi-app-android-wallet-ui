@@ -18,14 +18,14 @@ package eu.europa.ec.corelogic.extension
 
 import eu.europa.ec.businesslogic.extension.getLocalizedString
 import eu.europa.ec.eudi.openid4vci.Display
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetaData
 
 import java.util.Locale
 
 /**
  * Retrieves the localized claim name from a list of claim displays.
  *
- * This function searches through a list of [DocumentMetaData.Claim.Display] objects
+ * This function searches through a list of [IssuerMetaData.Claim.Display] objects
  * to find the name that best matches the user's locale. If an exact
  * match is not found, it falls back to the provided [fallback] string.
  *
@@ -36,7 +36,7 @@ import java.util.Locale
  *
  * @see getLocalizedString
  */
-fun List<DocumentMetaData.Claim.Display>?.getLocalizedClaimName(
+fun List<IssuerMetaData.Claim.Display>?.getLocalizedClaimName(
     userLocale: Locale,
     fallback: String,
 ): String {

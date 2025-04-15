@@ -16,7 +16,6 @@
 
 package eu.europa.ec.corelogic.controller
 
-import com.android.identity.securearea.KeyUnlockData
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.extension.safeAsync
@@ -53,7 +52,9 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.multipaz.securearea.KeyUnlockData
 import java.util.Locale
 
 enum class IssuanceMethod {
@@ -544,16 +545,18 @@ class WalletCoreDocumentsControllerImpl(
                 }
 
                 is IssueEvent.DocumentRequiresUserAuth -> {
-                    val keyUnlockData = event.document.DefaultKeyUnlockData
-                    trySendBlocking(
-                        IssueDocumentsPartialState.UserAuthRequired(
-                            BiometricCrypto(keyUnlockData?.getCryptoObjectForSigning(event.signingAlgorithm)),
-                            DeviceAuthenticationResult(
-                                onAuthenticationSuccess = { event.resume(keyUnlockData as KeyUnlockData) },
-                                onAuthenticationError = { event.cancel(null) }
+                    runBlocking {
+                        val keyUnlockData = event.document.DefaultKeyUnlockData
+                        trySendBlocking(
+                            IssueDocumentsPartialState.UserAuthRequired(
+                                BiometricCrypto(keyUnlockData?.getCryptoObjectForSigning()),
+                                DeviceAuthenticationResult(
+                                    onAuthenticationSuccess = { event.resume(keyUnlockData as KeyUnlockData) },
+                                    onAuthenticationError = { event.cancel(null) }
+                                )
                             )
                         )
-                    )
+                    }
                 }
 
                 is IssueEvent.Failure -> {

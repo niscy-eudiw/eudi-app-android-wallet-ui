@@ -59,7 +59,7 @@ object RequestTransformer {
             val domainClaims = transformPathsToDomainClaims(
                 paths = requestedItemsPaths,
                 claims = storageDocument.data.claims,
-                metadata = storageDocument.metadata,
+                metadata = storageDocument.issuerMetaData,
                 resourceProvider = resourceProvider,
             )
 
