@@ -18,16 +18,13 @@ package eu.europa.ec.issuancefeature.di
 
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
-import eu.europa.ec.issuancefeature.interactor.document.AddDocumentInteractor
-import eu.europa.ec.issuancefeature.interactor.document.AddDocumentInteractorImpl
-import eu.europa.ec.issuancefeature.interactor.document.DocumentDetailsInteractor
-import eu.europa.ec.issuancefeature.interactor.document.DocumentDetailsInteractorImpl
-import eu.europa.ec.issuancefeature.interactor.document.DocumentIssuanceSuccessInteractor
-import eu.europa.ec.issuancefeature.interactor.document.DocumentIssuanceSuccessInteractorImpl
-import eu.europa.ec.issuancefeature.interactor.document.DocumentOfferInteractor
-import eu.europa.ec.issuancefeature.interactor.document.DocumentOfferInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractorImpl
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.storagelogic.controller.BookmarkStorageController
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Factory
@@ -49,18 +46,6 @@ fun provideAddDocumentInteractor(
         deviceAuthenticationInteractor,
         resourceProvider,
         uiSerializer
-    )
-
-@Factory
-fun provideDocumentDetailsInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
-    bookmarkStorageController: BookmarkStorageController,
-    resourceProvider: ResourceProvider,
-): DocumentDetailsInteractor =
-    DocumentDetailsInteractorImpl(
-        walletCoreDocumentsController,
-        bookmarkStorageController,
-        resourceProvider
     )
 
 @Factory

@@ -41,7 +41,6 @@ object DocumentDetailsTransformer {
         val domainClaims = transformPathsToDomainClaims(
             paths = claimsPaths,
             claims = document.data.claims,
-            metadata = document.issuerMetaData,
             resourceProvider = resourceProvider,
         )
 

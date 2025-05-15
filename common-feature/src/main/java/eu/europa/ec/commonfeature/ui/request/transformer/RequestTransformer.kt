@@ -22,10 +22,12 @@ import eu.europa.ec.commonfeature.ui.request.model.DomainDocumentFormat
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.commonfeature.util.docNamespace
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
+import eu.europa.ec.corelogic.extension.toClaimPath
+import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimPath
+import eu.europa.ec.corelogic.model.ClaimPath.Companion.isPrefixOf
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.DisclosedDocuments
-import eu.europa.ec.eudi.iso18013.transfer.response.DocItem
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestedDocument
 import eu.europa.ec.eudi.iso18013.transfer.response.device.MsoMdocItem
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -48,18 +50,28 @@ object RequestTransformer {
         val resultList = mutableListOf<DocumentPayloadDomain>()
 
         requestDocuments.forEach { requestDocument ->
+
             val storageDocument =
                 storageDocuments.first { it.id == requestDocument.documentId }
+
+            val claimsPaths = storageDocument.data.claims.flatMap { claim ->
+                claim.toClaimPaths()
+            }
 
             val requestedItemsPaths = requestDocument.requestedItems.keys
                 .map {
                     it.toClaimPath()
                 }
 
+            val filteredPaths = claimsPaths.filter { available ->
+                requestedItemsPaths.any { requested ->
+                    requested.isPrefixOf(available)
+                }
+            }
+
             val domainClaims = transformPathsToDomainClaims(
-                paths = requestedItemsPaths,
+                paths = filteredPaths,
                 claims = storageDocument.data.claims,
-                metadata = storageDocument.issuerMetaData,
                 resourceProvider = resourceProvider,
             )
 
@@ -133,21 +145,31 @@ object RequestTransformer {
         val disclosedDocuments: List<DisclosedDocument> =
             groupedByDocument.mapNotNull { (documentPayload, selectedItemsForDocument) ->
 
-                val disclosedItems = selectedItemsForDocument.map { selectedItem ->
+                val mDocItems: MutableList<MsoMdocItem> = mutableListOf()
+                val sdJwtItems: MutableList<SdJwtVcItem> = mutableListOf()
+
+                selectedItemsForDocument.forEach { selectedItem ->
 
                     val selectedItemId = selectedItem.header.itemId
 
                     when (documentPayload.domainDocFormat) {
-                        is DomainDocumentFormat.SdJwtVc -> SdJwtVcItem(
-                            path = ClaimPath.toSdJwtVcPath(selectedItemId)
+
+                        is DomainDocumentFormat.SdJwtVc -> sdJwtItems.add(
+                            SdJwtVcItem(
+                                path = ClaimPath.toSdJwtVcPath(selectedItemId)
+                            )
                         )
 
-                        is DomainDocumentFormat.MsoMdoc -> MsoMdocItem(
-                            namespace = documentPayload.domainDocFormat.namespace,
-                            elementIdentifier = ClaimPath.toElementIdentifier(selectedItemId)
+                        is DomainDocumentFormat.MsoMdoc -> mDocItems.add(
+                            MsoMdocItem(
+                                namespace = documentPayload.domainDocFormat.namespace,
+                                elementIdentifier = ClaimPath.toElementIdentifier(selectedItemId)
+                            )
                         )
                     }
                 }
+
+                val disclosedItems = mDocItems.distinctBy { it.elementIdentifier } + sdJwtItems
 
                 return@mapNotNull if (disclosedItems.isNotEmpty()) {
                     DisclosedDocument(
@@ -161,13 +183,5 @@ object RequestTransformer {
             }
 
         return DisclosedDocuments(disclosedDocuments)
-    }
-}
-
-fun DocItem.toClaimPath(): ClaimPath {
-    return when (this) {
-        is MsoMdocItem -> return ClaimPath(listOf(this.elementIdentifier))
-        is SdJwtVcItem -> return ClaimPath(this.path)
-        else -> ClaimPath(emptyList())
     }
 }

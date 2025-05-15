@@ -16,7 +16,9 @@
 
 package eu.europa.ec.commonfeature.util
 
+import android.util.Base64
 import eu.europa.ec.businesslogic.extension.decodeFromBase64
+import eu.europa.ec.businesslogic.extension.encodeToBase64String
 import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.businesslogic.util.toDateFormatted
 import eu.europa.ec.commonfeature.ui.document_details.model.DocumentJsonKeys
@@ -93,45 +95,92 @@ private fun getGenderValue(value: String, resourceProvider: ResourceProvider): S
     }
 
 fun getReadableNameFromIdentifier(
-    metadata: IssuerMetaData?,
+    claimMetaData: IssuerMetaData.Claim?,
     userLocale: Locale,
-    identifier: String,
+    fallback: String,
 ): String {
-    return metadata?.claims
-        ?.find { it.name.name == identifier }
+    return claimMetaData
         ?.display.getLocalizedClaimName(
             userLocale = userLocale,
-            fallback = identifier
+            fallback = fallback
         )
 }
 
-@OptIn(ExperimentalUuidApi::class)
 fun createKeyValue(
     item: Any,
     groupKey: String,
     childKey: String = "",
     disclosurePath: ClaimPath,
     resourceProvider: ResourceProvider,
-    metadata: IssuerMetaData?,
+    claimMetaData: IssuerMetaData.Claim?,
     allItems: MutableList<DomainClaim>,
 ) {
+
+    @OptIn(ExperimentalUuidApi::class)
+    fun addFlatOrGroupedChildren(
+        allItems: MutableList<DomainClaim>,
+        children: List<DomainClaim>,
+        groupKey: String,
+        displayTitle: String,
+        predicate: () -> Boolean
+    ) {
+
+        val groupIsAlreadyPresent = children
+            .filterIsInstance<DomainClaim.Group>()
+            .any { it.key == groupKey }
+
+        if (predicate() && !groupIsAlreadyPresent) {
+            allItems.add(
+                DomainClaim.Group(
+                    key = groupKey,
+                    displayTitle = displayTitle,
+                    path = ClaimPath(listOf(Uuid.random().toString())),
+                    items = children
+                )
+            )
+        } else {
+            allItems.addAll(children)
+        }
+    }
+
     when (item) {
 
         is Map<*, *> -> {
+
+            val children: MutableList<DomainClaim> = mutableListOf()
+            val childKeys: MutableList<String> = mutableListOf()
+
             item.forEach { (key, value) ->
                 safeLet(key as? String, value) { key, value ->
+
                     val newGroupKey = if (value is Collection<*>) key else groupKey
                     val newChildKey = if (value is Collection<*>) "" else key
+
+                    childKeys.add(newChildKey)
+
                     createKeyValue(
                         item = value,
                         groupKey = newGroupKey,
                         childKey = newChildKey,
                         disclosurePath = disclosurePath,
                         resourceProvider = resourceProvider,
-                        metadata = metadata,
-                        allItems = allItems
+                        claimMetaData = null,
+                        allItems = children
                     )
                 }
+            }
+
+            addFlatOrGroupedChildren(
+                allItems = allItems,
+                children = children,
+                groupKey = groupKey,
+                displayTitle = getReadableNameFromIdentifier(
+                    claimMetaData = claimMetaData,
+                    userLocale = resourceProvider.getLocale(),
+                    fallback = groupKey
+                )
+            ) {
+                childKeys.none { it.isEmpty() }
             }
         }
 
@@ -146,35 +195,35 @@ fun createKeyValue(
                         groupKey = groupKey,
                         disclosurePath = disclosurePath,
                         resourceProvider = resourceProvider,
-                        metadata = metadata,
+                        claimMetaData = claimMetaData,
                         allItems = children
                     )
                 }
             }
 
-            if (childKey.isEmpty()) {
-                allItems.add(
-                    DomainClaim.Group(
-                        key = groupKey,
-                        displayTitle = getReadableNameFromIdentifier(
-                            metadata = metadata,
-                            userLocale = resourceProvider.getLocale(),
-                            identifier = groupKey
-                        ),
-                        path = ClaimPath(listOf(Uuid.random().toString())),
-                        items = children
-                    )
+            addFlatOrGroupedChildren(
+                allItems = allItems,
+                children = children,
+                groupKey = groupKey,
+                displayTitle = getReadableNameFromIdentifier(
+                    claimMetaData = claimMetaData,
+                    userLocale = resourceProvider.getLocale(),
+                    fallback = groupKey
                 )
-            } else {
-                allItems.addAll(children)
+            ) {
+                childKey.isEmpty()
             }
         }
 
         else -> {
 
+            val base64Image = (item as? ByteArray)?.encodeToBase64String(Base64.URL_SAFE)
+
             val date: String? = (item as? String)?.toDateFormatted()
+                ?: (item as? LocalDate)?.toDateFormatted()
 
             val formattedValue = when {
+                base64Image != null -> base64Image
                 keyIsGender(groupKey) -> getGenderValue(item.toString(), resourceProvider)
                 keyIsUserPseudonym(groupKey) -> item.toString().decodeFromBase64()
                 date != null -> date
@@ -189,11 +238,13 @@ fun createKeyValue(
             allItems.add(
                 DomainClaim.Primitive(
                     key = childKey.ifEmpty { groupKey },
-                    displayTitle = getReadableNameFromIdentifier(
-                        metadata = metadata,
-                        userLocale = resourceProvider.getLocale(),
-                        identifier = childKey.ifEmpty { groupKey }
-                    ),
+                    displayTitle = childKey.ifEmpty {
+                        getReadableNameFromIdentifier(
+                            claimMetaData = claimMetaData,
+                            userLocale = resourceProvider.getLocale(),
+                            fallback = groupKey
+                        )
+                    },
                     path = disclosurePath,
                     isRequired = false,
                     value = formattedValue
@@ -233,7 +284,6 @@ private fun insertPath(
     path: ClaimPath,
     disclosurePath: ClaimPath,
     claims: List<DocumentClaim>,
-    metadata: IssuerMetaData?,
     resourceProvider: ResourceProvider,
 ): List<DomainClaim> {
     if (path.value.isEmpty()) return tree
@@ -254,7 +304,7 @@ private fun insertPath(
                 item = currentClaim.value!!,
                 groupKey = currentClaim.identifier,
                 resourceProvider = resourceProvider,
-                metadata = metadata,
+                claimMetaData = currentClaim.issuerMetadata,
                 disclosurePath = disclosurePath,
                 allItems = accumulatedClaims,
             )
@@ -274,7 +324,6 @@ private fun insertPath(
                     path = ClaimPath(path.value.drop(1)),
                     disclosurePath = disclosurePath,
                     claims = childClaims,
-                    metadata = metadata,
                     resourceProvider = resourceProvider,
                 )
             )
@@ -283,9 +332,9 @@ private fun insertPath(
             DomainClaim.Group(
                 key = currentClaim?.identifier ?: key,
                 displayTitle = getReadableNameFromIdentifier(
-                    metadata = metadata,
+                    claimMetaData = currentClaim?.issuerMetadata,
                     userLocale = userLocale,
-                    identifier = currentClaim?.identifier ?: key
+                    fallback = currentClaim?.identifier ?: key
                 ),
                 path = ClaimPath(disclosurePath.value.take((disclosurePath.value.size - path.value.size) + 1)),
                 items = insertPath(
@@ -293,7 +342,6 @@ private fun insertPath(
                     path = ClaimPath(path.value.drop(1)),
                     disclosurePath = disclosurePath,
                     claims = childClaims,
-                    metadata = metadata,
                     resourceProvider = resourceProvider,
                 )
             )
@@ -307,7 +355,6 @@ private fun insertPath(
 fun transformPathsToDomainClaims(
     paths: List<ClaimPath>,
     claims: List<DocumentClaim>,
-    metadata: IssuerMetaData?,
     resourceProvider: ResourceProvider,
 ): List<DomainClaim> {
     return paths.fold<ClaimPath, List<DomainClaim>>(initial = emptyList()) { acc, path ->
@@ -316,7 +363,6 @@ fun transformPathsToDomainClaims(
             path = path,
             disclosurePath = path,
             claims = claims,
-            metadata = metadata,
             resourceProvider = resourceProvider,
         )
     }.removeEmptyGroups()
