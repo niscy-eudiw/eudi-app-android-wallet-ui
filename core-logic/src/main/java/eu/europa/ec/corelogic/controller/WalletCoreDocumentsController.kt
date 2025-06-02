@@ -36,8 +36,8 @@ import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.Document
-import eu.europa.ec.eudi.wallet.document.DocumentExtensions.DefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
@@ -63,7 +63,6 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.multipaz.securearea.KeyUnlockData
 import java.util.Locale
 
 enum class IssuanceMethod {
@@ -216,7 +215,12 @@ class WalletCoreDocumentsControllerImpl(
         get() = resourceProvider.getString(R.string.issuance_generic_error)
 
     private val openId4VciManager by lazy {
-        eudiWallet.createOpenId4VciManager()
+        val config = if (getAllIssuedDocuments().isNotEmpty()) {
+            eudiWallet.config.openId4VciConfig?.copy(
+                issuerUrl = "https://issuer-backend.eudiw.dev"
+            )
+        } else eudiWallet.config.openId4VciConfig
+        eudiWallet.createOpenId4VciManager(config)
     }
 
     override fun getAllDocuments(): List<Document> =
@@ -611,17 +615,27 @@ class WalletCoreDocumentsControllerImpl(
                 }
 
                 is IssueEvent.DocumentRequiresCreateSettings -> {
-                    event.resume(eudiWallet.getDefaultCreateDocumentSettings())
+                    event.resume(
+                        runBlocking {
+                            eudiWallet.getDefaultCreateDocumentSettings(
+                                offeredDocument = event.offeredDocument
+                            )
+                        }
+                    )
                 }
 
                 is IssueEvent.DocumentRequiresUserAuth -> {
                     runBlocking {
-                        val keyUnlockData = event.document.DefaultKeyUnlockData
+                        val keyUnlockDataMap =
+                            event.keysRequireAuth.mapValues { (keyAlias, secureArea) ->
+                                getDefaultKeyUnlockData(secureArea, keyAlias)
+                            }
+                        val keyUnlockData = keyUnlockDataMap.values.first()
                         trySendBlocking(
                             IssueDocumentsPartialState.UserAuthRequired(
                                 BiometricCrypto(keyUnlockData?.getCryptoObjectForSigning()),
                                 DeviceAuthenticationResult(
-                                    onAuthenticationSuccess = { event.resume(keyUnlockData as KeyUnlockData) },
+                                    onAuthenticationSuccess = { event.resume(keyUnlockDataMap) },
                                     onAuthenticationError = { event.cancel(null) }
                                 )
                             )

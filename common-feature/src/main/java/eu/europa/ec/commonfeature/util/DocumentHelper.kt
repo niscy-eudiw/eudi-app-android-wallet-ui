@@ -33,7 +33,7 @@ import eu.europa.ec.eudi.wallet.document.format.DocumentClaim
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcData
-import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import java.time.Instant
@@ -95,7 +95,7 @@ private fun getGenderValue(value: String, resourceProvider: ResourceProvider): S
     }
 
 fun getReadableNameFromIdentifier(
-    claimMetaData: IssuerMetaData.Claim?,
+    claimMetaData: IssuerMetadata.Claim?,
     userLocale: Locale,
     fallback: String,
 ): String {
@@ -112,7 +112,7 @@ fun createKeyValue(
     childKey: String = "",
     disclosurePath: ClaimPath,
     resourceProvider: ResourceProvider,
-    claimMetaData: IssuerMetaData.Claim?,
+    claimMetaData: IssuerMetadata.Claim?,
     allItems: MutableList<DomainClaim>,
 ) {
 

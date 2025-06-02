@@ -30,7 +30,7 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 
 object DocumentDetailsTransformer {
 
-    fun transformToDocumentDetailsDomain(
+    suspend fun transformToDocumentDetailsDomain(
         document: IssuedDocument,
         resourceProvider: ResourceProvider
     ): Result<DocumentDetailsDomain> = runCatching {
@@ -44,13 +44,16 @@ object DocumentDetailsTransformer {
             resourceProvider = resourceProvider,
         )
 
-        val docHasExpired = documentHasExpired(document.validUntil)
+        val docHasExpired = document.getValidUntil().getOrNull()?.let {
+            documentHasExpired(it)
+        } != false
 
         return@runCatching DocumentDetailsDomain(
             docName = document.name,
             docId = document.id,
             documentIdentifier = document.toDocumentIdentifier(),
-            documentExpirationDateFormatted = document.validUntil.formatInstant(),
+            documentExpirationDateFormatted = document.getValidUntil().getOrNull()?.formatInstant()
+                ?: "",
             documentHasExpired = docHasExpired,
             documentClaims = domainClaims
         )

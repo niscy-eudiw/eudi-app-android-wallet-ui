@@ -31,6 +31,10 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.controller.BookmarkStorageController
 import eu.europa.ec.storagelogic.controller.RevokedDocumentsStorageController
 import eu.europa.ec.storagelogic.controller.TransactionLogStorageController
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.DefaultRequest
+import io.ktor.client.plugins.HttpSend
+import io.ktor.client.request.header
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.Module
@@ -53,6 +57,13 @@ fun provideEudiWallet(
 ): EudiWallet = EudiWallet(context, walletCoreConfig.config) {
     withLogger(walletCoreLogController)
     withTransactionLogger(walletCoreTransactionLogController)
+    withKtorHttpClientFactory {
+        HttpClient {
+            install(DefaultRequest) {
+                header("User-Agent", "EudiWallet-Android-2")
+            }
+        }
+    }
 }
 
 @Single

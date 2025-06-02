@@ -296,7 +296,7 @@ class DocumentsInteractorImpl(
 
                     val documentIsRevoked =
                         walletCoreDocumentsController.isDocumentRevoked(document.id)
-
+                    val credentialsCount = document.credentialsCount()
                     when (document) {
                         is IssuedDocument -> {
                             val localizedIssuerMetadata =
@@ -317,8 +317,12 @@ class DocumentsInteractorImpl(
                                 }
                             }
 
-                            val documentHasExpired =
-                                documentHasExpired(documentExpirationDate = document.validUntil)
+                            val documentHasExpired = document.getValidUntil().getOrNull()
+                                ?.let {
+                                    documentHasExpired(
+                                        documentExpirationDate = it
+                                    )
+                                } != false
 
                             val documentIssuanceState = when {
                                 documentIsRevoked -> DocumentUiIssuanceState.Revoked
@@ -331,7 +335,7 @@ class DocumentsInteractorImpl(
                                 documentHasExpired == true -> resourceProvider.getString(R.string.dashboard_document_has_expired)
                                 else -> resourceProvider.getString(
                                     R.string.dashboard_document_has_not_expired,
-                                    document.validUntil.formatInstant()
+                                    document.getValidUntil().getOrNull()?.formatInstant() ?: ""
                                 )
                             }
 
@@ -351,7 +355,7 @@ class DocumentsInteractorImpl(
                                     documentIssuanceState = documentIssuanceState,
                                     uiData = ListItemData(
                                         itemId = document.id,
-                                        mainContentData = ListItemMainContentData.Text(text = document.name),
+                                        mainContentData = ListItemMainContentData.Text(text = "${document.name} ($credentialsCount)"),
                                         overlineText = issuerName,
                                         supportingText = supportingText,
                                         leadingContentData = ListItemLeadingContentData.AsyncImage(
@@ -366,7 +370,7 @@ class DocumentsInteractorImpl(
                                 attributes = DocumentsFilterableAttributes(
                                     searchTags = documentSearchTags,
                                     issuedDate = document.issuedAt,
-                                    expiryDate = document.validUntil,
+                                    expiryDate = document.getValidUntil().getOrNull(),
                                     issuer = issuerName,
                                     name = document.name,
                                     category = documentCategory,
@@ -399,7 +403,7 @@ class DocumentsInteractorImpl(
                                     documentIssuanceState = DocumentUiIssuanceState.Pending,
                                     uiData = ListItemData(
                                         itemId = document.id,
-                                        mainContentData = ListItemMainContentData.Text(text = document.name),
+                                        mainContentData = ListItemMainContentData.Text(text = "${document.name} ($credentialsCount)"),
                                         overlineText = issuerName,
                                         supportingText = resourceProvider.getString(R.string.dashboard_document_deferred_pending),
                                         leadingContentData = ListItemLeadingContentData.AsyncImage(
@@ -412,7 +416,7 @@ class DocumentsInteractorImpl(
                                         )
                                     ),
                                     documentIdentifier = documentIdentifier,
-                                    documentCategory = documentCategory
+                                    documentCategory = documentCategory,
                                 ),
                                 attributes = DocumentsFilterableAttributes(
                                     searchTags = documentSearchTags,

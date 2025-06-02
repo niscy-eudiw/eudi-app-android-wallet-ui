@@ -33,7 +33,7 @@ internal class WalletCoreConfigImpl(
     private companion object {
         const val VCI_ISSUER_URL = "https://dev.issuer.eudiw.dev"
         const val VCI_CLIENT_ID = "wallet-dev"
-        const val AUTHENTICATION_REQUIRED = false
+        const val AUTHENTICATION_REQUIRED = true
     }
 
     private var _config: EudiWalletConfig? = null
@@ -44,7 +44,7 @@ internal class WalletCoreConfigImpl(
                 _config = EudiWalletConfig {
                     configureDocumentKeyCreation(
                         userAuthenticationRequired = AUTHENTICATION_REQUIRED,
-                        userAuthenticationTimeout = 30_000L,
+                        userAuthenticationTimeout = 60_000L,
                         useStrongBoxForKeys = true
                     )
                     configureOpenId4Vp {
