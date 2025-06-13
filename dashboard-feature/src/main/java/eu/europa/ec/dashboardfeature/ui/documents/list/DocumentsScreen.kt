@@ -59,12 +59,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import eu.europa.ec.commonfeature.model.DocumentUiIssuanceState
 import eu.europa.ec.corelogic.model.DocumentCategory
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.util.CoreActions
-import eu.europa.ec.dashboardfeature.model.DocumentUi
-import eu.europa.ec.dashboardfeature.model.SearchItem
+import eu.europa.ec.dashboardfeature.model.SearchItemUi
+import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentIssuanceStateUi
+import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.uilogic.component.AppIcons
@@ -110,7 +110,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 typealias DashboardEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event
-typealias ShowSideMenuEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event.SideMenu.Show
+typealias OpenSideMenuEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event.SideMenu.Open
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,6 +132,7 @@ fun DocumentsScreen(
         isLoading = state.isLoading,
         navigatableAction = ScreenNavigateAction.NONE,
         onBack = { context.finish() },
+        contentErrorConfig = state.error,
         topBar = {
             TopBar(
                 onEventSend = { viewModel.setEvent(it) },
@@ -217,7 +218,7 @@ private fun TopBar(
             iconData = AppIcons.Menu,
             customTint = MaterialTheme.colorScheme.onSurface,
         ) {
-            onDashboardEventSent(ShowSideMenuEvent)
+            onDashboardEventSent(OpenSideMenuEvent)
         }
 
         Text(
@@ -263,10 +264,10 @@ private fun Content(
         contentPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding()),
     ) {
         item {
-            val searchItem =
-                SearchItem(searchLabel = stringResource(R.string.documents_screen_search_label))
+            val searchItemUi =
+                SearchItemUi(searchLabel = stringResource(R.string.documents_screen_search_label))
             FiltersSearchBar(
-                placeholder = searchItem.searchLabel,
+                placeholder = searchItemUi.searchLabel,
                 onValueChange = { onEventSend(Event.OnSearchQueryChanged(it)) },
                 onFilterClick = { onEventSend(Event.FiltersPressed) },
                 onClearClick = { onEventSend(Event.OnSearchQueryChanged("")) },
@@ -367,8 +368,8 @@ private fun DocumentCategory(
                 item = documentItem.uiData,
                 onItemClick = {
                     val onItemClickEvent = if (
-                        documentItem.documentIssuanceState == DocumentUiIssuanceState.Pending
-                        || documentItem.documentIssuanceState == DocumentUiIssuanceState.Failed
+                        documentItem.documentIssuanceState == DocumentIssuanceStateUi.Pending
+                        || documentItem.documentIssuanceState == DocumentIssuanceStateUi.Failed
                     ) {
                         Event.BottomSheet.DeferredDocument.DeferredNotReadyYet.DocumentSelected(
                             documentId = documentItem.uiData.itemId
@@ -379,11 +380,11 @@ private fun DocumentCategory(
                     onEventSend(onItemClickEvent)
                 },
                 supportingTextColor = when (documentItem.documentIssuanceState) {
-                    DocumentUiIssuanceState.Issued -> null
-                    DocumentUiIssuanceState.Pending -> MaterialTheme.colorScheme.warning
-                    DocumentUiIssuanceState.Failed -> MaterialTheme.colorScheme.error
-                    DocumentUiIssuanceState.Expired -> MaterialTheme.colorScheme.error
-                    DocumentUiIssuanceState.Revoked -> MaterialTheme.colorScheme.error
+                    DocumentIssuanceStateUi.Issued -> null
+                    DocumentIssuanceStateUi.Pending -> MaterialTheme.colorScheme.warning
+                    DocumentIssuanceStateUi.Failed -> MaterialTheme.colorScheme.error
+                    DocumentIssuanceStateUi.Expired -> MaterialTheme.colorScheme.error
+                    DocumentIssuanceStateUi.Revoked -> MaterialTheme.colorScheme.error
                 }
             )
         }
@@ -593,7 +594,7 @@ private fun DocumentsScreenPreview() {
             val validUntil = "Valid Until"
             val documentsList = listOf(
                 DocumentUi(
-                    documentIssuanceState = DocumentUiIssuanceState.Issued,
+                    documentIssuanceState = DocumentIssuanceStateUi.Issued,
                     uiData = ListItemData(
                         itemId = "id1",
                         mainContentData = ListItemMainContentData.Text(text = "Document 1"),
@@ -606,7 +607,7 @@ private fun DocumentsScreenPreview() {
                     documentCategory = DocumentCategory.Government
                 ),
                 DocumentUi(
-                    documentIssuanceState = DocumentUiIssuanceState.Issued,
+                    documentIssuanceState = DocumentIssuanceStateUi.Issued,
                     uiData = ListItemData(
                         itemId = "id2",
                         mainContentData = ListItemMainContentData.Text(text = "Document 2"),
@@ -619,7 +620,7 @@ private fun DocumentsScreenPreview() {
                     documentCategory = DocumentCategory.Government
                 ),
                 DocumentUi(
-                    documentIssuanceState = DocumentUiIssuanceState.Issued,
+                    documentIssuanceState = DocumentIssuanceStateUi.Issued,
                     uiData = ListItemData(
                         itemId = "id3",
                         mainContentData = ListItemMainContentData.Text(text = "Document 3"),
@@ -632,7 +633,7 @@ private fun DocumentsScreenPreview() {
                     documentCategory = DocumentCategory.Finance
                 ),
                 DocumentUi(
-                    documentIssuanceState = DocumentUiIssuanceState.Issued,
+                    documentIssuanceState = DocumentIssuanceStateUi.Issued,
                     uiData = ListItemData(
                         itemId = "id4",
                         mainContentData = ListItemMainContentData.Text(text = "Document 4"),

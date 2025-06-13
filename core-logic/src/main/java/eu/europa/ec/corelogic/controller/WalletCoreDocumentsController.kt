@@ -16,11 +16,11 @@
 
 package eu.europa.ec.corelogic.controller
 
-import com.android.identity.securearea.KeyUnlockData
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.corelogic.config.WalletCoreConfig
+import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getLocalizedDisplayName
 import eu.europa.ec.corelogic.extension.parseTransactionLog
 import eu.europa.ec.corelogic.extension.toCoreTransactionLog
@@ -38,8 +38,8 @@ import eu.europa.ec.eudi.statium.Status
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.Document
-import eu.europa.ec.eudi.wallet.document.DocumentExtensions.DefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
@@ -63,6 +63,7 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -170,7 +171,7 @@ interface WalletCoreDocumentsController {
         documentId: String,
     ): Flow<DeleteDocumentPartialState>
 
-    fun deleteAllDocuments(mainPidDocumentId: String): Flow<DeleteAllDocumentsPartialState>
+    fun deleteAllDocuments(): Flow<DeleteAllDocumentsPartialState>
 
     fun resolveDocumentOffer(offerUri: String): Flow<ResolveDocumentOfferPartialState>
 
@@ -375,15 +376,17 @@ class WalletCoreDocumentsControllerImpl(
         )
     }
 
-    override fun deleteAllDocuments(mainPidDocumentId: String): Flow<DeleteAllDocumentsPartialState> =
+    override fun deleteAllDocuments(): Flow<DeleteAllDocumentsPartialState> =
         flow {
 
             val allDocuments = getAllDocuments()
             val mainPidDocument = getMainPidDocument()
 
-            mainPidDocument?.let {
+            mainPidDocument?.let { safeMainPidDocument ->
 
-                val restOfDocuments = allDocuments.minusElement(it)
+                val restOfDocuments = allDocuments.filterNot { doc ->
+                    doc.id == safeMainPidDocument.id
+                }
 
                 var restOfAllDocsDeleted = true
                 var restOfAllDocsDeletedFailureReason = ""
@@ -407,7 +410,7 @@ class WalletCoreDocumentsControllerImpl(
 
                 if (restOfAllDocsDeleted) {
                     deleteDocument(
-                        documentId = mainPidDocumentId
+                        documentId = safeMainPidDocument.id
                     ).collect { deleteMainPidDocumentPartialState ->
                         when (deleteMainPidDocumentPartialState) {
                             is DeleteDocumentPartialState.Failure -> emit(
@@ -610,20 +613,45 @@ class WalletCoreDocumentsControllerImpl(
                 }
 
                 is IssueEvent.DocumentRequiresCreateSettings -> {
-                    event.resume(eudiWallet.getDefaultCreateDocumentSettings())
+                    launch {
+                        val offeredDocIdentifier = event.offeredDocument.documentIdentifier
+
+                        val documentIssuanceRule = walletCoreConfig
+                            .documentIssuanceConfig
+                            .getRuleForDocument(documentIdentifier = offeredDocIdentifier)
+
+                        event.resume(
+                            eudiWallet.getDefaultCreateDocumentSettings(
+                                offeredDocument = event.offeredDocument,
+                                credentialPolicy = documentIssuanceRule.policy,
+                                numberOfCredentials = documentIssuanceRule.numberOfCredentials,
+                            )
+                        )
+                    }
                 }
 
                 is IssueEvent.DocumentRequiresUserAuth -> {
-                    val keyUnlockData = event.document.DefaultKeyUnlockData
-                    trySendBlocking(
-                        IssueDocumentsPartialState.UserAuthRequired(
-                            BiometricCrypto(keyUnlockData?.getCryptoObjectForSigning(event.signingAlgorithm)),
-                            DeviceAuthenticationResult(
-                                onAuthenticationSuccess = { event.resume(keyUnlockData as KeyUnlockData) },
-                                onAuthenticationError = { event.cancel(null) }
+                    launch {
+                        val keyUnlockDataMap =
+                            event.keysRequireAuth.mapValues { (keyAlias, secureArea) ->
+                                getDefaultKeyUnlockData(secureArea, keyAlias)
+                            }
+
+                        val keyUnlockData =
+                            keyUnlockDataMap.values.first() //TODO: Revisit this once Core adds support.
+
+                        val cryptoObject = keyUnlockData?.getCryptoObjectForSigning()
+
+                        trySendBlocking(
+                            IssueDocumentsPartialState.UserAuthRequired(
+                                crypto = BiometricCrypto(cryptoObject),
+                                resultHandler = DeviceAuthenticationResult(
+                                    onAuthenticationSuccess = { event.resume(keyUnlockDataMap) },
+                                    onAuthenticationError = { event.cancel(null) }
+                                )
                             )
                         )
-                    )
+                    }
                 }
 
                 is IssueEvent.Failure -> {

@@ -22,7 +22,6 @@ import eu.europa.ec.businesslogic.extension.encodeToBase64String
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.businesslogic.util.toDateFormatted
-import eu.europa.ec.commonfeature.ui.document_details.model.DocumentJsonKeys
 import eu.europa.ec.corelogic.extension.getLocalizedClaimName
 import eu.europa.ec.corelogic.extension.removeEmptyGroups
 import eu.europa.ec.corelogic.extension.sortRecursivelyBy
@@ -34,7 +33,7 @@ import eu.europa.ec.eudi.wallet.document.format.DocumentClaim
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcData
-import eu.europa.ec.eudi.wallet.document.metadata.DocumentMetaData
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import java.time.Instant
@@ -95,7 +94,7 @@ private fun getGenderValue(value: String, resourceProvider: ResourceProvider): S
     }
 
 fun getReadableNameFromIdentifier(
-    claimMetaData: DocumentMetaData.Claim?,
+    claimMetaData: IssuerMetadata.Claim?,
     userLocale: Locale,
     fallback: String,
 ): String {
@@ -113,7 +112,7 @@ fun createKeyValue(
     disclosurePath: ClaimPath,
     resourceProvider: ResourceProvider,
     uuidProvider: UuidProvider,
-    claimMetaData: DocumentMetaData.Claim?,
+    claimMetaData: IssuerMetadata.Claim?,
     allItems: MutableList<DomainClaim>,
 ) {
 
@@ -309,7 +308,7 @@ private fun insertPath(
                 groupKey = currentClaim.identifier,
                 resourceProvider = resourceProvider,
                 uuidProvider = uuidProvider,
-                claimMetaData = currentClaim.metadata,
+                claimMetaData = currentClaim.issuerMetadata,
                 disclosurePath = disclosurePath,
                 allItems = accumulatedClaims,
             )
@@ -338,7 +337,7 @@ private fun insertPath(
             DomainClaim.Group(
                 key = currentClaim?.identifier ?: key,
                 displayTitle = getReadableNameFromIdentifier(
-                    claimMetaData = currentClaim?.metadata,
+                    claimMetaData = currentClaim?.issuerMetadata,
                     userLocale = userLocale,
                     fallback = currentClaim?.identifier ?: key
                 ),
