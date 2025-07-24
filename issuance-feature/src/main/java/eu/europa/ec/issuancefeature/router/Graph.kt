@@ -55,6 +55,10 @@ fun NavGraphBuilder.featureIssuanceGraph(navController: NavController) {
                 navArgument("flowType") {
                     type = NavType.StringType
                 },
+                navArgument("formatType") {
+                    type = NavType.StringType
+                    nullable = true
+                },
             )
         ) {
             AddDocumentScreen(
@@ -65,6 +69,7 @@ fun NavGraphBuilder.featureIssuanceGraph(navController: NavController) {
                             IssuanceFlowUiConfig.fromString(
                                 it.arguments?.getString("flowType").orEmpty()
                             ),
+                            it.arguments?.getString("formatType") //TODO Giannis is this ok? it can be null this way
                         )
                     }
                 )

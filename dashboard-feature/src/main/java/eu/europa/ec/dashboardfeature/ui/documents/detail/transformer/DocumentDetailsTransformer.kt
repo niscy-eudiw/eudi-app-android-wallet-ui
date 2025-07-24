@@ -70,6 +70,7 @@ object DocumentDetailsTransformer {
 
     suspend fun createDocumentCredentialsInfoUi(
         document: IssuedDocument,
+        isLowOnCredentials: Boolean,
         resourceProvider: ResourceProvider,
     ): DocumentCredentialsInfoUi {
         val availableCredentials = document.credentialsCount()
@@ -88,9 +89,10 @@ object DocumentDetailsTransformer {
             ),
             expandedInfo = DocumentCredentialsInfoUi.ExpandedInfo(
                 subtitle = resourceProvider.getString(R.string.document_details_document_credentials_info_expanded_text_subtitle),
-                updateNowButtonText = null,
+                updateNowButtonText = resourceProvider.getString(R.string.document_details_document_credentials_info_expanded_button_update_now_text),
                 hideButtonText = resourceProvider.getString(R.string.document_details_document_credentials_info_expanded_button_hide_text),
-            )
+            ),
+            isExpanded = isLowOnCredentials,
         )
     }
 }

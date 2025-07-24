@@ -89,13 +89,13 @@ fun WrapStickyBottomContent(
             ) {
                 WrapButton(
                     modifier = Modifier.weight(1f),
-                    buttonConfig = stickyBottomType.primaryButtonConfig
+                    buttonConfig = stickyBottomType.secondaryButtonConfig
                 ) {
                     content()
                 }
                 WrapButton(
                     modifier = Modifier.weight(1f),
-                    buttonConfig = stickyBottomType.secondaryButtonConfig
+                    buttonConfig = stickyBottomType.primaryButtonConfig
                 ) {
                     content()
                 }

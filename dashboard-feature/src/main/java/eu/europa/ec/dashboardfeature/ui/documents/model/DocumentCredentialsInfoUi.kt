@@ -22,6 +22,7 @@ data class DocumentCredentialsInfoUi(
     val title: String,
     val collapsedInfo: CollapsedInfo? = null,
     val expandedInfo: ExpandedInfo? = null,
+    val isExpanded: Boolean,
 ) {
     data class CollapsedInfo(
         val moreInfoText: String,
@@ -29,7 +30,7 @@ data class DocumentCredentialsInfoUi(
 
     data class ExpandedInfo(
         val subtitle: String,
-        val updateNowButtonText: String?,
+        val updateNowButtonText: String,
         val hideButtonText: String,
     )
 }

@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
@@ -213,7 +214,7 @@ private fun OpenCamera(
     val cameraProviderFuture = remember {
         ProcessCameraProvider.getInstance(context)
     }
-
+    LocalWindowInfo.current.containerSize.width
     val screenWidth = LocalConfiguration.current.screenWidthDp
     val scannerAreaSize = (screenWidth - SIZE_100).dp
 
@@ -263,6 +264,7 @@ private fun OpenCamera(
                         ContextCompat.getMainExecutor(context),
                         QrCodeAnalyzer { result ->
                             onQrScanned(result)
+                            println("Giannis: $result")
                         }
                     )
                     try {

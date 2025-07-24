@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -49,14 +50,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 sealed class AddDocumentInteractorPartialState {
-    data class Success(val options: List<AddDocumentUi>) :
-        AddDocumentInteractorPartialState()
-
+    data class Success(val options: List<AddDocumentUi>) : AddDocumentInteractorPartialState()
+    data class NoOptions(val errorMsg: String) : AddDocumentInteractorPartialState()
     data class Failure(val error: String) : AddDocumentInteractorPartialState()
 }
 
 interface AddDocumentInteractor {
-    fun getAddDocumentOption(flowType: IssuanceFlowUiConfig): Flow<AddDocumentInteractorPartialState>
+    fun getAddDocumentOption(
+        flowType: IssuanceFlowUiConfig,
+        customFormatType: FormatType?,
+    ): Flow<AddDocumentInteractorPartialState>
 
     fun issueDocument(
         issuanceMethod: IssuanceMethod,
@@ -85,37 +88,61 @@ class AddDocumentInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    override fun getAddDocumentOption(flowType: IssuanceFlowUiConfig): Flow<AddDocumentInteractorPartialState> =
+    override fun getAddDocumentOption(
+        flowType: IssuanceFlowUiConfig,
+        customFormatType: FormatType?,
+    ): Flow<AddDocumentInteractorPartialState> =
         flow {
-            when (val state =
-                walletCoreDocumentsController.getScopedDocuments(resourceProvider.getLocale())) {
+            val state =
+                walletCoreDocumentsController.getScopedDocuments(resourceProvider.getLocale())
+            when (state) {
                 is FetchScopedDocumentsPartialState.Failure -> emit(
                     AddDocumentInteractorPartialState.Failure(
                         error = state.errorMessage
                     )
                 )
 
-                is FetchScopedDocumentsPartialState.Success -> emit(
-                    AddDocumentInteractorPartialState.Success(
-                        options = state.documents
-                            .sortedBy { it.name.lowercase() }
-                            .mapNotNull {
-                                if (flowType != IssuanceFlowUiConfig.NO_DOCUMENT || it.isPid) {
-                                    AddDocumentUi(
-                                        itemData = ListItemDataUi(
-                                            itemId = it.configurationId,
-                                            mainContentData = ListItemMainContentDataUi.Text(text = it.name),
-                                            trailingContentData = ListItemTrailingContentDataUi.Icon(
-                                                iconData = AppIcons.Add
-                                            )
+                is FetchScopedDocumentsPartialState.Success -> {
+                    val options = state.documents
+                        .sortedBy { it.name.lowercase() }
+                        .filter {
+                            if (customFormatType != null) {
+                                it.formatType == customFormatType
+                            } else {
+                                true
+                            }
+                        }
+                        .mapNotNull {
+                            if (flowType != IssuanceFlowUiConfig.NO_DOCUMENT || it.isPid) {
+                                AddDocumentUi(
+                                    itemData = ListItemDataUi(
+                                        itemId = it.configurationId,
+                                        mainContentData = ListItemMainContentDataUi.Text(
+                                            text = it.name
+                                        ),
+                                        trailingContentData = ListItemTrailingContentDataUi.Icon(
+                                            iconData = AppIcons.Add
                                         )
                                     )
-                                } else {
-                                    null
-                                }
+                                )
+                            } else {
+                                null
                             }
-                    )
-                )
+                        }
+                    if (options.isEmpty()) {
+                        emit(
+                            AddDocumentInteractorPartialState.NoOptions(
+                                errorMsg = resourceProvider.getString(R.string.issuance_add_document_no_options)
+                            )
+                        )
+                    } else {
+                        emit(
+                            AddDocumentInteractorPartialState.Success(
+                                options = options
+                            )
+                        )
+                    }
+                }
             }
         }.safeAsync {
             AddDocumentInteractorPartialState.Failure(

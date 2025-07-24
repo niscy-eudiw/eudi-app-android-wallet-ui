@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
@@ -95,7 +94,6 @@ class DocumentDetailsInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
-    private val prefKeys: PrefKeys,
 ) : DocumentDetailsInteractor {
 
     private val genericErrorMsg
@@ -118,14 +116,14 @@ class DocumentDetailsInteractorImpl(
                     )
                 val documentDetailsDomain = documentDetailsDomainResult.getOrThrow()
 
-                val documentCredentialsInfo = if (prefKeys.getShowBatchIssuanceCounter()) {
-                    createDocumentCredentialsInfoUi(
-                        document = safeIssuedDocument,
-                        resourceProvider = resourceProvider
-                    )
-                } else {
-                    null
-                }
+                val documentIsLowOnCredentials = walletCoreDocumentsController.isDocumentLowOnCredentials(
+                    document = safeIssuedDocument
+                )
+                val documentCredentialsInfo = createDocumentCredentialsInfoUi(
+                    document = safeIssuedDocument,
+                    isLowOnCredentials = documentIsLowOnCredentials,
+                    resourceProvider = resourceProvider
+                )
 
                 val userLocale = resourceProvider.getLocale()
                 val issuerName = safeIssuedDocument.localizedIssuerMetadata(userLocale)?.name

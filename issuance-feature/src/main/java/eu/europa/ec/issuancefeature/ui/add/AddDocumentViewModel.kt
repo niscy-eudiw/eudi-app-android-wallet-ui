@@ -30,6 +30,7 @@ import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentPartialState
 import eu.europa.ec.corelogic.di.getOrCreatePresentationScope
+import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorPartialState
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
@@ -104,6 +105,7 @@ class AddDocumentViewModel(
     private val resourceProvider: ResourceProvider,
     private val uiSerializer: UiSerializer,
     @InjectedParam private val flowType: IssuanceFlowUiConfig,
+    @InjectedParam private val formatType: FormatType?,
 ) : MviViewModel<Event, State, Effect>() {
 
     private var issuanceJob: Job? = null
@@ -119,6 +121,7 @@ class AddDocumentViewModel(
     override fun handleEvents(event: Event) {
         when (event) {
             is Event.Init -> {
+                println("Giannis formatType is $formatType")
                 if (viewState.value.options.isEmpty()) {
                     getOptions(event, event.deepLink)
                 } else {
@@ -196,7 +199,10 @@ class AddDocumentViewModel(
         }
 
         viewModelScope.launch {
-            addDocumentInteractor.getAddDocumentOption(flowType).collect { response ->
+            addDocumentInteractor.getAddDocumentOption(
+                flowType = flowType,
+                customFormatType = formatType,
+            ).collect { response ->
                 when (response) {
                     is AddDocumentInteractorPartialState.Success -> {
                         setState {
@@ -232,6 +238,24 @@ class AddDocumentViewModel(
                         }
                         deepLinkAction?.let {
                             handleDeepLink(it.first, it.second)
+                        }
+                    }
+
+                    is AddDocumentInteractorPartialState.NoOptions -> {
+                        setState {
+                            copy(
+                                error = ContentErrorConfig(
+                                    onRetry = { setEvent(event) },
+                                    errorSubTitle = response.errorMsg,
+                                    onCancel = {
+                                        setEvent(Event.DismissError)
+                                        getOnBackAction(flowType).invoke()
+                                    }
+                                ),
+                                options = emptyList(),
+                                isInitialised = true,
+                                isLoading = false
+                            )
                         }
                     }
                 }

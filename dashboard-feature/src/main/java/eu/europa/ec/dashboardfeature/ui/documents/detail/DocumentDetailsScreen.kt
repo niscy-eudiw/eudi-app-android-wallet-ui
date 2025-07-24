@@ -292,9 +292,11 @@ private fun Content(
                             .fillMaxWidth()
                             .padding(vertical = SPACING_SMALL.dp),
                         documentCredentialsInfoUi = safeDocumentCredentialsInfo,
-                        isExpanded = state.documentCredentialsInfoIsExpanded,
                         onExpandedStateChanged = {
                             onEventSend(Event.ToggleExpansionStateOfDocumentCredentialsSection)
+                        },
+                        onPrimaryButtonClicked = {
+                            onEventSend(Event.DocumentCredentialsSectionPrimaryButtonPressed)
                         }
                     )
                     VSpacer.ExtraLarge()
@@ -440,12 +442,12 @@ private fun IssuerDetails(
 private fun ExpandableDocumentCredentialsSection(
     modifier: Modifier = Modifier,
     documentCredentialsInfoUi: DocumentCredentialsInfoUi,
-    isExpanded: Boolean,
     onExpandedStateChanged: () -> Unit,
+    onPrimaryButtonClicked: () -> Unit,
 ) {
     SharedTransitionLayout {
         AnimatedContent(
-            targetState = isExpanded,
+            targetState = documentCredentialsInfoUi.isExpanded,
             modifier = modifier,
         ) { providedIsExpanded: Boolean ->
             if (providedIsExpanded) {
@@ -455,6 +457,7 @@ private fun ExpandableDocumentCredentialsSection(
                         title = documentCredentialsInfoUi.title,
                         expandedInfo = safeExpandedInfo,
                         onHideClicked = onExpandedStateChanged,
+                        onUpdateClicked = onPrimaryButtonClicked,
                         animatedVisibilityScope = this@AnimatedContent,
                         sharedTransitionScope = this@SharedTransitionLayout,
                     )
@@ -482,6 +485,7 @@ private fun ExpandedDocumentCredentials(
     title: String,
     expandedInfo: DocumentCredentialsInfoUi.ExpandedInfo,
     onHideClicked: () -> Unit,
+    onUpdateClicked: () -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
@@ -495,6 +499,9 @@ private fun ExpandedDocumentCredentials(
                     exit = fadeOut(),
                     resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
                 ),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceDim,
+            )
         ) {
             Column(
                 modifier = Modifier
@@ -535,6 +542,19 @@ private fun ExpandedDocumentCredentials(
                     ) {
                         Text(
                             text = expandedInfo.hideButtonText,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+
+                    WrapButton(
+                        modifier = Modifier.wrapContentWidth(),
+                        buttonConfig = ButtonConfig(
+                            type = ButtonType.PRIMARY,
+                            onClick = onUpdateClicked,
+                        )
+                    ) {
+                        Text(
+                            text = expandedInfo.updateNowButtonText,
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -671,11 +691,11 @@ private fun DocumentDetailsScreenPreview() {
                 ),
                 expandedInfo = DocumentCredentialsInfoUi.ExpandedInfo(
                     subtitle = stringResource(R.string.document_details_document_credentials_info_expanded_text_subtitle),
-                    updateNowButtonText = null,
+                    updateNowButtonText = stringResource(R.string.document_details_document_credentials_info_expanded_button_update_now_text),
                     hideButtonText = stringResource(R.string.document_details_document_credentials_info_expanded_button_hide_text),
                 ),
+                isExpanded = false,
             ),
-            documentCredentialsInfoIsExpanded = false,
             documentDetailsSectionTitle = stringResource(R.string.document_details_main_section_text),
             documentIssuerSectionTitle = stringResource(R.string.document_details_issuer_section_text),
             documentDetailsUi = DocumentDetailsUi(
@@ -753,9 +773,10 @@ private fun ExpandableDocumentCredentialsSectionPreview() {
             ),
             expandedInfo = DocumentCredentialsInfoUi.ExpandedInfo(
                 subtitle = stringResource(R.string.document_details_document_credentials_info_expanded_text_subtitle),
-                updateNowButtonText = null,
+                updateNowButtonText = stringResource(R.string.document_details_document_credentials_info_expanded_button_update_now_text),
                 hideButtonText = stringResource(R.string.document_details_document_credentials_info_expanded_button_hide_text),
             ),
+            isExpanded = false,
         )
 
         Column(
@@ -767,15 +788,18 @@ private fun ExpandableDocumentCredentialsSectionPreview() {
             ExpandableDocumentCredentialsSection(
                 modifier = Modifier.fillMaxWidth(),
                 documentCredentialsInfoUi = documentCredentialsInfoUi,
-                isExpanded = false,
                 onExpandedStateChanged = {},
+                onPrimaryButtonClicked = {},
             )
 
             ExpandableDocumentCredentialsSection(
                 modifier = Modifier.fillMaxWidth(),
-                documentCredentialsInfoUi = documentCredentialsInfoUi,
-                isExpanded = true,
+                documentCredentialsInfoUi = documentCredentialsInfoUi
+                    .copy(
+                        isExpanded = true,
+                    ),
                 onExpandedStateChanged = {},
+                onPrimaryButtonClicked = {},
             )
         }
     }

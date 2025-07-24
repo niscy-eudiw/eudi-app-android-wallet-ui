@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
@@ -81,9 +80,6 @@ class TestDocumentDetailsInteractor {
     @Mock
     private lateinit var uuidProvider: UuidProvider
 
-    @Mock
-    private lateinit var prefKeys: PrefKeys
-
     private lateinit var interactor: DocumentDetailsInteractor
 
     private lateinit var closeable: AutoCloseable
@@ -96,7 +92,6 @@ class TestDocumentDetailsInteractor {
             walletCoreDocumentsController = walletCoreDocumentsController,
             resourceProvider = resourceProvider,
             uuidProvider = uuidProvider,
-            prefKeys = prefKeys,
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
@@ -113,7 +108,6 @@ class TestDocumentDetailsInteractor {
     // Case 1:
     // 1. walletCoreDocumentsController.getDocumentById() returns a PID document.
     // 2. walletCoreDocumentsController.isDocumentBookmarked() returns false.
-    // 3. prefKeys.getShowBatchIssuanceCounter() returns true.
 
     // Case 1 Expected Result:
     // DocumentDetailsInteractorPartialState.Success state, with a PID document item and
@@ -128,7 +122,6 @@ class TestDocumentDetailsInteractor {
             mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
 
             val documentCredentialsInfoUi = getMockedDocumentCredentialsInfoUi(resourceProvider)
-            mockGetShowBatchIssuanceCounterCall(response = true)
             mockRetrieveBookmarkCall(response = false)
             mockIsDocumentRevoked(isRevoked = false)
 
@@ -155,7 +148,6 @@ class TestDocumentDetailsInteractor {
     // Case 2:
     // 1. walletCoreDocumentsController.getDocumentById() returns a PID document.
     // 2. walletCoreDocumentsController.isDocumentBookmarked() returns true.
-    // 3. prefKeys.getShowBatchIssuanceCounter() returns true.
 
     // Case 2 Expected Result:
     // DocumentDetailsInteractorPartialState.Success state, with a PID document item and
@@ -170,7 +162,6 @@ class TestDocumentDetailsInteractor {
             mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
 
             val documentCredentialsInfoUi = getMockedDocumentCredentialsInfoUi(resourceProvider)
-            mockGetShowBatchIssuanceCounterCall(response = true)
             mockRetrieveBookmarkCall(response = true)
             mockIsDocumentRevoked(isRevoked = false)
 
@@ -197,7 +188,6 @@ class TestDocumentDetailsInteractor {
     // Case 3:
     // 1. walletCoreDocumentsController.getDocumentById() returns an mDL document.
     // 2. walletCoreDocumentsController.isDocumentBookmarked() returns false.
-    // 3. prefKeys.getShowBatchIssuanceCounter() returns true.
 
     // Case 3 Expected Result:
     // DocumentDetailsInteractorPartialState.Success state, with an mDL document item and
@@ -212,7 +202,6 @@ class TestDocumentDetailsInteractor {
             mockGetDocumentByIdCall(response = mockedMdlWithBasicFields)
 
             val documentCredentialsInfoUi = getMockedDocumentCredentialsInfoUi(resourceProvider)
-            mockGetShowBatchIssuanceCounterCall(response = true)
             mockRetrieveBookmarkCall(response = false)
             mockIsDocumentRevoked(isRevoked = false)
 
@@ -269,7 +258,6 @@ class TestDocumentDetailsInteractor {
     // no image, and
     // no user name.
     // 2. walletCoreDocumentsController.isDocumentBookmarked() returns false.
-    // 3. prefKeys.getShowBatchIssuanceCounter() returns false.
 
     // Case 5 Expected Result:
     // DocumentDetailsInteractorPartialState.Success state, with a PID document item, with:
@@ -296,7 +284,6 @@ class TestDocumentDetailsInteractor {
                     )
                 )
             )
-            mockGetShowBatchIssuanceCounterCall(response = false)
             mockRetrieveBookmarkCall(response = false)
             mockIsDocumentRevoked(isRevoked = false)
 
@@ -761,11 +748,6 @@ class TestDocumentDetailsInteractor {
             .thenReturn(response)
     }
 
-    private fun mockGetShowBatchIssuanceCounterCall(response: Boolean) {
-        whenever(prefKeys.getShowBatchIssuanceCounter())
-            .thenReturn(response)
-    }
-
     private fun mockGetMainPidDocument(response: IssuedDocument?) {
         whenever(walletCoreDocumentsController.getMainPidDocument())
             .thenReturn(response)
@@ -824,9 +806,10 @@ class TestDocumentDetailsInteractor {
             ),
             expandedInfo = DocumentCredentialsInfoUi.ExpandedInfo(
                 subtitle = resourceProvider.getString(R.string.document_details_document_credentials_info_expanded_text_subtitle),
-                updateNowButtonText = null,
+                updateNowButtonText = resourceProvider.getString(R.string.document_details_document_credentials_info_expanded_button_update_now_text),
                 hideButtonText = resourceProvider.getString(R.string.document_details_document_credentials_info_expanded_button_hide_text),
-            )
+            ),
+            isExpanded = false,
         )
     }
 

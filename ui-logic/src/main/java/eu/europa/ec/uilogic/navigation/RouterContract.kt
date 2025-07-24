@@ -91,7 +91,8 @@ sealed class ProximityScreens {
 sealed class IssuanceScreens {
     data object AddDocument : Screen(
         name = "ISSUANCE_ADD_DOCUMENT",
-        parameters = "?flowType={flowType}"
+        parameters = "?flowType={flowType}" +
+                "&formatType={formatType}"
     )
 
     data object DocumentOffer : Screen(

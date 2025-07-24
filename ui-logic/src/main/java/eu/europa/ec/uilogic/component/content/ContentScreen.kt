@@ -189,7 +189,8 @@ private fun DefaultToolBar(
         title = {
             Text(
                 text = toolbarConfig?.title.orEmpty(),
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.headlineMedium,
             )
         },
         navigationIcon = {
