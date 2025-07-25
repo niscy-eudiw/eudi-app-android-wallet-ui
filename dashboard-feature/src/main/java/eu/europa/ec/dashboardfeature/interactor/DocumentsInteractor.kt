@@ -370,7 +370,7 @@ class DocumentsInteractorImpl(
                                     ListItemTrailingContentDataUi.TextWithIcon(
                                         text = documentCredentialsInfoUi.title,
                                         iconData = AppIcons.ErrorFilled,
-                                        tint = ThemeColors.error
+                                        tint = ThemeColors.warning
                                     )
                                 } else {
                                     ListItemTrailingContentDataUi.TextWithIcon(
