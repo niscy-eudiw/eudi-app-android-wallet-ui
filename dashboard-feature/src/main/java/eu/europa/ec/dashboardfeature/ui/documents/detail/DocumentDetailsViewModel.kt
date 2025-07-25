@@ -439,8 +439,8 @@ class DocumentDetailsViewModel(
             arguments = generateComposableArguments(
                 mapOf(
                     "flowType" to IssuanceFlowUiConfig.EXTRA_DOCUMENT.name,
-                    //"formatType" to documentFormatType
-                    "formatType" to "123"
+                    "formatType" to documentFormatType
+                    //"formatType" to "123" //TODO Giannis test this for NoOptions scenario
                 )
             )
         )

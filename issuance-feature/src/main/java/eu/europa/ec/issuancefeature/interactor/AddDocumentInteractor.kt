@@ -105,20 +105,18 @@ class AddDocumentInteractorImpl(
                 is FetchScopedDocumentsPartialState.Success -> {
                     val options = state.documents
                         .sortedBy { it.name.lowercase() }
-                        .filter {
-                            if (customFormatType != null) {
-                                it.formatType == customFormatType
-                            } else {
-                                true
-                            }
-                        }
-                        .mapNotNull {
-                            if (flowType != IssuanceFlowUiConfig.NO_DOCUMENT || it.isPid) {
+                        .mapNotNull { doc ->
+                            // only keep if format matches (or no filter)…
+                            // …AND only keep PIDs in NO_DOCUMENT mode
+                            if (
+                                (customFormatType == null || doc.formatType == customFormatType)
+                                && (flowType != IssuanceFlowUiConfig.NO_DOCUMENT || doc.isPid)
+                            ) {
                                 AddDocumentUi(
                                     itemData = ListItemDataUi(
-                                        itemId = it.configurationId,
+                                        itemId = doc.configurationId,
                                         mainContentData = ListItemMainContentDataUi.Text(
-                                            text = it.name
+                                            text = doc.name
                                         ),
                                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                                             iconData = AppIcons.Add
