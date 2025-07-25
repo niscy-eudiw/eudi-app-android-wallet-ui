@@ -587,13 +587,9 @@ class WalletCoreDocumentsControllerImpl(
         bookmarkDao.delete(bookmarkId)
 
     override suspend fun isDocumentLowOnCredentials(document: IssuedDocument): Boolean {
-        val documentIssuanceRule = walletCoreConfig
-            .documentIssuanceConfig
-            .getRuleForDocument(documentIdentifier = document.toDocumentIdentifier())
-
         val documentRemainingCredentials = document.credentialsCount()
 
-        return documentIssuanceRule.policy == CreateDocumentSettings.CredentialPolicy.OneTimeUse
+        return document.credentialPolicy == CreateDocumentSettings.CredentialPolicy.OneTimeUse
                 && documentRemainingCredentials <= 1
     }
 
