@@ -140,7 +140,9 @@ class ProximityRequestViewModel(
                                 isLoading = false,
                                 error = null,
                                 headerConfig = updatedHeaderConfig,
-                                items = response.requestDocuments
+                                items = response.requestDocuments,
+                                transactionData = response.transactionData,
+                                noItems = false,
                             )
                         }
                     }

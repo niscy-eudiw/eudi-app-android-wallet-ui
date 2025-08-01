@@ -17,6 +17,7 @@
 package eu.europa.ec.commonfeature.ui.request
 
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestTransactionDataUi
 import eu.europa.ec.corelogic.di.getOrCreatePresentationScope
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
@@ -43,6 +44,9 @@ data class State(
 
     val items: List<RequestDocumentItemUi> = emptyList(),
     val noItems: Boolean = false,
+
+    val transactionData: RequestTransactionDataUi? = null,
+
     val allowShare: Boolean = false
 ) : ViewState
 
@@ -54,6 +58,9 @@ sealed class Event : ViewEvent {
 
     data class UserIdentificationClicked(val itemId: String) : Event()
     data class ExpandOrCollapseRequestDocumentItem(val itemId: String) : Event()
+
+    data class TransactionDataItemClicked(val itemId: String) : Event()
+    data object ExpandOrCollapseTransactionData : Event()
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
@@ -156,6 +163,15 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
                 expandOrCollapseRequestDocumentItem(id = event.itemId)
             }
 
+            is Event.TransactionDataItemClicked -> {
+                //TODO: Handle click on transaction data item
+                println("TransactionDataItemClicked with id: ${event.itemId}")
+            }
+
+            is Event.ExpandOrCollapseTransactionData -> {
+                expandOrCollapseTransactionData()
+            }
+
             is Event.BottomSheet.UpdateBottomSheetState -> {
                 setState {
                     copy(isBottomSheetOpen = event.isOpen)
@@ -243,6 +259,36 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             updatedItems = updatedItems,
             allowShare = hasAtLeastOneFieldSelected
         )
+    }
+
+    private fun expandOrCollapseTransactionData() {
+        viewState.value.transactionData?.let { currentTransactionData ->
+
+            val newIsExpanded = !currentTransactionData.data.isExpanded
+            val newTrailingContent = if (newIsExpanded) {
+                ListItemTrailingContentDataUi.Icon(
+                    iconData = AppIcons.KeyboardArrowUp
+                )
+            } else {
+                ListItemTrailingContentDataUi.Icon(
+                    iconData = AppIcons.KeyboardArrowDown
+                )
+            }
+
+
+            val updatedTransactionData = currentTransactionData.copy(
+                data = currentTransactionData.data.copy(
+                    isExpanded = newIsExpanded,
+                    header = currentTransactionData.data.header.copy(
+                        trailingContentData = newTrailingContent
+                    )
+                )
+            )
+
+            setState {
+                copy(transactionData = updatedTransactionData)
+            }
+        }
     }
 
     private fun showBottomSheet(sheetContent: RequestBottomSheetContent) {

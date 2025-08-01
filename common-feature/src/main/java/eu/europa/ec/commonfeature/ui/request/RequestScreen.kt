@@ -41,6 +41,7 @@ import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.DomainDocumentFormat
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestTransactionDataUi
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.resourceslogic.R
@@ -61,6 +62,7 @@ import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
+import eu.europa.ec.uilogic.component.utils.VSpacer
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
@@ -199,12 +201,13 @@ private fun Content(
         )
 
         // Screen Main Content.
-        DisplayRequestItems(
+        MainContent(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(top = SPACING_SMALL.dp),
             requestDocuments = state.items,
             noData = state.noItems,
+            transactionData = state.transactionData,
             onEventSend = onEventSend,
         )
     }
@@ -233,10 +236,11 @@ private fun Content(
 }
 
 @Composable
-private fun DisplayRequestItems(
+private fun MainContent(
     modifier: Modifier,
     requestDocuments: List<RequestDocumentItemUi>,
     noData: Boolean,
+    transactionData: RequestTransactionDataUi?,
     onEventSend: (Event) -> Unit,
 ) {
     Column(
@@ -248,43 +252,104 @@ private fun DisplayRequestItems(
                 informativeText = stringResource(id = R.string.request_no_data),
             )
         } else {
-            Column(
+            RequestedDocuments(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
-            ) {
-                requestDocuments.forEach { requestDocument ->
-                    WrapExpandableListItem(
-                        modifier = Modifier.fillMaxWidth(),
-                        header = requestDocument.headerUi.header,
-                        data = requestDocument.headerUi.nestedItems,
-                        onItemClick = { item ->
-                            onEventSend(Event.UserIdentificationClicked(itemId = item.itemId))
-                        },
-                        onExpandedChange = { expandedItem ->
-                            onEventSend(Event.ExpandOrCollapseRequestDocumentItem(itemId = expandedItem.itemId))
-                        },
-                        isExpanded = requestDocument.headerUi.isExpanded,
-                        throttleClicks = false,
-                        hideSensitiveContent = false,
-                        collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                        expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                    )
-                }
-            }
+                requestDocuments = requestDocuments,
+                onEventSend = onEventSend,
+            )
 
-            if (requestDocuments.isNotEmpty()) {
-                SectionTitle(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = SPACING_SMALL.dp),
-                    text = stringResource(R.string.request_warning_text),
-                    textConfig = TextConfig(
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+            transactionData?.let { safeTransactionData ->
+                VSpacer.Medium()
+
+                TransactionData(
+                    modifier = Modifier.fillMaxSize(),
+                    transactionData = safeTransactionData,
+                    onEventSend = onEventSend,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun RequestedDocuments(
+    modifier: Modifier = Modifier,
+    requestDocuments: List<RequestDocumentItemUi>,
+    onEventSend: (Event) -> Unit,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
+    ) {
+        requestDocuments.forEach { requestDocument ->
+            WrapExpandableListItem(
+                modifier = Modifier.fillMaxWidth(),
+                header = requestDocument.headerUi.header,
+                data = requestDocument.headerUi.nestedItems,
+                onItemClick = { item ->
+                    onEventSend(Event.UserIdentificationClicked(itemId = item.itemId))
+                },
+                onExpandedChange = { expandedItem ->
+                    onEventSend(Event.ExpandOrCollapseRequestDocumentItem(itemId = expandedItem.itemId))
+                },
+                isExpanded = requestDocument.headerUi.isExpanded,
+                throttleClicks = false,
+                hideSensitiveContent = false,
+                collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+                expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+            )
+        }
+    }
+
+    if (requestDocuments.isNotEmpty()) {
+        SectionTitle(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = SPACING_SMALL.dp),
+            text = stringResource(R.string.request_requested_documents_warning_text),
+            textConfig = TextConfig(
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        )
+    }
+}
+
+@Composable
+private fun TransactionData(
+    modifier: Modifier = Modifier,
+    transactionData: RequestTransactionDataUi,
+    onEventSend: (Event) -> Unit,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
+    ) {
+        SectionTitle(
+            modifier = Modifier.fillMaxWidth(),
+            text = transactionData.sectionTitle,
+            textConfig = TextConfig(
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        )
+
+        WrapExpandableListItem(
+            modifier = Modifier.fillMaxWidth(),
+            header = transactionData.data.header,
+            data = transactionData.data.nestedItems,
+            onItemClick = { item -> //TODO make it so only items with url are clickable, and they should navigate the User to that link
+                onEventSend(Event.TransactionDataItemClicked(itemId = item.itemId))
+            },
+            onExpandedChange = {
+                onEventSend(Event.ExpandOrCollapseTransactionData)
+            },
+            isExpanded = transactionData.data.isExpanded,
+            throttleClicks = false,
+            hideSensitiveContent = false,
+            collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+            expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+        )
     }
 }
 
@@ -342,7 +407,7 @@ private fun ContentPreview() {
                             header = ListItemDataUi(
                                 itemId = "000",
                                 mainContentData = ListItemMainContentDataUi.Text(text = "Digital ID"),
-                                supportingText = stringResource(R.string.request_collapsed_supporting_text),
+                                supportingText = stringResource(R.string.request_requested_documents_collapsed_supporting_text),
                                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                                     iconData = AppIcons.KeyboardArrowDown
                                 ),
