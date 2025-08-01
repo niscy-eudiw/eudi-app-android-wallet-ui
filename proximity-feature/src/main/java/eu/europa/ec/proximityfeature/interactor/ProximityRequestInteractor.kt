@@ -21,6 +21,7 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.toDomainConfig
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestTransactionDataUi
 import eu.europa.ec.commonfeature.ui.request.transformer.RequestTransformer
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
@@ -33,7 +34,8 @@ sealed class ProximityRequestInteractorPartialState {
     data class Success(
         val verifierName: String? = null,
         val verifierIsTrusted: Boolean,
-        val requestDocuments: List<RequestDocumentItemUi>
+        val requestDocuments: List<RequestDocumentItemUi>,
+        val transactionData: RequestTransactionDataUi?,
     ) : ProximityRequestInteractorPartialState()
 
     data class NoData(
@@ -93,7 +95,12 @@ class ProximityRequestInteractorImpl(
                                 requestDocuments = RequestTransformer.transformToUiItems(
                                     documentsDomain = documentsDomain,
                                     resourceProvider = resourceProvider,
-                                )
+                                ),
+                                transactionData = RequestTransformer.transformToTransactionDataUi(
+                                    documentsDomain = documentsDomain,
+                                    resourceProvider = resourceProvider,
+                                    uuidProvider = uuidProvider,
+                                ),
                             )
                         } else {
                             ProximityRequestInteractorPartialState.NoData(
