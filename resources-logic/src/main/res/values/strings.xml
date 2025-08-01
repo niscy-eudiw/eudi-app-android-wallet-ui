@@ -168,8 +168,11 @@
     <string name="request_header_main_text">DATA SHARING REQUEST</string>
     <string name="request_relying_party_default_name">@string/generic_default_relying_party_name</string>
     <string name="request_relying_party_description">requests the following</string>
-    <string name="request_warning_text">Please review carefully before sharing your data.</string>
-    <string name="request_collapsed_supporting_text">@string/generic_view_details</string>
+    <string name="request_requested_documents_warning_text">Please review carefully before sharing your data.</string>
+    <string name="request_requested_documents_collapsed_supporting_text">@string/generic_view_details</string>
+    <string name="request_transaction_data_section_title_sign">DATA TO BE SIGNED</string>
+    <string name="request_transaction_data_description_sign">Signature details</string>
+    <string name="request_transaction_data_collapsed_supporting_text">@string/generic_view_details</string>
     <string name="request_no_data">The requested document is not available in your EUDI Wallet.
         Please contact the authorised issuer for further information.</string>
     <string name="request_sticky_button_text">Share</string>

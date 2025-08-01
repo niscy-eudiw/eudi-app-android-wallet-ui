@@ -148,7 +148,7 @@ private fun WrapExpandableListItemPreview() {
             header = ListItemDataUi(
                 itemId = "0",
                 mainContentData = ListItemMainContentDataUi.Text(text = "Digital ID"),
-                supportingText = stringResource(R.string.request_collapsed_supporting_text),
+                supportingText = stringResource(R.string.request_requested_documents_collapsed_supporting_text),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.KeyboardArrowDown
                 ),

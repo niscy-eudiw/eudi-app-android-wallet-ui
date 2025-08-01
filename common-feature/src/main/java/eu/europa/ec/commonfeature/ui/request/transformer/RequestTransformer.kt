@@ -21,6 +21,10 @@ import eu.europa.ec.commonfeature.extension.toSelectiveExpandableListItems
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.DomainDocumentFormat
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestTransactionDataUi
+import eu.europa.ec.commonfeature.ui.request.model.TransactionDataType
+import eu.europa.ec.commonfeature.ui.request.model.TransactionDataType.Companion.getDescription
+import eu.europa.ec.commonfeature.ui.request.model.TransactionDataType.Companion.getSectionTitle
 import eu.europa.ec.commonfeature.util.docNamespace
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.extension.toClaimPath
@@ -108,7 +112,7 @@ object RequestTransformer {
                     header = ListItemDataUi(
                         itemId = it.docId,
                         mainContentData = ListItemMainContentDataUi.Text(text = it.docName),
-                        supportingText = resourceProvider.getString(R.string.request_collapsed_supporting_text),
+                        supportingText = resourceProvider.getString(R.string.request_requested_documents_collapsed_supporting_text),
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = AppIcons.KeyboardArrowDown
                         )
@@ -188,5 +192,62 @@ object RequestTransformer {
             }
 
         return DisclosedDocuments(disclosedDocuments)
+    }
+
+    fun transformToTransactionDataUi(
+        documentsDomain: List<DocumentPayloadDomain>,
+        resourceProvider: ResourceProvider,
+        uuidProvider: UuidProvider,
+    ): RequestTransactionDataUi? {
+        val transactionType = TransactionDataType.Sign //TODO
+        val description = transactionType.getDescription(resourceProvider)
+        val sectionTitle = transactionType.getSectionTitle(resourceProvider)
+
+        return RequestTransactionDataUi(
+            type = transactionType,
+            sectionTitle = sectionTitle,
+            data = ExpandableListItemUi.NestedListItem(
+                header = ListItemDataUi(
+                    itemId = uuidProvider.provideUuid(),
+                    mainContentData = ListItemMainContentDataUi.Text(
+                        text = description
+                    ),
+                    supportingText = resourceProvider.getString(R.string.request_transaction_data_collapsed_supporting_text),
+                    trailingContentData = ListItemTrailingContentDataUi.Icon(
+                        iconData = AppIcons.KeyboardArrowDown
+                    )
+                ),
+                nestedItems = listOf(
+                    ExpandableListItemUi.SingleListItem(
+                        header = ListItemDataUi(
+                            itemId = uuidProvider.provideUuid(),
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = "Item 1"
+                            ),
+                            overlineText = "Item 1 Description",
+                        )
+                    ),
+                    ExpandableListItemUi.SingleListItem(
+                        header = ListItemDataUi(
+                            itemId = uuidProvider.provideUuid(),
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = "https://www.google.com"
+                            ),
+                            overlineText = "Item 2 Description",
+                        )
+                    ),
+                    ExpandableListItemUi.SingleListItem(
+                        header = ListItemDataUi(
+                            itemId = uuidProvider.provideUuid(),
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = "Item 3"
+                            ),
+                            overlineText = "Item 3 Description",
+                        )
+                    ),
+                ),
+                isExpanded = false,
+            )
+        )
     }
 }

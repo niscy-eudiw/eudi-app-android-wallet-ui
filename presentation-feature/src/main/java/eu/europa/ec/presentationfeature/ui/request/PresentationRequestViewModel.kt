@@ -141,6 +141,8 @@ class PresentationRequestViewModel(
                                 error = null,
                                 headerConfig = updatedHeaderConfig,
                                 items = response.requestDocuments,
+                                transactionData = response.transactionData,
+                                noItems = false,
                             )
                         }
                     }
