@@ -17,6 +17,7 @@
 package eu.europa.ec.proximityfeature.di
 
 import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
@@ -51,13 +52,15 @@ fun provideProximityRequestInteractor(
     resourceProvider: ResourceProvider,
     uuidProvider: UuidProvider,
     walletCoreDocumentsController: WalletCoreDocumentsController,
-    @ScopeId(name = PRESENTATION_SCOPE_ID) walletCorePresentationController: WalletCorePresentationController
+    @ScopeId(name = PRESENTATION_SCOPE_ID) walletCorePresentationController: WalletCorePresentationController,
+    formValidator: FormValidator,
 ): ProximityRequestInteractor =
     ProximityRequestInteractorImpl(
         resourceProvider,
         uuidProvider,
         walletCorePresentationController,
-        walletCoreDocumentsController
+        walletCoreDocumentsController,
+        formValidator,
     )
 
 @Factory

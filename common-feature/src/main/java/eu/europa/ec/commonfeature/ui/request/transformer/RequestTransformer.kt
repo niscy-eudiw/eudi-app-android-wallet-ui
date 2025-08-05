@@ -240,9 +240,27 @@ object RequestTransformer {
                         header = ListItemDataUi(
                             itemId = uuidProvider.provideUuid(),
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = "Item 3"
+                                text = "www.google.com"
                             ),
                             overlineText = "Item 3 Description",
+                        )
+                    ),
+                    ExpandableListItemUi.SingleListItem(
+                        header = ListItemDataUi(
+                            itemId = uuidProvider.provideUuid(),
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = "https://wwww.google.com"
+                            ),
+                            overlineText = "Item 4 Description",
+                        )
+                    ),
+                    ExpandableListItemUi.SingleListItem(
+                        header = ListItemDataUi(
+                            itemId = uuidProvider.provideUuid(),
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = "Item 5"
+                            ),
+                            overlineText = "Item 5 Description",
                         )
                     ),
                 ),

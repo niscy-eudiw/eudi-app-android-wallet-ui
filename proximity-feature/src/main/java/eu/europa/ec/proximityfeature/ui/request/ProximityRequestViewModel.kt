@@ -18,6 +18,8 @@ package eu.europa.ec.proximityfeature.ui.request
 
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.businesslogic.extension.ifEmptyOrNull
+import eu.europa.ec.businesslogic.validator.Form
+import eu.europa.ec.businesslogic.validator.Rule
 import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
@@ -171,6 +173,25 @@ class ProximityRequestViewModel(
                 }
             }
         }
+    }
+
+    override suspend fun urlIsValid(url: String): Boolean {
+        val validationResult = interactor.validateForm(
+            form = Form(
+                inputs = mapOf(
+                    listOf(
+                        Rule.ValidateUrl(
+                            errorMessage = "",
+                            shouldValidateSchema = true,
+                            shouldValidateHost = true,
+                            shouldValidatePath = false,
+                            shouldValidateQuery = false,
+                        )
+                    ) to url
+                )
+            )
+        )
+        return validationResult.isValid
     }
 
     override fun updateData(
