@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,6 +76,7 @@ import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
+import eu.europa.ec.uilogic.extension.openUrl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -183,6 +185,8 @@ private fun Content(
     coroutineScope: CoroutineScope,
     modalBottomSheetState: SheetState,
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -230,6 +234,8 @@ private fun Content(
                 is Effect.ShowBottomSheet -> {
                     onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
                 }
+
+                is Effect.OpenUrlExternally -> context.openUrl(uri = effect.url)
             }
         }.collect()
     }
@@ -338,14 +344,14 @@ private fun TransactionData(
             modifier = Modifier.fillMaxWidth(),
             header = transactionData.data.header,
             data = transactionData.data.nestedItems,
-            onItemClick = { item -> //TODO make it so only items with url are clickable, and they should navigate the User to that link
+            onItemClick = { item ->
                 onEventSend(Event.TransactionDataItemClicked(itemId = item.itemId))
             },
             onExpandedChange = {
                 onEventSend(Event.ExpandOrCollapseTransactionData)
             },
             isExpanded = transactionData.data.isExpanded,
-            throttleClicks = false,
+            throttleClicks = true,
             hideSensitiveContent = false,
             collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
             expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,

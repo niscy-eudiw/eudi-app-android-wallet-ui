@@ -16,10 +16,14 @@
 
 package eu.europa.ec.commonfeature.ui.request
 
+import android.net.Uri
+import androidx.lifecycle.viewModelScope
+import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestTransactionDataUi
 import eu.europa.ec.corelogic.di.getOrCreatePresentationScope
 import eu.europa.ec.uilogic.component.AppIcons
+import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
@@ -32,6 +36,7 @@ import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 data class State(
     val isLoading: Boolean = true,
@@ -81,6 +86,8 @@ sealed class Effect : ViewSideEffect {
 
     data object ShowBottomSheet : Effect()
     data object CloseBottomSheet : Effect()
+
+    data class OpenUrlExternally(val url: Uri) : Effect()
 }
 
 enum class RequestBottomSheetContent {
@@ -93,6 +100,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
     abstract fun getHeaderConfig(): ContentHeaderConfig
     abstract fun getNextScreen(): String
     abstract fun doWork()
+    abstract suspend fun urlIsValid(url: String): Boolean
 
     /**
      * Called during [NavigationType.Pop].
@@ -164,8 +172,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             }
 
             is Event.TransactionDataItemClicked -> {
-                //TODO: Handle click on transaction data item
-                println("TransactionDataItemClicked with id: ${event.itemId}")
+                handleTransactionDataItemClick(itemId = event.itemId)
             }
 
             is Event.ExpandOrCollapseTransactionData -> {
@@ -259,6 +266,26 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             updatedItems = updatedItems,
             allowShare = hasAtLeastOneFieldSelected
         )
+    }
+
+    private fun handleTransactionDataItemClick(itemId: String) {
+        viewModelScope.launch {
+            viewState.value.transactionData
+                ?.data
+                ?.nestedItems
+                ?.find {
+                    it.header.itemId == itemId
+                }?.let { clickedItem ->
+                    (clickedItem.header.mainContentData as? ListItemMainContentDataUi.Text)
+                        ?.let {
+                            if (urlIsValid(url = it.text)) {
+                                setEffect {
+                                    Effect.OpenUrlExternally(url = it.text.toUri())
+                                }
+                            }
+                        }
+                }
+        }
     }
 
     private fun expandOrCollapseTransactionData() {

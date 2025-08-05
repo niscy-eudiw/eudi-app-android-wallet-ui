@@ -18,6 +18,7 @@ package eu.europa.ec.proximityfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.toDomainConfig
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
@@ -47,7 +48,7 @@ sealed class ProximityRequestInteractorPartialState {
     data object Disconnect : ProximityRequestInteractorPartialState()
 }
 
-interface ProximityRequestInteractor {
+interface ProximityRequestInteractor : FormValidator {
     fun getRequestDocuments(): Flow<ProximityRequestInteractorPartialState>
     fun stopPresentation()
     fun updateRequestedDocuments(items: List<RequestDocumentItemUi>)
@@ -58,8 +59,9 @@ class ProximityRequestInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
     private val walletCorePresentationController: WalletCorePresentationController,
-    private val walletCoreDocumentsController: WalletCoreDocumentsController
-) : ProximityRequestInteractor {
+    private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val formValidator: FormValidator,
+) : FormValidator by formValidator, ProximityRequestInteractor {
 
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()

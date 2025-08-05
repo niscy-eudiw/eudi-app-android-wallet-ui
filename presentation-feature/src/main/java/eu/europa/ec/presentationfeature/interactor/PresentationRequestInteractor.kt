@@ -18,6 +18,7 @@ package eu.europa.ec.presentationfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.toDomainConfig
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
@@ -47,7 +48,7 @@ sealed class PresentationRequestInteractorPartialState {
     data object Disconnect : PresentationRequestInteractorPartialState()
 }
 
-interface PresentationRequestInteractor {
+interface PresentationRequestInteractor : FormValidator {
     fun getRequestDocuments(): Flow<PresentationRequestInteractorPartialState>
     fun stopPresentation()
     fun updateRequestedDocuments(items: List<RequestDocumentItemUi>)
@@ -58,8 +59,9 @@ class PresentationRequestInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
     private val walletCorePresentationController: WalletCorePresentationController,
-    private val walletCoreDocumentsController: WalletCoreDocumentsController
-) : PresentationRequestInteractor {
+    private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val formValidator: FormValidator,
+) : FormValidator by formValidator, PresentationRequestInteractor {
 
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
