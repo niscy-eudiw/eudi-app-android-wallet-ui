@@ -270,21 +270,19 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
 
     private fun handleTransactionDataItemClick(itemId: String) {
         viewModelScope.launch {
-            viewState.value.transactionData
+            val itemClicked = viewState.value.transactionData
                 ?.data
                 ?.nestedItems
-                ?.find {
-                    it.header.itemId == itemId
-                }?.let { clickedItem ->
-                    (clickedItem.header.mainContentData as? ListItemMainContentDataUi.Text)
-                        ?.let {
-                            if (urlIsValid(url = it.text)) {
-                                setEffect {
-                                    Effect.OpenUrlExternally(url = it.text.toUri())
-                                }
-                            }
-                        }
+                ?.find { it.header.itemId == itemId } ?: return@launch
+
+            val urlText = (itemClicked.header.mainContentData as? ListItemMainContentDataUi.Text)
+                ?.text ?: return@launch
+
+            if (urlIsValid(url = urlText)) {
+                setEffect {
+                    Effect.OpenUrlExternally(url = urlText.toUri())
                 }
+            }
         }
     }
 
