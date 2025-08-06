@@ -17,6 +17,7 @@
 package eu.europa.ec.proximityfeature.interactor
 
 import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.ui.request.transformer.RequestTransformer
@@ -26,6 +27,7 @@ import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToTransactionDataUiStrings
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields
 import eu.europa.ec.testfeature.util.getMockedPidWithBasicFields
@@ -33,6 +35,7 @@ import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
 import eu.europa.ec.testfeature.util.mockedPlainFailureMessage
+import eu.europa.ec.testfeature.util.mockedUuid
 import eu.europa.ec.testfeature.util.mockedValidMdlWithBasicFieldsRequestDocument
 import eu.europa.ec.testfeature.util.mockedValidPidWithBasicFieldsRequestDocument
 import eu.europa.ec.testfeature.util.mockedVerifierIsTrusted
@@ -68,13 +71,16 @@ class TestProximityRequestInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
-    private lateinit var walletCorePresentationController: WalletCorePresentationController
-
-    @Mock
     private lateinit var uuidProvider: UuidProvider
 
     @Mock
+    private lateinit var walletCorePresentationController: WalletCorePresentationController
+
+    @Mock
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
+
+    @Mock
+    private lateinit var formValidator: FormValidator
 
     private lateinit var interactor: ProximityRequestInteractor
 
@@ -86,9 +92,10 @@ class TestProximityRequestInteractor {
 
         interactor = ProximityRequestInteractorImpl(
             resourceProvider = resourceProvider,
+            uuidProvider = uuidProvider,
             walletCorePresentationController = walletCorePresentationController,
             walletCoreDocumentsController = walletCoreDocumentsController,
-            uuidProvider = uuidProvider
+            formValidator = formValidator,
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
@@ -324,6 +331,10 @@ class TestProximityRequestInteractor {
             mockTransformToUiItemsStrings(
                 resourceProvider = resourceProvider,
             )
+            mockTransformToTransactionDataUiStrings(
+                resourceProvider = resourceProvider,
+            )
+            mockProvideUuid()
 
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
@@ -353,7 +364,8 @@ class TestProximityRequestInteractor {
                             requestDocuments = RequestTransformer.transformToUiItems(
                                 documentsDomain = requestDataUi.getOrThrow(),
                                 resourceProvider = resourceProvider,
-                            )
+                            ),
+                            transactionData = null //TODO update it once Core adds support.
                         ),
                         awaitItem()
                     )
@@ -381,10 +393,15 @@ class TestProximityRequestInteractor {
             mockGetAllIssuedDocumentsCall(
                 response = listOf(mockedMdlWithBasicFields)
             )
+            mockIsDocumentRevoked(isRevoked = false)
             mockTransformToUiItemsStrings(
                 resourceProvider = resourceProvider,
             )
-            mockIsDocumentRevoked(isRevoked = false)
+            mockTransformToTransactionDataUiStrings(
+                resourceProvider = resourceProvider,
+            )
+            mockProvideUuid()
+
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     requestData = listOf(
@@ -413,7 +430,8 @@ class TestProximityRequestInteractor {
                             requestDocuments = RequestTransformer.transformToUiItems(
                                 documentsDomain = requestDataUi.getOrThrow(),
                                 resourceProvider = resourceProvider,
-                            )
+                            ),
+                            transactionData = null //TODO update it once Core adds support.
                         ),
                         awaitItem()
                     )
@@ -445,10 +463,15 @@ class TestProximityRequestInteractor {
                     mockedPidWithBasicFields
                 )
             )
+            mockIsDocumentRevoked(isRevoked = false)
             mockTransformToUiItemsStrings(
                 resourceProvider = resourceProvider,
             )
-            mockIsDocumentRevoked(isRevoked = false)
+            mockTransformToTransactionDataUiStrings(
+                resourceProvider = resourceProvider,
+            )
+            mockProvideUuid()
+
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     requestData = listOf(
@@ -484,7 +507,8 @@ class TestProximityRequestInteractor {
                             requestDocuments = RequestTransformer.transformToUiItems(
                                 documentsDomain = requestDataUi.getOrThrow(),
                                 resourceProvider = resourceProvider,
-                            )
+                            ),
+                            transactionData = null //TODO update it once Core adds support.
                         ),
                         awaitItem()
                     )
@@ -516,10 +540,15 @@ class TestProximityRequestInteractor {
                     mockedMdlWithBasicFields
                 )
             )
+            mockIsDocumentRevoked(isRevoked = false)
             mockTransformToUiItemsStrings(
                 resourceProvider = resourceProvider,
             )
-            mockIsDocumentRevoked(isRevoked = false)
+            mockTransformToTransactionDataUiStrings(
+                resourceProvider = resourceProvider,
+            )
+            mockProvideUuid()
+
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     requestData = listOf(
@@ -555,7 +584,8 @@ class TestProximityRequestInteractor {
                             requestDocuments = RequestTransformer.transformToUiItems(
                                 documentsDomain = requestDataUi.getOrThrow(),
                                 resourceProvider = resourceProvider,
-                            )
+                            ),
+                            transactionData = null //TODO update it once Core adds support.
                         ),
                         awaitItem()
                     )
@@ -726,6 +756,11 @@ class TestProximityRequestInteractor {
 
     private suspend fun mockIsDocumentRevoked(isRevoked: Boolean) {
         whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
+    }
+
+    private fun mockProvideUuid() {
+        whenever(uuidProvider.provideUuid())
+            .thenReturn(mockedUuid)
     }
     //endregion
 }

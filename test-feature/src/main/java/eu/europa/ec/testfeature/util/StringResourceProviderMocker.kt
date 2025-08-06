@@ -115,6 +115,39 @@ object StringResourceProviderMocker {
             .thenReturn(mockedDefaultLocale)
     }
 
+    fun mockTransformToTransactionDataUiStrings(
+        resourceProvider: ResourceProvider,
+    ) {
+        mockGetTransactionDataDescriptionStrings(resourceProvider)
+        mockGetTransactionDataSectionTitleStrings(resourceProvider)
+
+        val mockedStrings = listOf(
+            R.string.request_transaction_data_collapsed_supporting_text to "View details",
+        )
+
+        mockResourceProviderStrings(resourceProvider, mockedStrings)
+    }
+
+    fun mockGetTransactionDataDescriptionStrings(
+        resourceProvider: ResourceProvider,
+    ) {
+        val mockedStrings = listOf(
+            R.string.request_transaction_data_description_sign to "Signature details",
+        )
+
+        mockResourceProviderStrings(resourceProvider, mockedStrings)
+    }
+
+    fun mockGetTransactionDataSectionTitleStrings(
+        resourceProvider: ResourceProvider,
+    ) {
+        val mockedStrings = listOf(
+            R.string.request_transaction_data_section_title_sign to "DATA TO BE SIGNED",
+        )
+
+        mockResourceProviderStrings(resourceProvider, mockedStrings)
+    }
+
     fun mockIssuerName(
         resourceProvider: ResourceProvider,
         name: String

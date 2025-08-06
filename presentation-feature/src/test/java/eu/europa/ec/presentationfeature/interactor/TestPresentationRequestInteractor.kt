@@ -17,6 +17,7 @@
 package eu.europa.ec.presentationfeature.interactor
 
 import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.toDomainConfig
@@ -26,6 +27,7 @@ import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToTransactionDataUiStrings
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields
 import eu.europa.ec.testfeature.util.getMockedPidWithBasicFields
@@ -33,6 +35,7 @@ import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
 import eu.europa.ec.testfeature.util.mockedPlainFailureMessage
+import eu.europa.ec.testfeature.util.mockedUuid
 import eu.europa.ec.testfeature.util.mockedValidMdlWithBasicFieldsRequestDocument
 import eu.europa.ec.testfeature.util.mockedValidPidWithBasicFieldsRequestDocument
 import eu.europa.ec.testfeature.util.mockedVerifierIsTrusted
@@ -67,13 +70,16 @@ class TestPresentationRequestInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
+    private lateinit var uuidProvider: UuidProvider
+
+    @Mock
     private lateinit var walletCorePresentationController: WalletCorePresentationController
 
     @Mock
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
 
     @Mock
-    private lateinit var uuidProvider: UuidProvider
+    private lateinit var formValidator: FormValidator
 
     private lateinit var interactor: PresentationRequestInteractor
 
@@ -85,9 +91,10 @@ class TestPresentationRequestInteractor {
 
         interactor = PresentationRequestInteractorImpl(
             resourceProvider = resourceProvider,
+            uuidProvider = uuidProvider,
             walletCorePresentationController = walletCorePresentationController,
             walletCoreDocumentsController = walletCoreDocumentsController,
-            uuidProvider = uuidProvider
+            formValidator = formValidator,
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
@@ -251,6 +258,11 @@ class TestPresentationRequestInteractor {
             mockTransformToUiItemsStrings(
                 resourceProvider = resourceProvider,
             )
+            mockTransformToTransactionDataUiStrings(
+                resourceProvider = resourceProvider,
+            )
+            mockProvideUuid()
+
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     requestData = listOf(
@@ -284,7 +296,8 @@ class TestPresentationRequestInteractor {
                         requestDocuments = RequestTransformer.transformToUiItems(
                             documentsDomain = requestDataUi.getOrThrow(),
                             resourceProvider = resourceProvider,
-                        )
+                        ),
+                        transactionData = null //TODO update it once Core adds support.
                     )
                     // Then
                     assertEquals(
@@ -449,6 +462,11 @@ class TestPresentationRequestInteractor {
 
     private suspend fun mockIsDocumentRevoked(isRevoked: Boolean) {
         whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
+    }
+
+    private fun mockProvideUuid() {
+        whenever(uuidProvider.provideUuid())
+            .thenReturn(mockedUuid)
     }
     //endregion
 
