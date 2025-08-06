@@ -182,7 +182,6 @@ class PresentationRequestViewModel(
                     listOf(
                         Rule.ValidateUrl(
                             errorMessage = "",
-                            shouldValidateSchema = true,
                             shouldValidateHost = true,
                             shouldValidatePath = false,
                             shouldValidateQuery = false,
