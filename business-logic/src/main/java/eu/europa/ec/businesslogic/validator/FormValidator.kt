@@ -73,7 +73,6 @@ class FormValidatorImpl(
             is Rule.ValidateUrl -> checkValidationResult(
                 isValidUrl(
                     value = value,
-                    shouldValidateSchema = rule.shouldValidateSchema,
                     shouldValidateHost = rule.shouldValidateHost,
                     shouldValidatePath = rule.shouldValidatePath,
                     shouldValidateQuery = rule.shouldValidateQuery,
@@ -198,7 +197,6 @@ class FormValidatorImpl(
 
     private fun isValidUrl(
         value: String,
-        shouldValidateSchema: Boolean,
         shouldValidateHost: Boolean,
         shouldValidatePath: Boolean,
         shouldValidateQuery: Boolean,
@@ -207,7 +205,7 @@ class FormValidatorImpl(
         return try {
             val uri = Uri.decode(value).toUri()
 
-            if (shouldValidateSchema && uri.scheme.isNullOrEmpty()) {
+            if (uri.scheme.isNullOrEmpty()) {
                 return false
             }
             if (shouldValidateHost && uri.host.isNullOrEmpty()) {
@@ -348,7 +346,6 @@ sealed class Rule(val errorMsg: String) {
     data class ValidateNotEmpty(val errorMessage: String) : Rule(errorMessage)
     data class ValidateEmail(val errorMessage: String) : Rule(errorMessage)
     data class ValidateUrl(
-        val shouldValidateSchema: Boolean,
         val shouldValidateHost: Boolean,
         val shouldValidatePath: Boolean,
         val shouldValidateQuery: Boolean,

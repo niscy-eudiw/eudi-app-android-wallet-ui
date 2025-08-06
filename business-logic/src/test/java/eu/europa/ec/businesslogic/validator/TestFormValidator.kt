@@ -75,7 +75,6 @@ class TestFormValidator {
     fun testValidateUrlRule() = coroutineRule.runTest {
         val rules = listOf(
             Rule.ValidateUrl(
-                shouldValidateSchema = true,
                 shouldValidateHost = true,
                 shouldValidatePath = true,
                 shouldValidateQuery = true,
@@ -144,7 +143,6 @@ class TestFormValidator {
     fun testValidateProjectUrlRule() = coroutineRule.runTest {
         val rules = listOf(
             Rule.ValidateUrl(
-                shouldValidateSchema = true,
                 shouldValidateHost = false,
                 shouldValidatePath = false,
                 shouldValidateQuery = true,

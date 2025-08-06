@@ -138,7 +138,6 @@ class QrScanViewModel(
                         listOf(
                             Rule.ValidateUrl(
                                 errorMessage = "",
-                                shouldValidateSchema = true,
                                 shouldValidateHost = false,
                                 shouldValidatePath = false,
                                 shouldValidateQuery = true,
