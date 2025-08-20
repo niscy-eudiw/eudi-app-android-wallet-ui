@@ -105,7 +105,7 @@ fun RequestScreen(
         onBack = { viewModel.setEvent(Event.Pop) },
         stickyBottom = { paddingValues ->
             WrapStickyBottomContent(
-                stickyBottomModifier = Modifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(paddingValues),
                 stickyBottomConfig = StickyBottomConfig(
