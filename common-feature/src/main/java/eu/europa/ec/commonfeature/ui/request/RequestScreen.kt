@@ -208,7 +208,7 @@ private fun Content(
         MainContent(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = SPACING_SMALL.dp),
+                .padding(vertical = SPACING_SMALL.dp),
             requestDocuments = state.items,
             noData = state.noItems,
             transactionData = state.transactionData,
