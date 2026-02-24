@@ -115,11 +115,9 @@ class AddDocumentInteractorImpl(
                                 (customFormatType == null || doc.formatType == customFormatType) &&
                                         (flowType !is IssuanceFlowType.NoDocument || doc.isPid)
                             }
-                            .sortedWith(
-                                compareBy(
-                                    { it.credentialIssuerId },
-                                    { it.name.lowercase() }
-                                ))
+                            .sortedBy {
+                                it.credentialIssuerOrder
+                            }
                             .map { doc ->
                                 AddDocumentUi(
                                     credentialIssuerId = doc.credentialIssuerId,
