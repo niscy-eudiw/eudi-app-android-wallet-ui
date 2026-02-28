@@ -29,6 +29,7 @@ import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.model.FormatType
+import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -49,6 +50,20 @@ import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
+sealed class AddDocumentInteractorIssueDocumentsPartialState {
+    data class Success(val documentIds: List<DocumentId>) :
+        AddDocumentInteractorIssueDocumentsPartialState()
+
+    data object DeferredSuccess : AddDocumentInteractorIssueDocumentsPartialState()
+
+    data class Failure(val errorMessage: String) : AddDocumentInteractorIssueDocumentsPartialState()
+
+    data class UserAuthRequired(
+        val crypto: BiometricCrypto,
+        val resultHandler: DeviceAuthenticationResult,
+    ) : AddDocumentInteractorIssueDocumentsPartialState()
+}
+
 sealed class AddDocumentInteractorPartialState {
     data class Success(val options: List<Pair<String, List<AddDocumentUi>>>) :
         AddDocumentInteractorPartialState()
@@ -66,7 +81,7 @@ interface AddDocumentInteractor {
         issuanceMethod: IssuanceMethod,
         configIds: List<String>,
         issuerId: String
-    ): Flow<IssueDocumentsPartialState>
+    ): Flow<AddDocumentInteractorIssueDocumentsPartialState>
 
     fun handleUserAuth(
         context: Context,
@@ -164,12 +179,63 @@ class AddDocumentInteractorImpl(
         issuanceMethod: IssuanceMethod,
         configIds: List<String>,
         issuerId: String
-    ): Flow<IssueDocumentsPartialState> =
+    ): Flow<AddDocumentInteractorIssueDocumentsPartialState> = flow {
+
         walletCoreDocumentsController.issueDocuments(
             issuanceMethod = issuanceMethod,
             configIds = configIds,
             issuerId = issuerId
+        ).collect { state ->
+
+            val successIds: MutableList<String> = mutableListOf()
+            var isDeferred = false
+            var error: String? = null
+            var authenticationData: Pair<BiometricCrypto, DeviceAuthenticationResult>? = null
+
+            when (state) {
+                is IssueDocumentsPartialState.DeferredSuccess -> {
+                    isDeferred = true
+                }
+
+                is IssueDocumentsPartialState.Failure -> {
+                    error = state.errorMessage
+                }
+
+                is IssueDocumentsPartialState.PartialSuccess -> {
+                    successIds.addAll(state.documentIds)
+                }
+
+                is IssueDocumentsPartialState.Success -> {
+                    successIds.addAll(state.documentIds)
+                }
+
+                is IssueDocumentsPartialState.UserAuthRequired -> {
+                    authenticationData = state.crypto to state.resultHandler
+                }
+            }
+
+            val state = if (isDeferred) {
+                AddDocumentInteractorIssueDocumentsPartialState.DeferredSuccess
+            } else if (successIds.isNotEmpty()) {
+                AddDocumentInteractorIssueDocumentsPartialState.Success(successIds)
+            } else if (error != null) {
+                AddDocumentInteractorIssueDocumentsPartialState.Failure(error)
+            } else if (authenticationData != null) {
+                AddDocumentInteractorIssueDocumentsPartialState.UserAuthRequired(
+                    authenticationData.first,
+                    authenticationData.second
+                )
+            } else {
+                AddDocumentInteractorIssueDocumentsPartialState.Failure(genericErrorMsg)
+            }
+
+            emit(state)
+        }
+    }.safeAsync {
+        AddDocumentInteractorIssueDocumentsPartialState.Failure(
+            errorMessage = it.localizedMessage ?: genericErrorMsg
         )
+    }
 
     override fun handleUserAuth(
         context: Context,

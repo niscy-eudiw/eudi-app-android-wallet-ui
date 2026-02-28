@@ -155,12 +155,14 @@ interface WalletCoreDocumentsController {
     fun issueDocuments(
         issuanceMethod: IssuanceMethod,
         configIds: List<String>,
-        issuerId: String
+        issuerId: String,
+        prioritizeDeferred: Boolean = false
     ): Flow<IssueDocumentsPartialState>
 
     fun issueDocumentsByOffer(
         offer: Offer,
         txCode: String? = null,
+        prioritizeDeferred: Boolean = true
     ): Flow<IssueDocumentsPartialState>
 
     fun deleteDocument(
@@ -309,11 +311,16 @@ class WalletCoreDocumentsControllerImpl(
     override fun issueDocuments(
         issuanceMethod: IssuanceMethod,
         configIds: List<String>,
-        issuerId: String
+        issuerId: String,
+        prioritizeDeferred: Boolean
     ): Flow<IssueDocumentsPartialState> = flow {
         when (issuanceMethod) {
             IssuanceMethod.OPENID4VCI -> {
-                issueDocumentsWithOpenId4VCI(configIds, issuerId).collect { response ->
+                issueDocumentsWithOpenId4VCI(
+                    configIds,
+                    issuerId,
+                    prioritizeDeferred
+                ).collect { response ->
                     when (response) {
                         is IssueDocumentsPartialState.Failure -> emit(
                             IssueDocumentsPartialState.Failure(
@@ -356,6 +363,7 @@ class WalletCoreDocumentsControllerImpl(
     override fun issueDocumentsByOffer(
         offer: Offer,
         txCode: String?,
+        prioritizeDeferred: Boolean
     ): Flow<IssueDocumentsPartialState> =
         callbackFlow {
 
@@ -371,7 +379,7 @@ class WalletCoreDocumentsControllerImpl(
 
             manager.issueDocumentByOffer(
                 offer = offer,
-                onIssueEvent = issuanceCallback(),
+                onIssueEvent = issuanceCallback(prioritizeDeferred),
                 txCode = txCode,
             )
             awaitClose()
@@ -634,7 +642,8 @@ class WalletCoreDocumentsControllerImpl(
 
     private fun issueDocumentsWithOpenId4VCI(
         configIds: List<String>,
-        issuerId: String
+        issuerId: String,
+        prioritizeDeferred: Boolean
     ): Flow<IssueDocumentsPartialState> =
         callbackFlow {
 
@@ -643,7 +652,7 @@ class WalletCoreDocumentsControllerImpl(
 
             manager.issueDocumentByConfigurationIdentifiers(
                 credentialConfigurationIds = configIds,
-                onIssueEvent = issuanceCallback()
+                onIssueEvent = issuanceCallback(prioritizeDeferred)
             )
 
             awaitClose()
@@ -654,7 +663,9 @@ class WalletCoreDocumentsControllerImpl(
             )
         }
 
-    private fun ProducerScope<IssueDocumentsPartialState>.issuanceCallback(): OpenId4VciManager.OnIssueEvent {
+    private fun ProducerScope<IssueDocumentsPartialState>.issuanceCallback(
+        prioritizeDeferred: Boolean = true
+    ): OpenId4VciManager.OnIssueEvent {
 
         var totalDocumentsToBeIssued = 0
         val nonIssuedDocuments: MutableMap<FormatType, String> = mutableMapOf()
@@ -719,7 +730,7 @@ class WalletCoreDocumentsControllerImpl(
 
                 is IssueEvent.Finished -> {
 
-                    if (deferredDocuments.isNotEmpty()) {
+                    if (deferredDocuments.isNotEmpty() && (prioritizeDeferred || (issuedDocuments.isEmpty()))) {
                         trySendBlocking(IssueDocumentsPartialState.DeferredSuccess(deferredDocuments))
                         return@OnIssueEvent
                     }

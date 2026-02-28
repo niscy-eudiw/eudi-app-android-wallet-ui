@@ -30,9 +30,9 @@ import eu.europa.ec.commonfeature.config.QrScanUiConfig
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.di.getOrCreateCredentialOfferScope
 import eu.europa.ec.corelogic.controller.IssuanceMethod
-import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.di.getOrCreatePresentationScope
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorIssueDocumentsPartialState
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorPartialState
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.R
@@ -298,7 +298,7 @@ class AddDocumentViewModel(
                 configIds = configIds
             ).collect { response ->
                 when (response) {
-                    is IssueDocumentsPartialState.Failure -> {
+                    is AddDocumentInteractorIssueDocumentsPartialState.Failure -> {
                         setState {
                             copy(
                                 error = ContentErrorConfig(
@@ -311,7 +311,7 @@ class AddDocumentViewModel(
                         }
                     }
 
-                    is IssueDocumentsPartialState.Success -> {
+                    is AddDocumentInteractorIssueDocumentsPartialState.Success -> {
                         setState {
                             copy(
                                 error = null,
@@ -319,11 +319,11 @@ class AddDocumentViewModel(
                             )
                         }
                         navigateToDocumentIssuanceSuccessScreen(
-                            documentId = response.documentIds.first()
+                            documentIds = response.documentIds
                         )
                     }
 
-                    is IssueDocumentsPartialState.DeferredSuccess -> {
+                    is AddDocumentInteractorIssueDocumentsPartialState.DeferredSuccess -> {
                         setState {
                             copy(
                                 error = null,
@@ -337,7 +337,7 @@ class AddDocumentViewModel(
                         )
                     }
 
-                    is IssueDocumentsPartialState.UserAuthRequired -> {
+                    is AddDocumentInteractorIssueDocumentsPartialState.UserAuthRequired -> {
                         addDocumentInteractor.handleUserAuth(
                             context = context,
                             crypto = response.crypto,
@@ -352,14 +352,12 @@ class AddDocumentViewModel(
                             )
                         )
                     }
-
-                    is IssueDocumentsPartialState.PartialSuccess -> {}
                 }
             }
         }
     }
 
-    private fun navigateToDocumentIssuanceSuccessScreen(documentId: String) {
+    private fun navigateToDocumentIssuanceSuccessScreen(documentIds: List<String>) {
         val onSuccessNavigation = when (viewState.value.issuanceConfig.flowType) {
             is IssuanceFlowType.NoDocument -> ConfigNavigation(
                 navigationType = NavigationType.PushScreen(
@@ -383,7 +381,7 @@ class AddDocumentViewModel(
                         mapOf(
                             IssuanceSuccessUiConfig.serializedKeyName to uiSerializer.toBase64(
                                 model = IssuanceSuccessUiConfig(
-                                    documentIds = listOf(documentId),
+                                    documentIds = documentIds,
                                     onSuccessNavigation = onSuccessNavigation,
                                 ),
                                 parser = IssuanceSuccessUiConfig.Parser
