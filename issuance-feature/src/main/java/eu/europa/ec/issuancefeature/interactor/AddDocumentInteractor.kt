@@ -62,9 +62,9 @@ interface AddDocumentInteractor {
         flowType: IssuanceFlowType,
     ): Flow<AddDocumentInteractorPartialState>
 
-    fun issueDocument(
+    fun issueDocuments(
         issuanceMethod: IssuanceMethod,
-        configId: String,
+        configIds: List<String>,
         issuerId: String
     ): Flow<IssueDocumentsPartialState>
 
@@ -90,6 +90,7 @@ class AddDocumentInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
+    // TODO: REWORK TO SUPPORT COMBINED PID
     override fun getAddDocumentOption(
         flowType: IssuanceFlowType,
     ): Flow<AddDocumentInteractorPartialState> =
@@ -123,7 +124,7 @@ class AddDocumentInteractorImpl(
                             .map { doc ->
                                 AddDocumentUi(
                                     credentialIssuerId = doc.credentialIssuerId,
-                                    configurationId = doc.configurationId,
+                                    configurationIds = listOf(doc.configurationId),
                                     itemData = ListItemDataUi(
                                         itemId = doc.configurationId,
                                         mainContentData = ListItemMainContentDataUi.Text(text = doc.name),
@@ -159,14 +160,14 @@ class AddDocumentInteractorImpl(
             )
         }
 
-    override fun issueDocument(
+    override fun issueDocuments(
         issuanceMethod: IssuanceMethod,
-        configId: String,
+        configIds: List<String>,
         issuerId: String
     ): Flow<IssueDocumentsPartialState> =
         walletCoreDocumentsController.issueDocuments(
             issuanceMethod = issuanceMethod,
-            configIds = listOf(configId),
+            configIds = configIds,
             issuerId = issuerId
         )
 

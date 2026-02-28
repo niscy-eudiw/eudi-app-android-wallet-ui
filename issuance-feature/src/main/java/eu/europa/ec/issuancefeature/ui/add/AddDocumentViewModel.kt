@@ -90,7 +90,7 @@ sealed class Event : ViewEvent {
     data class IssueDocument(
         val issuanceMethod: IssuanceMethod,
         val issuerId: String,
-        val configId: String,
+        val configIds: List<String>,
         val context: Context
     ) : Event()
 }
@@ -150,7 +150,7 @@ class AddDocumentViewModel(
             is Event.IssueDocument -> {
                 issueDocument(
                     issuanceMethod = event.issuanceMethod,
-                    configId = event.configId,
+                    configIds = event.configIds,
                     issuerId = event.issuerId,
                     context = event.context
                 )
@@ -279,7 +279,7 @@ class AddDocumentViewModel(
     private fun issueDocument(
         issuanceMethod: IssuanceMethod,
         issuerId: String,
-        configId: String,
+        configIds: List<String>,
         context: Context
     ) {
         issuanceJob?.cancel()
@@ -292,10 +292,10 @@ class AddDocumentViewModel(
                 )
             }
 
-            addDocumentInteractor.issueDocument(
+            addDocumentInteractor.issueDocuments(
                 issuanceMethod = issuanceMethod,
                 issuerId = issuerId,
-                configId = configId
+                configIds = configIds
             ).collect { response ->
                 when (response) {
                     is IssueDocumentsPartialState.Failure -> {
