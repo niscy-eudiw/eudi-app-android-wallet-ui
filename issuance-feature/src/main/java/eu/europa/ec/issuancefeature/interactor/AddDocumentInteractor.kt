@@ -26,7 +26,7 @@ import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
-import eu.europa.ec.corelogic.controller.IssueDocumentPartialState
+import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
@@ -66,7 +66,7 @@ interface AddDocumentInteractor {
         issuanceMethod: IssuanceMethod,
         configId: String,
         issuerId: String
-    ): Flow<IssueDocumentPartialState>
+    ): Flow<IssueDocumentsPartialState>
 
     fun handleUserAuth(
         context: Context,
@@ -163,10 +163,10 @@ class AddDocumentInteractorImpl(
         issuanceMethod: IssuanceMethod,
         configId: String,
         issuerId: String
-    ): Flow<IssueDocumentPartialState> =
-        walletCoreDocumentsController.issueDocument(
+    ): Flow<IssueDocumentsPartialState> =
+        walletCoreDocumentsController.issueDocuments(
             issuanceMethod = issuanceMethod,
-            configId = configId,
+            configIds = listOf(configId),
             issuerId = issuerId
         )
 

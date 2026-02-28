@@ -30,7 +30,7 @@ import eu.europa.ec.commonfeature.config.QrScanUiConfig
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.di.getOrCreateCredentialOfferScope
 import eu.europa.ec.corelogic.controller.IssuanceMethod
-import eu.europa.ec.corelogic.controller.IssueDocumentPartialState
+import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.di.getOrCreatePresentationScope
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorPartialState
@@ -298,7 +298,7 @@ class AddDocumentViewModel(
                 configId = configId
             ).collect { response ->
                 when (response) {
-                    is IssueDocumentPartialState.Failure -> {
+                    is IssueDocumentsPartialState.Failure -> {
                         setState {
                             copy(
                                 error = ContentErrorConfig(
@@ -311,7 +311,7 @@ class AddDocumentViewModel(
                         }
                     }
 
-                    is IssueDocumentPartialState.Success -> {
+                    is IssueDocumentsPartialState.Success -> {
                         setState {
                             copy(
                                 error = null,
@@ -319,11 +319,11 @@ class AddDocumentViewModel(
                             )
                         }
                         navigateToDocumentIssuanceSuccessScreen(
-                            documentId = response.documentId
+                            documentId = response.documentIds.first()
                         )
                     }
 
-                    is IssueDocumentPartialState.DeferredSuccess -> {
+                    is IssueDocumentsPartialState.DeferredSuccess -> {
                         setState {
                             copy(
                                 error = null,
@@ -337,7 +337,7 @@ class AddDocumentViewModel(
                         )
                     }
 
-                    is IssueDocumentPartialState.UserAuthRequired -> {
+                    is IssueDocumentsPartialState.UserAuthRequired -> {
                         addDocumentInteractor.handleUserAuth(
                             context = context,
                             crypto = response.crypto,
@@ -352,6 +352,8 @@ class AddDocumentViewModel(
                             )
                         )
                     }
+
+                    is IssueDocumentsPartialState.PartialSuccess -> {}
                 }
             }
         }

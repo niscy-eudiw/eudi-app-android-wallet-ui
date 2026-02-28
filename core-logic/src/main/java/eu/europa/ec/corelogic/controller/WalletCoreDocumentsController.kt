@@ -76,18 +76,6 @@ enum class IssuanceMethod {
     OPENID4VCI
 }
 
-sealed class IssueDocumentPartialState {
-    data class Success(val documentId: String) : IssueDocumentPartialState()
-    data class DeferredSuccess(val deferredDocuments: Map<String, String>) :
-        IssueDocumentPartialState()
-
-    data class Failure(val errorMessage: String) : IssueDocumentPartialState()
-    data class UserAuthRequired(
-        val crypto: BiometricCrypto,
-        val resultHandler: DeviceAuthenticationResult,
-    ) : IssueDocumentPartialState()
-}
-
 sealed class IssueDocumentsPartialState {
     data class Success(val documentIds: List<DocumentId>) : IssueDocumentsPartialState()
     data class DeferredSuccess(val deferredDocuments: Map<DocumentId, FormatType>) :
@@ -164,11 +152,11 @@ interface WalletCoreDocumentsController {
 
     fun getMainPidDocument(): IssuedDocument?
 
-    fun issueDocument(
+    fun issueDocuments(
         issuanceMethod: IssuanceMethod,
-        configId: String,
+        configIds: List<String>,
         issuerId: String
-    ): Flow<IssueDocumentPartialState>
+    ): Flow<IssueDocumentsPartialState>
 
     fun issueDocumentsByOffer(
         offer: Offer,
@@ -318,42 +306,42 @@ class WalletCoreDocumentsControllerImpl(
             )
         ).minByOrNull { it.createdAt }
 
-    override fun issueDocument(
+    override fun issueDocuments(
         issuanceMethod: IssuanceMethod,
-        configId: String,
+        configIds: List<String>,
         issuerId: String
-    ): Flow<IssueDocumentPartialState> = flow {
+    ): Flow<IssueDocumentsPartialState> = flow {
         when (issuanceMethod) {
             IssuanceMethod.OPENID4VCI -> {
-                issueDocumentWithOpenId4VCI(configId, issuerId).collect { response ->
+                issueDocumentsWithOpenId4VCI(configIds, issuerId).collect { response ->
                     when (response) {
                         is IssueDocumentsPartialState.Failure -> emit(
-                            IssueDocumentPartialState.Failure(
+                            IssueDocumentsPartialState.Failure(
                                 errorMessage = documentErrorMessage
                             )
                         )
 
                         is IssueDocumentsPartialState.Success -> emit(
-                            IssueDocumentPartialState.Success(
-                                response.documentIds.first()
+                            IssueDocumentsPartialState.Success(
+                                response.documentIds
                             )
                         )
 
                         is IssueDocumentsPartialState.UserAuthRequired -> emit(
-                            IssueDocumentPartialState.UserAuthRequired(
+                            IssueDocumentsPartialState.UserAuthRequired(
                                 crypto = response.crypto,
                                 resultHandler = response.resultHandler
                             )
                         )
 
                         is IssueDocumentsPartialState.PartialSuccess -> emit(
-                            IssueDocumentPartialState.Success(
-                                response.documentIds.first()
+                            IssueDocumentsPartialState.Success(
+                                response.documentIds
                             )
                         )
 
                         is IssueDocumentsPartialState.DeferredSuccess -> emit(
-                            IssueDocumentPartialState.DeferredSuccess(
+                            IssueDocumentsPartialState.DeferredSuccess(
                                 response.deferredDocuments
                             )
                         )
@@ -362,7 +350,7 @@ class WalletCoreDocumentsControllerImpl(
             }
         }
     }.safeAsync {
-        IssueDocumentPartialState.Failure(errorMessage = documentErrorMessage)
+        IssueDocumentsPartialState.Failure(errorMessage = documentErrorMessage)
     }
 
     override fun issueDocumentsByOffer(
@@ -644,8 +632,8 @@ class WalletCoreDocumentsControllerImpl(
     override suspend fun resolveDocumentStatus(document: IssuedDocument): Result<Status> =
         eudiWallet.resolveStatus(document)
 
-    private fun issueDocumentWithOpenId4VCI(
-        configId: String,
+    private fun issueDocumentsWithOpenId4VCI(
+        configIds: List<String>,
         issuerId: String
     ): Flow<IssueDocumentsPartialState> =
         callbackFlow {
@@ -653,8 +641,8 @@ class WalletCoreDocumentsControllerImpl(
             val manager = openId4VciManagers[issuerId]
             require(manager != null) { documentErrorMessage }
 
-            manager.issueDocumentByConfigurationIdentifier(
-                credentialConfigurationId = configId,
+            manager.issueDocumentByConfigurationIdentifiers(
+                credentialConfigurationIds = configIds,
                 onIssueEvent = issuanceCallback()
             )
 
