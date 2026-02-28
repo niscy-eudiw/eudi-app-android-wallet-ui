@@ -64,18 +64,18 @@ sealed class AddDocumentInteractorIssueDocumentsPartialState {
     ) : AddDocumentInteractorIssueDocumentsPartialState()
 }
 
-sealed class AddDocumentInteractorPartialState {
+sealed class AddDocumentInteractorScopedPartialState {
     data class Success(val options: List<Pair<String, List<AddDocumentUi>>>) :
-        AddDocumentInteractorPartialState()
+        AddDocumentInteractorScopedPartialState()
 
-    data class NoOptions(val errorMsg: String) : AddDocumentInteractorPartialState()
-    data class Failure(val error: String) : AddDocumentInteractorPartialState()
+    data class NoOptions(val errorMsg: String) : AddDocumentInteractorScopedPartialState()
+    data class Failure(val error: String) : AddDocumentInteractorScopedPartialState()
 }
 
 interface AddDocumentInteractor {
     fun getAddDocumentOption(
         flowType: IssuanceFlowType,
-    ): Flow<AddDocumentInteractorPartialState>
+    ): Flow<AddDocumentInteractorScopedPartialState>
 
     fun issueDocuments(
         issuanceMethod: IssuanceMethod,
@@ -105,64 +105,97 @@ class AddDocumentInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    // TODO: REWORK TO SUPPORT COMBINED PID
     override fun getAddDocumentOption(
         flowType: IssuanceFlowType,
-    ): Flow<AddDocumentInteractorPartialState> =
+    ): Flow<AddDocumentInteractorScopedPartialState> =
         flow {
             val state =
                 walletCoreDocumentsController.getScopedDocuments(resourceProvider.getLocale())
+
             when (state) {
                 is FetchScopedDocumentsPartialState.Failure -> emit(
-                    AddDocumentInteractorPartialState.Failure(
+                    AddDocumentInteractorScopedPartialState.Failure(
                         error = state.errorMessage
                     )
                 )
 
                 is FetchScopedDocumentsPartialState.Success -> {
 
-                    val customFormatType: FormatType? =
+                    val formatType: FormatType? =
                         (flowType as? IssuanceFlowType.ExtraDocument)?.formatType
 
                     val options: List<Pair<String, List<AddDocumentUi>>> =
                         state.documents
                             .asSequence()
                             .filter { doc ->
-                                (customFormatType == null || doc.formatType == customFormatType) &&
+                                (formatType == null || doc.formatType == formatType) &&
                                         (flowType !is IssuanceFlowType.NoDocument || doc.isPid)
                             }
-                            .sortedWith(
-                                compareBy(
-                                    { it.credentialIssuerId },
-                                    { it.name.lowercase() }
-                                ))
-                            .map { doc ->
-                                AddDocumentUi(
-                                    credentialIssuerId = doc.credentialIssuerId,
-                                    configurationIds = listOf(doc.configurationId),
-                                    itemData = ListItemDataUi(
-                                        itemId = doc.configurationId,
-                                        mainContentData = ListItemMainContentDataUi.Text(text = doc.name),
-                                        trailingContentData = ListItemTrailingContentDataUi.Icon(
-                                            iconData = AppIcons.Add
-                                        )
-                                    )
-                                )
-                            }
                             .groupBy { it.credentialIssuerId }
-                            .entries
-                            .map { (issuer, items) -> issuer to items }
+                            .map { (issuer, docs) ->
 
+                                val (pidDocs, otherDocs) = docs.partition { it.isPid }
+                                val pidIds = pidDocs.map { it.configurationId }
+
+                                val combinedPid: List<AddDocumentUi> =
+                                    if (pidDocs.isNotEmpty()) {
+                                        listOf(
+                                            AddDocumentUi(
+                                                credentialIssuerId = issuer,
+                                                configurationIds = pidIds,
+                                                itemData = ListItemDataUi(
+                                                    itemId = "${issuer}_${pidIds.joinToString(",")}",
+                                                    mainContentData = ListItemMainContentDataUi.Text(
+                                                        text = resourceProvider.getString(
+                                                            R.string.issuance_add_document_pid_combined
+                                                        )
+                                                    ),
+                                                    trailingContentData = ListItemTrailingContentDataUi.Icon(
+                                                        iconData = AppIcons.Add
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    } else {
+                                        emptyList()
+                                    }
+
+                                val mappedOthers: List<AddDocumentUi> =
+                                    otherDocs.map { doc ->
+                                        AddDocumentUi(
+                                            credentialIssuerId = issuer,
+                                            configurationIds = listOf(doc.configurationId),
+                                            itemData = ListItemDataUi(
+                                                itemId = doc.configurationId,
+                                                mainContentData = ListItemMainContentDataUi.Text(
+                                                    text = doc.name
+                                                ),
+                                                trailingContentData = ListItemTrailingContentDataUi.Icon(
+                                                    iconData = AppIcons.Add
+                                                )
+                                            )
+                                        )
+                                    }
+
+                                val items = (combinedPid + mappedOthers)
+                                    .sortedBy {
+                                        (it.itemData.mainContentData as ListItemMainContentDataUi.Text)
+                                            .text
+                                            .lowercase()
+                                    }
+                                issuer to items
+                            }
+                            .sortedBy { it.first.lowercase() }
 
                     if (options.isEmpty()) {
                         emit(
-                            AddDocumentInteractorPartialState.NoOptions(
+                            AddDocumentInteractorScopedPartialState.NoOptions(
                                 errorMsg = resourceProvider.getString(R.string.issuance_add_document_no_options)
                             )
                         )
                     } else {
                         emit(
-                            AddDocumentInteractorPartialState.Success(
+                            AddDocumentInteractorScopedPartialState.Success(
                                 options = options
                             )
                         )
@@ -170,7 +203,7 @@ class AddDocumentInteractorImpl(
                 }
             }
         }.safeAsync {
-            AddDocumentInteractorPartialState.Failure(
+            AddDocumentInteractorScopedPartialState.Failure(
                 error = it.localizedMessage ?: genericErrorMsg
             )
         }

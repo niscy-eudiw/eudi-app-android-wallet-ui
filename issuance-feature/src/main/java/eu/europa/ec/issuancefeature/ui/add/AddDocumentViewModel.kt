@@ -33,7 +33,7 @@ import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.di.getOrCreatePresentationScope
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorIssueDocumentsPartialState
-import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorPartialState
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorScopedPartialState
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -216,7 +216,7 @@ class AddDocumentViewModel(
                 flowType = viewState.value.issuanceConfig.flowType
             ).collect { response ->
                 when (response) {
-                    is AddDocumentInteractorPartialState.Success -> {
+                    is AddDocumentInteractorScopedPartialState.Success -> {
                         setState {
                             copy(
                                 error = null,
@@ -232,7 +232,7 @@ class AddDocumentViewModel(
                         handleDeepLink(deepLinkUri)
                     }
 
-                    is AddDocumentInteractorPartialState.Failure -> {
+                    is AddDocumentInteractorScopedPartialState.Failure -> {
 
                         val deepLinkAction = getDeepLinkAction(deepLinkUri)
 
@@ -259,7 +259,7 @@ class AddDocumentViewModel(
                         }
                     }
 
-                    is AddDocumentInteractorPartialState.NoOptions -> {
+                    is AddDocumentInteractorScopedPartialState.NoOptions -> {
                         setState {
                             copy(
                                 error = null,

@@ -57,7 +57,7 @@ interface ConfigLogic {
     /**
      * Set if the wallet requires PID Activation.
      */
-    val forcePidActivation: Boolean get() = false
+    val forcePidActivation: Boolean get() = true
 }
 
 enum class AppFlavor {
