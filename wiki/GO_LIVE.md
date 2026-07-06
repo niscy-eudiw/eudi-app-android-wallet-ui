@@ -816,7 +816,7 @@ override val issuersConfig: List<VciConfig>
 | Field | Meaning | Production value |
 | --- | --- | --- |
 | `issuerUrl` | Base URL of an OpenID4VCI credential issuer. | Your production issuer base URL. It must expose valid issuer metadata and authorization metadata. |
-| `ClientAuthenticationType.AttestationBased` | Wallet authenticates with wallet/key attestation. | Use if your issuer requires wallet instance or wallet unit attestation. Align with Wallet Provider. |
+| `ClientAuthenticationType.AttestationBased` | Wallet authenticates with wallet/key attestation. | Use if your issuer requires wallet instance or key attestation. Align with Wallet Provider. |
 | `withAuthFlowRedirectionURI` | Redirect URI for authorization-code issuance flow. | Must exactly match the app manifest and the issuer client registration. |
 | `withParUsage` | Pushed Authorization Request use. | Prefer `REQUIRED` if issuer mandates PAR. `IF_SUPPORTED` is acceptable for interoperability where issuer policy allows it. |
 | `DPopConfig.Default` | Enables default DPoP behavior for proof-of-possession. | Keep enabled unless your issuer profile explicitly does not support it. |
@@ -854,7 +854,7 @@ The app currently calls the following relative paths through `WalletAttestationR
 
 ```text
 /wallet-instance-attestation/jwk
-/wallet-unit-attestation/jwk-set
+/key-attestation/jwk-set
 ```
 
 Important: these plain-JWK endpoints are suitable only for testing/reference integration unless your
@@ -873,7 +873,7 @@ The Wallet Provider also exposes Android platform key attestation endpoints:
 
 ```text
 /wallet-instance-attestation/platform-key-attestation/android
-/wallet-unit-attestation/platform-key-attestation/android
+/key-attestation/platform-key-attestation/android
 ```
 
 These endpoints accept Android Key Attestation evidence instead of plain JWKs and are more
@@ -888,7 +888,7 @@ current `WalletAttestationRepository` constants point to the plain-JWK paths and
 payload. A production build that uses Android platform key attestation must change those repository
 paths, request/generate Android Key Attestation evidence for the relevant wallet keys, send the
 attestation certificate chain and challenge-bound payload expected by the Wallet Provider, and parse
-the same `walletInstanceAttestation` / `walletUnitAttestation` response fields after backend
+the same `walletInstanceAttestation` / `keyAttestation` response fields after backend
 validation. Do not only configure the backend and leave the app calling the JWK endpoints.
 
 Production endpoints must also validate wallet application integrity, not only key provenance. Use
@@ -899,11 +899,11 @@ fresh backend nonce.
 
 The production Wallet Provider must:
 
-* Use attestation-backed endpoints for production wallet instance and wallet unit attestations.
+* Use attestation-backed endpoints for production wallet instance and key attestations.
 * Treat plain-JWK endpoints as non-production unless additional server-side validation makes them
   equivalent to the production attestation policy.
 * Validate wallet app, device, and key evidence according to your policy.
-* Return `walletInstanceAttestation` and `walletUnitAttestation` values in the expected response fields.
+* Return `walletInstanceAttestation` and `keyAttestation` values in the expected response fields.
 * Use HTTPS with production TLS.
 * Rate-limit requests.
 * Detect abuse and replay.
@@ -2004,7 +2004,7 @@ Must provide:
 Must provide:
 
 * Wallet instance attestation.
-* Wallet unit/key attestation.
+* Key attestation (formerly wallet unit attestation).
 * App/device risk policy.
 * Nonce and replay protection.
 * Availability aligned with issuance.
