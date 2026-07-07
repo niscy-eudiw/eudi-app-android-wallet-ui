@@ -107,6 +107,7 @@ class ProximityRequestViewModel(
             )
         }
 
+        viewModelJob?.cancel()
         viewModelJob = viewModelScope.launch {
 
             interactor.setScopeId(presentationScopeId)

@@ -114,8 +114,6 @@ class PresentationRequestViewModel(
         }
 
         interactor.setConfig(requestUriConfig, intentAction)
-
-        doWork()
     }
 
     override fun doWork() {
@@ -127,6 +125,7 @@ class PresentationRequestViewModel(
             )
         }
 
+        viewModelJob?.cancel()
         viewModelJob = viewModelScope.launch {
 
             interactor.getRequestDocuments().collect { response ->
