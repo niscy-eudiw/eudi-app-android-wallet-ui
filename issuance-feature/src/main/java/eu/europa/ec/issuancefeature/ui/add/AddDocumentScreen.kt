@@ -91,13 +91,16 @@ fun AddDocumentScreen(
     val context = LocalContext.current
 
     val toolbarConfig = ToolbarConfig(
-        actions = listOf(
-            ToolbarActionUi(
-                icon = AppIcons.QrScanner,
-                enabled = !state.isLoading,
-                onClick = { viewModel.setEvent(Event.GoToQrScan) }
+        actions = if (state.error == null) {
+            listOf(
+                ToolbarActionUi(
+                    icon = AppIcons.QrScanner,
+                    enabled = !state.isLoading,
+                    onClick = { viewModel.setEvent(Event.GoToQrScan) }
+                )
             )
-        )
+        } else emptyList(),
+        maxVisibleActions = 1
     )
 
     ContentScreen(
