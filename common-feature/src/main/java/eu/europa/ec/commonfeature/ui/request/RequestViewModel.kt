@@ -39,6 +39,7 @@ data class State(
     val headerConfig: ContentHeaderConfig,
     val error: ContentErrorConfig? = null,
     val isBottomSheetOpen: Boolean = false,
+    val bottomSheetClosingInProgress: Boolean = false,
     val sheetContent: RequestBottomSheetContent = RequestBottomSheetContent.WARNING,
     val hasWarnedUser: Boolean = false,
     val presentationScopeId: String = "",
@@ -172,7 +173,11 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
 
             is Event.BottomSheet.UpdateBottomSheetState -> {
                 setState {
-                    copy(isBottomSheetOpen = event.isOpen)
+                    copy(
+                        isBottomSheetOpen = event.isOpen,
+                        bottomSheetClosingInProgress = if (event.isOpen) false
+                        else bottomSheetClosingInProgress,
+                    )
                 }
             }
 
@@ -186,7 +191,10 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             }
 
             is Event.BottomSheet.VerifierNotTrusted.Close -> {
-                hideBottomSheet()
+                if (!viewState.value.bottomSheetClosingInProgress) {
+                    setState { copy(bottomSheetClosingInProgress = true) }
+                    hideBottomSheet()
+                }
             }
         }
     }

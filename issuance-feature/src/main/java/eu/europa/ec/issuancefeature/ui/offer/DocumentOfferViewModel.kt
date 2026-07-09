@@ -71,6 +71,7 @@ data class State(
     val txCodeLength: Int? = null,
 
     val isBottomSheetOpen: Boolean = false,
+    val bottomSheetClosingInProgress: Boolean = false,
     val sheetContent: DocumentOfferBottomSheetContent = DocumentOfferBottomSheetContent.IssuerNotTrusted,
 ) : ViewState
 
@@ -224,7 +225,13 @@ class DocumentOfferViewModel(
             }
 
             is Event.BottomSheet.UpdateBottomSheetState -> {
-                setState { copy(isBottomSheetOpen = event.isOpen) }
+                setState {
+                    copy(
+                        isBottomSheetOpen = event.isOpen,
+                        bottomSheetClosingInProgress = if (event.isOpen) false
+                        else bottomSheetClosingInProgress,
+                    )
+                }
             }
 
             is Event.BottomSheet.FinishedClosing -> {
@@ -243,7 +250,10 @@ class DocumentOfferViewModel(
             }
 
             is Event.BottomSheet.Close -> {
-                hideBottomSheet()
+                if (!viewState.value.bottomSheetClosingInProgress) {
+                    setState { copy(bottomSheetClosingInProgress = true) }
+                    hideBottomSheet()
+                }
             }
         }
     }
