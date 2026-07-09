@@ -91,6 +91,7 @@ class TestProximityRequestInteractor {
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
+        mockRequestAllowsClaimSelection(response = mockedSelectableClaims)
     }
 
     @After
@@ -894,8 +895,8 @@ class TestProximityRequestInteractor {
     }
 
     // Case 2:
-    // updateRequestedDocuments is called with a selected combination (a single mDL match), with
-    // the interactor on its BLE (selectable) path.
+    // updateRequestedDocuments is called with a selected combination (a single mDL match), for
+    // a BLE request (the controller derives requestAllowsClaimSelection = true).
 
     // Case 2 Expected Result:
     // The controller's updateRequestedDocuments is called with the selection built from that
@@ -981,6 +982,11 @@ class TestProximityRequestInteractor {
         whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenAnswer {
             (it.arguments.first() as String) in revokedIds
         }
+    }
+
+    private fun mockRequestAllowsClaimSelection(response: Boolean) {
+        whenever(walletCorePresentationController.requestAllowsClaimSelection)
+            .thenReturn(response)
     }
     //endregion
 }

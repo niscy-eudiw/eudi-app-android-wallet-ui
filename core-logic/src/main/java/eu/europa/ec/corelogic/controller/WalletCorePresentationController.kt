@@ -35,7 +35,9 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.toKotlinResult
 import eu.europa.ec.eudi.wallet.EudiWallet
+import eu.europa.ec.eudi.wallet.dcapi.process.openid4vp.ProcessedOpenId4VpDCAPIRequest
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -149,6 +151,17 @@ interface WalletCorePresentationController {
     val verifierIsTrusted: Boolean?
 
     /**
+     * Indicates whether the received request permits per-claim disclosure.
+     *
+     * Returns `false` for DCQL requests (including OpenID4VP over DC-API), as these protocols
+     * validate the selection as a complete set. Returns `true` for standard ISO-18013-5 requests
+     * where the user can selectively disclose specific attributes.
+     *
+     * @throws IllegalStateException if accessed before a request has been received and processed.
+     */
+    val requestAllowsClaimSelection: Boolean
+
+    /**
      * Who started the presentation
      * */
     val initiatorRoute: String
@@ -256,6 +269,11 @@ class WalletCorePresentationControllerImpl(
     override var verifierName: String? = null
 
     override var verifierIsTrusted: Boolean? = null
+
+    override val requestAllowsClaimSelection: Boolean
+        get() = processedRequest?.let {
+            it !is ProcessedDcqlRequest && it !is ProcessedOpenId4VpDCAPIRequest
+        } ?: error("requestAllowsClaimSelection read before a request was received")
 
     override val initiatorRoute: String
         get() = requireConfig().initiatorRoute

@@ -63,8 +63,8 @@ class ProximityRequestInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    // Proximity always allows selective disclosure.
-    private val claimsAreSelectable: Boolean = true
+    private val claimsAreSelectable: Boolean
+        get() = walletCorePresentationController.requestAllowsClaimSelection
 
     override fun getRequestDocuments(): Flow<ProximityRequestInteractorPartialState> =
         walletCorePresentationController.events.mapNotNull { response ->

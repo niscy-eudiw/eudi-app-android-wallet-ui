@@ -22,6 +22,7 @@ import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialReusePolicies
 import eu.europa.ec.eudi.openid4vci.EudiReusePolicyType
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIProtocol
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
@@ -69,6 +70,10 @@ internal class WalletCoreConfigImpl(
 
                     configureDCAPI {
                         withEnabled(true)
+                        withSupportedProtocols(
+                            DCAPIProtocol.ISO_MDOC,
+                            DCAPIProtocol.OPENID4VP_V1_SIGNED,
+                        )
                     }
 
                     configureReaderTrustStore(

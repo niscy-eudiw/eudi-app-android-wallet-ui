@@ -95,6 +95,7 @@ class TestPresentationRequestInteractor {
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
+        mockRequestAllowsClaimSelection(response = mockedSelectableClaims)
     }
 
     @After
@@ -546,8 +547,8 @@ class TestPresentationRequestInteractor {
         }
 
     // Case 13:
-    // 1. The interactor is configured as OpenID4VP via setConfig.
-    // 2. walletCorePresentationController.events emits RequestReceived with a single PID.
+    // 1. walletCorePresentationController.events emits RequestReceived with a single PID, and
+    //    the controller derives requestAllowsClaimSelection = false (an OpenID4VP request).
 
     // Case 13 Expected Result:
     // PresentationRequestInteractorPartialState.Success with claimsAreSelectable = false and a
@@ -571,15 +572,7 @@ class TestPresentationRequestInteractor {
                     verifierIsTrusted = mockedVerifierIsTrusted
                 )
             )
-            interactor.setConfig(
-                config = RequestUriConfig(
-                    PresentationMode.OpenId4Vp(
-                        uri = mockedOpenId4VpUri,
-                        initiatorRoute = mockedInitiatorRoute,
-                    )
-                ),
-                intentAction = null,
-            )
+            mockRequestAllowsClaimSelection(response = mockedNonSelectableClaims)
 
             // When
             interactor.getRequestDocuments().runFlowTest {
@@ -605,6 +598,11 @@ class TestPresentationRequestInteractor {
                     ),
                     claimsAreSelectable = mockedNonSelectableClaims,
                 )
+
+                // Then
+                assertEquals(expectedResult, awaitItem())
+            }
+        }
 
                 // Then
                 assertEquals(expectedResult, awaitItem())
@@ -644,8 +642,9 @@ class TestPresentationRequestInteractor {
     }
 
     // Case 2:
-    // updateRequestedDocuments is called with a selected combination (a single mDL match), with
-    // the interactor configured as OpenID4VP (non-selectable).
+    // updateRequestedDocuments is called with a selected combination (a single mDL match), for
+    // a request whose claims are not selectable (the controller derives
+    // requestAllowsClaimSelection = false, as for OpenID4VP).
 
     // Case 2 Expected Result:
     // The controller's updateRequestedDocuments is called with the selection built from that
@@ -654,15 +653,7 @@ class TestPresentationRequestInteractor {
     fun `Given Case 2, When updateRequestedDocuments is called with a combination, Then it discloses that combination's own document`() =
         coroutineRule.runTest {
             // Given
-            interactor.setConfig(
-                config = RequestUriConfig(
-                    PresentationMode.OpenId4Vp(
-                        uri = mockedOpenId4VpUri,
-                        initiatorRoute = mockedInitiatorRoute,
-                    )
-                ),
-                intentAction = null,
-            )
+            mockRequestAllowsClaimSelection(response = mockedNonSelectableClaims)
             val mockedMdlWithBasicFields = getMockedMdlWithBasicFields()
             mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
             val domainItems = RequestTransformer.transformToDomainItems(
@@ -763,10 +754,14 @@ class TestPresentationRequestInteractor {
             (it.arguments.first() as String) in revokedIds
         }
     }
+
+    private fun mockRequestAllowsClaimSelection(response: Boolean) {
+        whenever(walletCorePresentationController.requestAllowsClaimSelection)
+            .thenReturn(response)
+    }
     //endregion
 
     //region mocked objects
     private val mockedInitiatorRoute = "mockedInitiatorRoute"
-    private val mockedOpenId4VpUri = "https://verifier.example/openid4vp"
     //endregion
 }
