@@ -70,6 +70,7 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNotNull
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -515,6 +516,46 @@ class TestDocumentsInteractor {
                     )
                 assertEquals(expectedResult, awaitItem())
             }
+        }
+
+    // A trust-caused deferred failure (IssueDeferredDocumentPartialState.IssuerNotTrusted) is
+    // terminal: the pending document is deleted (so the polling loop stops retrying it) and it
+    // is never reported as a failed deferred document.
+    @Test
+    fun `Given a deferred document from an untrusted issuer, When tryIssuingDeferredDocumentsFlow is called, Then the document is deleted and not reported as failed`() =
+        coroutineRule.runTest {
+            // Given
+            val mockDeferredUntrustedDocId = mockedPendingPidUi.documentId
+            val mockDeferredUntrustedType = mockedPendingPidUi.documentIdentifier.formatType
+
+            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
+                mockDeferredUntrustedDocId to mockDeferredUntrustedType
+            )
+
+            mockIssueDeferredDocumentCall(
+                docId = mockDeferredUntrustedDocId,
+                response = IssueDeferredDocumentPartialState.IssuerNotTrusted(
+                    documentId = mockDeferredUntrustedDocId
+                )
+            )
+            // A completing flow — the shared toFlow()/StateFlow stub never completes, which would
+            // hang the SUT's deleteDocument(...).lastOrNull().
+            whenever(walletCoreDocumentsController.deleteDocument(mockDeferredUntrustedDocId))
+                .thenReturn(flowOf(DeleteDocumentPartialState.Success))
+
+            // When
+            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments)
+                .runFlowTest {
+                    // Then
+                    val expectedResult =
+                        DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
+                            successfullyIssuedDeferredDocuments = emptyList(),
+                            failedIssuedDeferredDocuments = emptyList()
+                        )
+                    assertEquals(expectedResult, awaitItem())
+                    verify(walletCoreDocumentsController)
+                        .deleteDocument(mockDeferredUntrustedDocId)
+                }
         }
 
     // Case 7:

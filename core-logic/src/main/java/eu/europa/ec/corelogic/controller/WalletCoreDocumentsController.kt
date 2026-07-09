@@ -152,6 +152,10 @@ sealed class IssueDeferredDocumentPartialState {
     data class Expired(
         val documentId: DocumentId,
     ) : IssueDeferredDocumentPartialState()
+
+    data class IssuerNotTrusted(
+        val documentId: DocumentId,
+    ) : IssueDeferredDocumentPartialState()
 }
 
 /**
@@ -629,11 +633,17 @@ class WalletCoreDocumentsControllerImpl(
                         when (deferredIssuanceResult) {
                             is DeferredIssueResult.DocumentFailed -> {
                                 trySendBlocking(
-                                    IssueDeferredDocumentPartialState.Failed(
-                                        documentId = deferredIssuanceResult.documentId,
-                                        errorMessage = deferredIssuanceResult.cause.localizedMessage
-                                            ?: documentErrorMessage
-                                    )
+                                    if (deferredIssuanceResult.cause.indicatesUntrustedIssuer()) {
+                                        IssueDeferredDocumentPartialState.IssuerNotTrusted(
+                                            documentId = deferredIssuanceResult.documentId
+                                        )
+                                    } else {
+                                        IssueDeferredDocumentPartialState.Failed(
+                                            documentId = deferredIssuanceResult.documentId,
+                                            errorMessage = deferredIssuanceResult.cause.localizedMessage
+                                                ?: documentErrorMessage
+                                        )
+                                    }
                                 )
                             }
 
