@@ -105,6 +105,10 @@ class ReIssuanceWorkManager(
                             failed.add(document.id)
                         }
 
+                        is IssueDocumentsPartialState.IssuerNotTrusted -> {
+                            failed.add(document.id)
+                        }
+
                         is IssueDocumentsPartialState.UserAuthRequired -> {
                             state.resultHandler.onAuthenticationFailure()
                             failed.add(document.id)

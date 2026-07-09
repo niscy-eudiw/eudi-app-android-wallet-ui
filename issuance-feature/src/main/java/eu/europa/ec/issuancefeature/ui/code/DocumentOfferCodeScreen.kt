@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
+import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -49,6 +52,7 @@ import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.SecurePinTextFieldState
+import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapSecurePinTextField
 import eu.europa.ec.uilogic.component.wrap.rememberSecurePinTextFieldState
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -61,6 +65,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentOfferCodeScreen(
     navController: NavController,
@@ -70,6 +75,11 @@ fun DocumentOfferCodeScreen(
     val context = LocalContext.current
     val pinInputState = rememberSecurePinTextFieldState(
         expectedPinLength = state.offerCodeUiConfig.txCodeLength
+    )
+
+    val isBottomSheetOpen = state.isBottomSheetOpen
+    val bottomSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
     )
 
     ContentScreen(
@@ -92,6 +102,21 @@ fun DocumentOfferCodeScreen(
             paddingValues = paddingValues,
             state = state
         )
+
+        if (isBottomSheetOpen) {
+            WrapModalBottomSheet(
+                onDismissRequest = {
+                    viewModel.setEvent(Event.BottomSheet.Close)
+                },
+                sheetState = bottomSheetState
+            ) {
+                IssuerNotTrustedSheetContent(
+                    onClose = {
+                        viewModel.setEvent(Event.BottomSheet.Close)
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -162,6 +187,14 @@ private fun Content(
         effectFlow.onEach { effect ->
             when (effect) {
                 is Effect.Navigation -> onNavigationRequested(effect)
+
+                is Effect.ShowBottomSheet -> {
+                    onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+                }
+
+                is Effect.CloseBottomSheet -> {
+                    onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                }
             }
         }.collect()
     }

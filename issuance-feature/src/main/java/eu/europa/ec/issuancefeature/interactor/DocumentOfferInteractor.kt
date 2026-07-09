@@ -67,6 +67,8 @@ sealed class ResolveDocumentOfferInteractorPartialState {
     ) : ResolveDocumentOfferInteractorPartialState()
 
     data class Failure(val errorMessage: String) : ResolveDocumentOfferInteractorPartialState()
+
+    data object IssuerNotTrusted : ResolveDocumentOfferInteractorPartialState()
 }
 
 sealed class IssueDocumentsInteractorPartialState {
@@ -79,6 +81,8 @@ sealed class IssueDocumentsInteractorPartialState {
     ) : IssueDocumentsInteractorPartialState()
 
     data class Failure(val errorMessage: String) : IssueDocumentsInteractorPartialState()
+
+    data object IssuerNotTrusted : IssueDocumentsInteractorPartialState()
 
     data class UserAuthRequired(
         val crypto: BiometricCrypto,
@@ -131,6 +135,10 @@ class DocumentOfferInteractorImpl(
                 when (response) {
                     is ResolveDocumentOfferPartialState.Failure -> {
                         ResolveDocumentOfferInteractorPartialState.Failure(errorMessage = response.errorMessage)
+                    }
+
+                    is ResolveDocumentOfferPartialState.IssuerNotTrusted -> {
+                        ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted
                     }
 
                     is ResolveDocumentOfferPartialState.Success -> {
@@ -219,6 +227,10 @@ class DocumentOfferInteractorImpl(
                     when (response) {
                         is IssueDocumentsPartialState.Failure -> {
                             IssueDocumentsInteractorPartialState.Failure(errorMessage = response.errorMessage)
+                        }
+
+                        is IssueDocumentsPartialState.IssuerNotTrusted -> {
+                            IssueDocumentsInteractorPartialState.IssuerNotTrusted
                         }
 
                         is IssueDocumentsPartialState.PartialSuccess -> {

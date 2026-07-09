@@ -1199,6 +1199,32 @@ class TestDocumentDetailsInteractor {
     }
 
     @Test
+    fun `Given controller emits IssuerNotTrusted, When reIssueDocument is called, Then IssuerNotTrusted is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.reIssueDocument(
+                    documentId = mockedPidId,
+                    issuerId = mockedReIssueIssuerId,
+                    allowAuthorizationFallback = true,
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+            )
+
+            // When
+            interactor.reIssueDocument(documentId = mockedPidId, issuerId = mockedReIssueIssuerId)
+                .runFlowTest {
+                    // Then
+                    assertEquals(
+                        DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted,
+                        awaitItem()
+                    )
+                }
+        }
+    }
+
+    @Test
     fun `Given controller emits Success, When reIssueDocument is called, Then Success is emitted`() {
         coroutineRule.runTest {
             // Given

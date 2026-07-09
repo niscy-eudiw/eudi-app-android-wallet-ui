@@ -625,6 +625,38 @@ class TestAddDocumentInteractor {
         }
     }
 
+    // Case E:
+    // walletCoreDocumentsController.issueDocuments returns IssuerNotTrusted
+    // → AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted
+    @Test
+    fun `Given controller emits IssuerNotTrusted, When issueDocuments is called, Then IssuerNotTrusted is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.issueDocuments(
+                    issuanceMethod = IssuanceMethod.OPENID4VCI,
+                    configIds = listOf("id"),
+                    issuerId = "issuerId",
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+            )
+
+            // When
+            interactor.issueDocuments(
+                issuanceMethod = IssuanceMethod.OPENID4VCI,
+                configIds = listOf("id"),
+                issuerId = "issuerId",
+            ).runFlowTest {
+                // Then
+                assertEquals(
+                    AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted,
+                    awaitItem()
+                )
+            }
+        }
+    }
+
     // Case F:
     // walletCoreDocumentsController.issueDocuments throws WITH a message
     // → safeAsync catches → Failure with the exception's localizedMessage (elvis left side)
@@ -657,7 +689,7 @@ class TestAddDocumentInteractor {
         }
     }
 
-    // Case E:
+    // Case G:
     // walletCoreDocumentsController.issueDocuments throws with no message
     // → safeAsync catches → Failure with the generic error message
     @Test

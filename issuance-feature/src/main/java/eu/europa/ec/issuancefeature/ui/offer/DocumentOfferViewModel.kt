@@ -69,6 +69,8 @@ data class State(
     val documents: List<ListItemDataUi> = emptyList(),
     val noDocument: Boolean = false,
     val txCodeLength: Int? = null,
+
+    val isBottomSheetOpen: Boolean = false,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -80,6 +82,11 @@ sealed class Event : ViewEvent {
     data object DismissError : Event()
 
     data class StickyButtonPressed(val context: Context) : Event()
+
+    sealed class BottomSheet : Event() {
+        data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object Close : BottomSheet()
+    }
 }
 
 sealed class Effect : ViewSideEffect {
@@ -101,6 +108,9 @@ sealed class Effect : ViewSideEffect {
             val routeToPop: String? = null
         ) : Navigation()
     }
+
+    data object ShowBottomSheet : Effect()
+    data object CloseBottomSheet : Effect()
 }
 
 @KoinViewModel
@@ -202,6 +212,14 @@ class DocumentOfferViewModel(
                     )
                 }
             }
+
+            is Event.BottomSheet.UpdateBottomSheetState -> {
+                setState { copy(isBottomSheetOpen = event.isOpen) }
+            }
+
+            is Event.BottomSheet.Close -> {
+                doNavigation(viewState.value.offerUiConfig.onCancelNavigation)
+            }
         }
     }
 
@@ -231,6 +249,17 @@ class DocumentOfferViewModel(
                                 )
                             )
                         }
+                    }
+
+                    is ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                isInitialised = false,
+                                error = null
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
                     }
 
                     is ResolveDocumentOfferInteractorPartialState.Success -> {
@@ -342,6 +371,16 @@ class DocumentOfferViewModel(
                                 )
                             )
                         }
+                    }
+
+                    is IssueDocumentsInteractorPartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
                     }
 
                     is IssueDocumentsInteractorPartialState.Success -> {

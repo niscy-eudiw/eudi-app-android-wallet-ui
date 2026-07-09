@@ -23,6 +23,7 @@ import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.ui.request.Event
+import eu.europa.ec.commonfeature.ui.request.RequestBottomSheetContent
 import eu.europa.ec.commonfeature.ui.request.RequestViewModel
 import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
@@ -164,6 +165,17 @@ class PresentationRequestViewModel(
                         }
 
                         updateData(updatedItems = requestData.selectedDocuments)
+                    }
+
+                    is PresentationRequestInteractorPartialState.VerifierNotTrusted -> {
+                        interactor.stopPresentation()
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        showBottomSheet(sheetContent = RequestBottomSheetContent.VERIFIER_NOT_TRUSTED)
                     }
 
                     is PresentationRequestInteractorPartialState.Disconnect -> {

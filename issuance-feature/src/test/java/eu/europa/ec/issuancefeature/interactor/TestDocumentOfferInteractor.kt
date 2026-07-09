@@ -616,6 +616,30 @@ class TestDocumentOfferInteractor {
             }
         }
 
+    // Case 14:
+    // 1. walletCoreDocumentsController.resolveDocumentOffer emits
+    // ResolveDocumentOfferPartialState.IssuerNotTrusted.
+
+    // Case 14 Expected Result:
+    // ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted
+    @Test
+    fun `Given Case 14, When resolveDocumentOffer is called, Then Case 14 Expected Result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            mockWalletDocumentsControllerResolveOfferEventEmission(
+                event = ResolveDocumentOfferPartialState.IssuerNotTrusted
+            )
+
+            // When
+            interactor.resolveDocumentOffer(mockedUriPath1).runFlowTest {
+                // Then
+                assertEquals(
+                    ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted,
+                    awaitItem()
+                )
+            }
+        }
+
     //region issueDocuments
 
     // Case 1:
@@ -1060,6 +1084,36 @@ class TestDocumentOfferInteractor {
                 )
                 // Then
                 assertEquals(expectedResult, awaitItem())
+            }
+        }
+
+    // Case 11:
+    // 1. walletCoreDocumentsController.issueDocumentsByOffer emits
+    // IssueDocumentsPartialState.IssuerNotTrusted.
+
+    // Case 11 Expected Result:
+    // IssueDocumentsInteractorPartialState.IssuerNotTrusted
+    @Test
+    fun `Given Case 11, When issueDocuments is called, Then Case 11 Expected Result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            mockWalletDocumentsControllerIssueByUriEventEmission(
+                offerUri = mockedUriPath1,
+                event = IssueDocumentsPartialState.IssuerNotTrusted
+            )
+
+            // When
+            interactor.issueDocuments(
+                offerUri = mockedUriPath1,
+                issuerName = mockedIssuerName,
+                navigation = mockedConfigNavigationTypePop,
+                txCode = securePin(mockedTxCode)
+            ).runFlowTest {
+                // Then
+                assertEquals(
+                    IssueDocumentsInteractorPartialState.IssuerNotTrusted,
+                    awaitItem()
+                )
             }
         }
     //endregion

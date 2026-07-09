@@ -95,25 +95,88 @@ Each flavor can use different issuer configs, wallet provider hosts, and trust s
    used by wallet attestation flows and must point to the wallet provider service for the selected
    environment.
 
-3. Trusted certificates
+3. Trusted certificates and trusted lists
 
-   Trusted certificates are configured via the `config` property:
+   Trust is configured via the `config` property. Both reference flavors (`dev` and `demo`) use
+   the same trust model:
+
+   **ETSI trusted lists — LoTE.** Trust anchors are downloaded at runtime from ETSI TS 119 602
+   Lists of Trusted Entities (LoTE), and one shared trust source feeds issuer trust, status-list
+   signer trust, and reader/verifier authentication:
 
     ```kotlin
     _config = EudiWalletConfig {
-       configureReaderTrustStore(context, R.raw.pidissuerca02_ut)
+        configureEtsiTrust {
+            loteLocations(
+                SupportedLists(
+                    pidProviders = Uri("https://trustedlist.../PIDProviders.jwt"),
+                    wrpacProviders = Uri("https://trustedlist.../WRPACProviders.jwt"),
+                    pubEaaProviders = Uri("https://trustedlist.../PubEAAProviders.jwt")
+                )
+            )
+            classifications(
+                AttestationClassifications(
+                    pids = AttestationIdentifierPredicate.any(
+                        identifiers = setOf(
+                            AttestationIdentifier.MDoc(docType = DocumentIdentifier.MdocPid.formatType),
+                            AttestationIdentifier.SDJwtVc(vct = DocumentIdentifier.SdJwtPid.formatType)
+                        )
+                    )
+                )
+            )
+            // dev/demo only — remove for production:
+            relaxCertificateProfiles()
+            relaxPkixRevocation()
+        }
+        // issuer trust, status-list trust and reader auth inherit the LoTE trust source
+        configureIssuerTrust {
+            // ENFORCE: block issuance from an issuer that cannot be verified
+            policy { default(TrustPolicy.Action.ENFORCE) }
+            requireSignedMetadata()
+        }
+        configureDocumentStatusResolver {
+            configureTrust {
+                // INFORM: the dev PID list has no revocation anchors yet, so ENFORCE
+                // would fail every status check
+                policy { default(TrustPolicy.Action.INFORM) }
+            }
+        }
+        configureReaderTrustStore {
+            // EnforceIfPresent: admit readers that send no reader auth, 
+            // but refuse a reader that presents an untrusted chain
+            readerAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+        }
     }
     ```
 
-   The call accepts multiple resources; the reference `WalletCoreConfigImpl` actually registers
-   several CA resources (for example `pidissuerca02_ut`, `pidissuerca02_eu`, `dc4eu`, `multipaz`, and
-   others). Pass whichever trust anchors your environment requires.
+   Each block draws on the shared LoTE trust source — issuer trust, status-list signer trust, and
+   reader/verifier authentication — and the trusted/untrusted behavior varies per presentation
+   protocol. Change these values carefully.
 
-   The application's IACA certificates are
-   located [here](https://github.com/eu-digital-identity-wallet/eudi-app-android-wallet-ui/tree/main/resources-logic/src/main/res/raw)
+   **Static trust anchors (alternative).** The Wallet Core SDK also supports a reader trust store
+   built from certificates loaded from raw resources:
 
-   Configure `EudiWalletConfig` per flavor inside the appropriate `WalletCoreConfigImpl`. Demo and
-   development trust anchors must be replaced before production.
+    ```kotlin
+    _config = EudiWalletConfig {
+       configureReaderTrustStore(context, R.raw.your_reader_ca)
+    }
+    ```
+
+   The call accepts multiple resources; pass whichever trust anchors your environment requires.
+   The reference flavors no longer register static anchors for reader trust (that is LoTE-based
+   now). The `pidissuerca02_*` certificates that remain under
+   [
+   `resources-logic/src/main/res/raw`](https://github.com/eu-digital-identity-wallet/eudi-app-android-wallet-ui/tree/main/resources-logic/src/main/res/raw)
+   are **not** reader-trust anchors — they are the RQES document-retrieval trust anchors, configured
+   separately in `RQESConfigImpl` (see the RQES subsection under
+   [General configuration](#general-configuration)).
+
+   The two models are either/or: when both are configured, a custom store wins over the ETSI
+   store, which wins over static certificates.
+
+   Configure `EudiWalletConfig` per flavor inside the appropriate `WalletCoreConfigImpl`. The
+   development trusted-list URLs (and any demo/development trust anchors) must be replaced before
+   production.
 
 4. Preregistered Client Scheme
 
@@ -232,37 +295,38 @@ Each flavor can use different issuer configs, wallet provider hosts, and trust s
 The following table summarizes the main values an implementer must review before release. For a
 complete production process, see [GO_LIVE.md](GO_LIVE.md).
 
-| Configuration | Where it is defined | What to put in production |
-| --- | --- | --- |
-| App ID | `app/build.gradle.kts` | A reverse-DNS package name owned by the implementer, for example `eu.example.wallet`. Do not change after public release unless publishing a separate app. |
-| App name suffix | `build-logic/convention/src/main/kotlin/project/convention/logic/AppFlavor.kt` | Empty for production. Keep suffixes only for dev/test builds. |
-| Build flavor | `AppFlavor.kt` and matching source sets | Add a dedicated production flavor, for example `prod`, instead of reusing `dev` or `demo`. |
-| Issuer URLs | `core-logic/src/<flavor>/java/.../WalletCoreConfigImpl.kt` | HTTPS URLs for approved production OpenID4VCI issuers. Include scheme and port if non-default. |
-| Issuer order | `VciConfig(order = ...)` | Integer display order in the add-document flow. Use stable ordering for user support and screenshots. |
-| Wallet Provider host | `walletProviderHost` in `WalletCoreConfigImpl.kt` | HTTPS base URL for the production wallet provider/attestation service. |
-| OpenID4VCI redirect URI | `BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK` from build-logic placeholders | A registered URI accepted by the issuer and handled only by the wallet app. |
-| OpenID4VP schemes | `AndroidLibraryConventionPlugin.kt` and `EudiWalletConfig.configureOpenId4Vp` | Schemes and client ID schemes approved for the ecosystem. Keep the manifest, `BuildConfig`, and Wallet Core config aligned. |
-| Reader/verifier trust anchors | `configureReaderTrustStore(...)` raw resources | Production IACA/reader/verifier trust anchors from an approved trust list or governance process. |
-| Document key settings | `configureDocumentKeyCreation(...)` | For LoA High PID and other high-assurance EAA/QEAA credentials, require strong user authentication and hardware-backed key protection unless an approved remote high-assurance key protection design replaces local key use. Use `0.seconds` only when one prompt per key use is acceptable; for batch issuing, a short approved window such as `10.seconds` may be needed. |
-| Document key storage | `EudiWallet.Builder` in `core-logic/src/main/java/.../LogicCoreModule.kt` | Default Wallet Core behavior uses Android Keystore secure areas. Use `withSecureAreas(...)`, `withStorage(...)`, or `withDocumentManager(...)` if production requires an alternative secure area, remote-backed key service, or custom document manager. |
-| Wallet attestation key storage | `EudiWallet.Builder.withWalletKeyManager(...)` and Wallet Provider policy | Use if wallet attestation/client-attestation keys must be generated, stored, attested, or unlocked by a custom secure area or remote high-assurance key service. |
-| DPoP key storage | `DPopConfig.Default` or `DPopConfig.Custom(...)` in each issuer config | Prefer DPoP where supported. Use `DPopConfig.Custom(...)` when issuance proof-of-possession keys require custom secure area, StrongBox, user authentication, or issuer-specific key policy. |
-| Remote presentation ephemeral key handling | OpenID4VP/presentation-manager integration | Ephemeral protocol key material must be generated per transaction, not reused across verifiers, and not persisted beyond the protocol flow. If the Wallet Core version exposes a dedicated ephemeral key-storage option, configure it in the production `EudiWallet` or presentation-manager integration and document the exact SDK API. |
-| DCAPI | `configureDCAPI { withEnabled(...) }` | Enable only if the production wallet supports Digital Credential API flows and has tested them. |
-| Document issuance rules | `documentIssuanceConfig` | Credential rotation, one-time-use, quantity, and re-issuance intervals agreed with issuer capacity and privacy policy. |
-| Revocation interval | `revocationInterval` | A value that balances user experience, battery/network use, and relying-party risk. |
-| RQES QTSP endpoint | `business-logic/src/<flavor>/java/.../RQESConfigImpl.kt` | Production CSC/QTSP endpoint provided by the selected qualified trust service provider. |
-| RQES TSA URL | `RQESConfigImpl.kt` | Production timestamp authority URL required by the QTSP/signature profile. |
-| RQES client ID/secret | `RQESConfigImpl.kt` | Do not hardcode confidential secrets in the app. Use an approved public-client or backend-mediated design. |
-| RQES redirect URI | `BuildConfig.RQES_DEEPLINK` | Redirect URI registered with the QTSP and declared in the Android manifest. |
-| RQES document retrieval trust | `DocumentRetrievalConfig` | Production certificates or trust material required for retrieving signing documents. |
-| PIN storage | `authentication-logic` and `StorageConfig` | Confirm PBKDF2 parameters, encrypted preferences, and migration behavior meet policy. |
-| PIN throttle policy | `authentication-logic` and `AuthenticationConfig` | Confirm `maxFailedPinAttempts` and `pinLockoutDurations` meet policy. Define what happens once the final lockout tier is reached (e.g. wipe, support flow, step-up). |
-| Database key/storage | `storage-logic` and encrypted `PrefsController` | Ensure database keys are generated securely, encrypted at rest, excluded from backup, and migrated safely. |
-| Network logging | `network-logic/.../NetworkModule.kt` | `LogLevel.NONE` for release. Never log tokens, credentials, signatures, or document data. |
-| Network security config | `network-logic/src/main/res/xml/network_security_config.xml` | Cleartext disabled. No debug CA or trust-all logic in release. |
-| Analytics providers | `analytics-logic` | Only approved providers, with data minimization, consent, retention, and no credential contents. |
-| Release signing | `app/build.gradle.kts` and CI secrets | Keystore and passwords controlled through CI secret storage, HSM/KMS, or an equivalent process. |
+| Configuration                              | Where it is defined                                                                                         | What to put in production                                                                                                                                                                                                                                                                                                                                                   |
+|--------------------------------------------|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| App ID                                     | `app/build.gradle.kts`                                                                                      | A reverse-DNS package name owned by the implementer, for example `eu.example.wallet`. Do not change after public release unless publishing a separate app.                                                                                                                                                                                                                  |
+| App name suffix                            | `build-logic/convention/src/main/kotlin/project/convention/logic/AppFlavor.kt`                              | Empty for production. Keep suffixes only for dev/test builds.                                                                                                                                                                                                                                                                                                               |
+| Build flavor                               | `AppFlavor.kt` and matching source sets                                                                     | Add a dedicated production flavor, for example `prod`, instead of reusing `dev` or `demo`.                                                                                                                                                                                                                                                                                  |
+| Issuer URLs                                | `core-logic/src/<flavor>/java/.../WalletCoreConfigImpl.kt`                                                  | HTTPS URLs for approved production OpenID4VCI issuers. Include scheme and port if non-default.                                                                                                                                                                                                                                                                              |
+| Issuer order                               | `VciConfig(order = ...)`                                                                                    | Integer display order in the add-document flow. Use stable ordering for user support and screenshots.                                                                                                                                                                                                                                                                       |
+| Wallet Provider host                       | `walletProviderHost` in `WalletCoreConfigImpl.kt`                                                           | HTTPS base URL for the production wallet provider/attestation service.                                                                                                                                                                                                                                                                                                      |
+| OpenID4VCI redirect URI                    | `BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK` from build-logic placeholders                                    | A registered URI accepted by the issuer and handled only by the wallet app.                                                                                                                                                                                                                                                                                                 |
+| OpenID4VP schemes                          | `AndroidLibraryConventionPlugin.kt` and `EudiWalletConfig.configureOpenId4Vp`                               | Schemes and client ID schemes approved for the ecosystem. Keep the manifest, `BuildConfig`, and Wallet Core config aligned.                                                                                                                                                                                                                                                 |
+| Reader/verifier trust anchors              | `configureReaderTrustStore(...)` raw resources, or `configureReaderTrustStore { ... }` backed by ETSI trust | Production IACA/reader/verifier trust anchors from an approved trust list or governance process. Decide the `ReaderAuthPolicy` (the reference flavors use `EnforceIfPresent`, which admits readers that send no reader authentication; `AlwaysRequire` is stricter and refuses them).                                                                                       |
+| ETSI trusted lists (LoTE)                  | `configureEtsiTrust { ... }` in `WalletCoreConfigImpl.kt`                                                   | Production LoTE URLs from the approved trust framework. Remove the dev relaxations (`relaxCertificateProfiles()`, `relaxPkixRevocation()`) so certificate profile checks and revocation checking are enforced. Review the issuer-trust (`ENFORCE`) and status-list-trust (`INFORM`) policies and the cache TTLs.                                                            |
+| Document key settings                      | `configureDocumentKeyCreation(...)`                                                                         | For LoA High PID and other high-assurance EAA/QEAA credentials, require strong user authentication and hardware-backed key protection unless an approved remote high-assurance key protection design replaces local key use. Use `0.seconds` only when one prompt per key use is acceptable; for batch issuing, a short approved window such as `10.seconds` may be needed. |
+| Document key storage                       | `EudiWallet.Builder` in `core-logic/src/main/java/.../LogicCoreModule.kt`                                   | Default Wallet Core behavior uses Android Keystore secure areas. Use `withSecureAreas(...)`, `withStorage(...)`, or `withDocumentManager(...)` if production requires an alternative secure area, remote-backed key service, or custom document manager.                                                                                                                    |
+| Wallet attestation key storage             | `EudiWallet.Builder.withWalletKeyManager(...)` and Wallet Provider policy                                   | Use if wallet attestation/client-attestation keys must be generated, stored, attested, or unlocked by a custom secure area or remote high-assurance key service.                                                                                                                                                                                                            |
+| DPoP key storage                           | `DPopConfig.Default` or `DPopConfig.Custom(...)` in each issuer config                                      | Prefer DPoP where supported. Use `DPopConfig.Custom(...)` when issuance proof-of-possession keys require custom secure area, StrongBox, user authentication, or issuer-specific key policy.                                                                                                                                                                                 |
+| Remote presentation ephemeral key handling | OpenID4VP/presentation-manager integration                                                                  | Ephemeral protocol key material must be generated per transaction, not reused across verifiers, and not persisted beyond the protocol flow. If the Wallet Core version exposes a dedicated ephemeral key-storage option, configure it in the production `EudiWallet` or presentation-manager integration and document the exact SDK API.                                    |
+| DCAPI                                      | `configureDCAPI { withEnabled(...) }`                                                                       | Enable only if the production wallet supports Digital Credential API flows and has tested them.                                                                                                                                                                                                                                                                             |
+| Document issuance rules                    | `documentIssuanceConfig`                                                                                    | Credential rotation, one-time-use, quantity, and re-issuance intervals agreed with issuer capacity and privacy policy.                                                                                                                                                                                                                                                      |
+| Revocation interval                        | `revocationInterval`                                                                                        | A value that balances user experience, battery/network use, and relying-party risk.                                                                                                                                                                                                                                                                                         |
+| RQES QTSP endpoint                         | `business-logic/src/<flavor>/java/.../RQESConfigImpl.kt`                                                    | Production CSC/QTSP endpoint provided by the selected qualified trust service provider.                                                                                                                                                                                                                                                                                     |
+| RQES TSA URL                               | `RQESConfigImpl.kt`                                                                                         | Production timestamp authority URL required by the QTSP/signature profile.                                                                                                                                                                                                                                                                                                  |
+| RQES client ID/secret                      | `RQESConfigImpl.kt`                                                                                         | Do not hardcode confidential secrets in the app. Use an approved public-client or backend-mediated design.                                                                                                                                                                                                                                                                  |
+| RQES redirect URI                          | `BuildConfig.RQES_DEEPLINK`                                                                                 | Redirect URI registered with the QTSP and declared in the Android manifest.                                                                                                                                                                                                                                                                                                 |
+| RQES document retrieval trust              | `DocumentRetrievalConfig`                                                                                   | Production certificates or trust material required for retrieving signing documents.                                                                                                                                                                                                                                                                                        |
+| PIN storage                                | `authentication-logic` and `StorageConfig`                                                                  | Confirm PBKDF2 parameters, encrypted preferences, and migration behavior meet policy.                                                                                                                                                                                                                                                                                       |
+| PIN throttle policy                        | `authentication-logic` and `AuthenticationConfig`                                                           | Confirm `maxFailedPinAttempts` and `pinLockoutDurations` meet policy. Define what happens once the final lockout tier is reached (e.g. wipe, support flow, step-up).                                                                                                                                                                                                        |
+| Database key/storage                       | `storage-logic` and encrypted `PrefsController`                                                             | Ensure database keys are generated securely, encrypted at rest, excluded from backup, and migrated safely.                                                                                                                                                                                                                                                                  |
+| Network logging                            | `network-logic/.../NetworkModule.kt`                                                                        | `LogLevel.NONE` for release. Never log tokens, credentials, signatures, or document data.                                                                                                                                                                                                                                                                                   |
+| Network security config                    | `network-logic/src/main/res/xml/network_security_config.xml`                                                | Cleartext disabled. No debug CA or trust-all logic in release.                                                                                                                                                                                                                                                                                                              |
+| Analytics providers                        | `analytics-logic`                                                                                           | Only approved providers, with data minimization, consent, retention, and no credential contents.                                                                                                                                                                                                                                                                            |
+| Release signing                            | `app/build.gradle.kts` and CI secrets                                                                       | Keystore and passwords controlled through CI secret storage, HSM/KMS, or an equivalent process.                                                                                                                                                                                                                                                                             |
 
 ## Deep link scheme configuration
 

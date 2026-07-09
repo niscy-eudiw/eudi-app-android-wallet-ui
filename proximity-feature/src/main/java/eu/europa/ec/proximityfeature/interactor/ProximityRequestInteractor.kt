@@ -43,6 +43,7 @@ sealed class ProximityRequestInteractorPartialState {
     ) : ProximityRequestInteractorPartialState()
 
     data class Failure(val error: String) : ProximityRequestInteractorPartialState()
+    data object VerifierNotTrusted : ProximityRequestInteractorPartialState()
     data object Disconnect : ProximityRequestInteractorPartialState()
 }
 
@@ -121,6 +122,10 @@ class ProximityRequestInteractorImpl(
 
                 is TransferEventPartialState.Error -> {
                     ProximityRequestInteractorPartialState.Failure(error = response.error)
+                }
+
+                is TransferEventPartialState.VerifierNotTrusted -> {
+                    ProximityRequestInteractorPartialState.VerifierNotTrusted
                 }
 
                 is TransferEventPartialState.Disconnected -> {

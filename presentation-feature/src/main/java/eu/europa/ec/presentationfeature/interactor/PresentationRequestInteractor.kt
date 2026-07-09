@@ -46,6 +46,7 @@ sealed class PresentationRequestInteractorPartialState {
     ) : PresentationRequestInteractorPartialState()
 
     data class Failure(val error: String) : PresentationRequestInteractorPartialState()
+    data object VerifierNotTrusted : PresentationRequestInteractorPartialState()
     data object Disconnect : PresentationRequestInteractorPartialState()
 }
 
@@ -133,6 +134,10 @@ class PresentationRequestInteractorImpl(
 
                 is TransferEventPartialState.Error -> {
                     PresentationRequestInteractorPartialState.Failure(error = response.error)
+                }
+
+                is TransferEventPartialState.VerifierNotTrusted -> {
+                    PresentationRequestInteractorPartialState.VerifierNotTrusted
                 }
 
                 is TransferEventPartialState.Disconnected -> {

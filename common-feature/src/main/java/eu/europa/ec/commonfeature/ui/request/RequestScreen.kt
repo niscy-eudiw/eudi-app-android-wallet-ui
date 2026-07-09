@@ -71,6 +71,7 @@ import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.CheckboxDataUi
+import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.component.wrap.SimpleBottomSheet
 import eu.europa.ec.uilogic.component.wrap.StickyBottomConfig
@@ -170,15 +171,22 @@ fun RequestScreen(
             WrapModalBottomSheet(
                 onDismissRequest = {
                     viewModel.setEvent(
-                        Event.BottomSheet.UpdateBottomSheetState(
-                            isOpen = false
-                        )
+                        when (state.sheetContent) {
+                            RequestBottomSheetContent.WARNING -> {
+                                Event.BottomSheet.UpdateBottomSheetState(isOpen = false)
+                            }
+
+                            RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+                                Event.OnBack
+                            }
+                        }
                     )
                 },
                 sheetState = bottomSheetState
             ) {
                 SheetContent(
                     sheetContent = state.sheetContent,
+                    onEventSent = { viewModel.setEvent(it) },
                 )
             }
         }
@@ -398,6 +406,7 @@ private fun RequestWarningNote(
 @Composable
 private fun SheetContent(
     sheetContent: RequestBottomSheetContent,
+    onEventSent: (Event) -> Unit,
 ) {
     when (sheetContent) {
         RequestBottomSheetContent.WARNING -> {
@@ -408,6 +417,19 @@ private fun SheetContent(
                 ),
                 leadingIcon = AppIcons.Warning,
                 leadingIconTint = MaterialTheme.colorScheme.warning
+            )
+        }
+
+        RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+            DialogBottomSheet(
+                textData = BottomSheetTextDataUi(
+                    title = stringResource(id = R.string.request_blocked_bottom_sheet_title),
+                    message = stringResource(id = R.string.request_blocked_bottom_sheet_message),
+                    positiveButtonText = stringResource(id = R.string.request_blocked_bottom_sheet_primary_button_text),
+                ),
+                leadingIcon = AppIcons.Warning,
+                leadingIconTint = MaterialTheme.colorScheme.warning,
+                onPositiveClick = { onEventSent(Event.OnBack) },
             )
         }
     }
@@ -582,6 +604,18 @@ private fun SheetContentWarningPreview() {
     PreviewTheme {
         SheetContent(
             sheetContent = RequestBottomSheetContent.WARNING,
+            onEventSent = {},
+        )
+    }
+}
+
+@ThemeModePreviews
+@Composable
+private fun SheetContentVerifierNotTrustedPreview() {
+    PreviewTheme {
+        SheetContent(
+            sheetContent = RequestBottomSheetContent.VERIFIER_NOT_TRUSTED,
+            onEventSent = {},
         )
     }
 }

@@ -604,6 +604,24 @@ class TestPresentationRequestInteractor {
             }
         }
 
+    // Case 14:
+    // 1. walletCorePresentationController.events emits:
+    // TransferEventPartialState.VerifierNotTrusted.
+
+    // Case 14 Expected Result:
+    // PresentationRequestInteractorPartialState.VerifierNotTrusted
+    @Test
+    fun `Given Case 14, When getRequestDocuments is called, Then Case 14 expected result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.VerifierNotTrusted
+            )
+
+            // When
+            interactor.getRequestDocuments().runFlowTest {
+                val expectedResult = PresentationRequestInteractorPartialState.VerifierNotTrusted
+
                 // Then
                 assertEquals(expectedResult, awaitItem())
             }

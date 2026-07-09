@@ -49,13 +49,20 @@ data class State(
     val notifyOnAuthenticationFailure: Boolean = false,
 
     val screenTitle: String,
-    val screenSubtitle: String
+    val screenSubtitle: String,
+
+    val isBottomSheetOpen: Boolean = false,
 ) : ViewState
 
 sealed class Event : ViewEvent {
     data object Pop : Event()
     data object DismissError : Event()
     data class OnPinEntered(val code: SecurePin, val context: Context) : Event()
+
+    sealed class BottomSheet : Event() {
+        data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object Close : BottomSheet()
+    }
 }
 
 sealed class Effect : ViewSideEffect {
@@ -66,6 +73,9 @@ sealed class Effect : ViewSideEffect {
 
         data object Pop : Navigation()
     }
+
+    data object ShowBottomSheet : Effect()
+    data object CloseBottomSheet : Effect()
 }
 
 @KoinViewModel
@@ -117,6 +127,14 @@ class DocumentOfferCodeViewModel(
                     pinCode = event.code
                 )
             }
+
+            is Event.BottomSheet.UpdateBottomSheetState -> {
+                setState { copy(isBottomSheetOpen = event.isOpen) }
+            }
+
+            is Event.BottomSheet.Close -> {
+                setEvent(Event.Pop)
+            }
         }
     }
 
@@ -151,6 +169,16 @@ class DocumentOfferCodeViewModel(
                                 onCancel = { setEvent(Event.DismissError) }
                             )
                         )
+                    }
+
+                    is IssueDocumentsInteractorPartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
                     }
 
                     is IssueDocumentsInteractorPartialState.Success -> {

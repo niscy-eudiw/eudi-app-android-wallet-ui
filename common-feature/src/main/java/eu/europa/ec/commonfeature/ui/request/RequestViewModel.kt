@@ -92,6 +92,7 @@ sealed class Effect : ViewSideEffect {
 
 enum class RequestBottomSheetContent {
     WARNING,
+    VERIFIER_NOT_TRUSTED,
 }
 
 abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
@@ -285,7 +286,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
         updateData(updatedItems)
     }
 
-    private fun showBottomSheet(sheetContent: RequestBottomSheetContent) {
+    protected fun showBottomSheet(sheetContent: RequestBottomSheetContent) {
         setState {
             copy(sheetContent = sheetContent)
         }

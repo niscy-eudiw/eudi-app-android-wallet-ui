@@ -29,11 +29,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -44,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
+import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
@@ -69,6 +74,7 @@ import eu.europa.ec.uilogic.component.utils.VSpacer
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
+import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapText
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
@@ -76,12 +82,15 @@ import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDocumentScreen(
     navController: NavController,
@@ -89,6 +98,12 @@ fun AddDocumentScreen(
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    val isBottomSheetOpen = state.isBottomSheetOpen
+    val scope = rememberCoroutineScope()
+    val bottomSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
 
     val toolbarConfig = ToolbarConfig(
         actions = if (state.error == null) {
@@ -153,7 +168,26 @@ fun AddDocumentScreen(
             },
             paddingValues = paddingValues,
             context = context,
+            coroutineScope = scope,
+            modalBottomSheetState = bottomSheetState,
         )
+
+        if (isBottomSheetOpen) {
+            WrapModalBottomSheet(
+                onDismissRequest = {
+                    viewModel.setEvent(
+                        Event.BottomSheet.UpdateBottomSheetState(isOpen = false)
+                    )
+                },
+                sheetState = bottomSheetState
+            ) {
+                IssuerNotTrustedSheetContent(
+                    onClose = {
+                        viewModel.setEvent(Event.BottomSheet.Close)
+                    },
+                )
+            }
+        }
     }
 
     LifecycleEffect(
@@ -171,6 +205,7 @@ fun AddDocumentScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
     state: State,
@@ -178,7 +213,9 @@ private fun Content(
     onEventSend: (Event) -> Unit,
     onNavigationRequested: (Effect.Navigation) -> Unit,
     paddingValues: PaddingValues,
-    context: Context
+    context: Context,
+    coroutineScope: CoroutineScope,
+    modalBottomSheetState: SheetState,
 ) {
     MainContent(
         modifier = Modifier
@@ -193,6 +230,20 @@ private fun Content(
         effectFlow.onEach { effect ->
             when (effect) {
                 is Effect.Navigation -> onNavigationRequested(effect)
+
+                is Effect.ShowBottomSheet -> {
+                    onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+                }
+
+                is Effect.CloseBottomSheet -> {
+                    coroutineScope.launch {
+                        modalBottomSheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!modalBottomSheetState.isVisible) {
+                            onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                        }
+                    }
+                }
             }
         }.collect()
     }
@@ -309,6 +360,7 @@ private fun Options(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @ThemeModePreviews
 @Composable
 private fun IssuanceAddDocumentScreenPreview() {
@@ -360,11 +412,14 @@ private fun IssuanceAddDocumentScreenPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(all = SPACING_LARGE.dp),
-            context = LocalContext.current
+            context = LocalContext.current,
+            coroutineScope = rememberCoroutineScope(),
+            modalBottomSheetState = rememberModalBottomSheetState(),
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @ThemeModePreviews
 @Composable
 private fun DashboardAddDocumentScreenPreview() {
@@ -418,7 +473,9 @@ private fun DashboardAddDocumentScreenPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(all = SPACING_LARGE.dp),
-            context = LocalContext.current
+            context = LocalContext.current,
+            coroutineScope = rememberCoroutineScope(),
+            modalBottomSheetState = rememberModalBottomSheetState(),
         )
     }
 }

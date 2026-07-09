@@ -183,6 +183,9 @@
     <string name="request_sticky_button_text">Share</string>
     <string name="request_bottom_sheet_warning_title">Warning</string>
     <string name="request_bottom_sheet_warning_subtitle">Choosing not to share certain data may result in failure to issue the requested document.</string>
+    <string name="request_blocked_bottom_sheet_title">Presentation blocked</string>
+    <string name="request_blocked_bottom_sheet_message">This presentation request has been blocked because the relying party could not be verified by your Wallet.\n\nYour personal information or other data has not been shared with this relying party.</string>
+    <string name="request_blocked_bottom_sheet_primary_button_text">@string/generic_close</string>
     <string name="request_gender_male">Male</string>
     <string name="request_gender_female">Female</string>
     <string name="request_gender_not_known">Not known</string>
@@ -445,6 +448,9 @@
 
     <!-- region Issuance Document Errors -->
     <string name="issuance_generic_error">Something went wrong issuing your document(s)</string>
+    <string name="issuance_blocked_bottom_sheet_title">Issuance blocked</string>
+    <string name="issuance_blocked_bottom_sheet_message">This issuance request has been blocked because the provider could not be verified by your Wallet.\n\nYour personal information or other data has not been shared with this provider.</string>
+    <string name="issuance_blocked_bottom_sheet_primary_button_text">@string/generic_close</string>
     <!--endregion-->
 
     <!-- region Document Categories -->

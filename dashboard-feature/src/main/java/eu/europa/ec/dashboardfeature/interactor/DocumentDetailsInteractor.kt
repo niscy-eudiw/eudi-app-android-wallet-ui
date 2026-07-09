@@ -52,6 +52,8 @@ sealed class DocumentDetailsInteractorIssuancePartialState {
 
     data class Failure(val errorMessage: String) : DocumentDetailsInteractorIssuancePartialState()
 
+    data object IssuerNotTrusted : DocumentDetailsInteractorIssuancePartialState()
+
     data class UserAuthRequired(
         val crypto: BiometricCrypto,
         val resultHandler: DeviceAuthenticationResult,
@@ -292,6 +294,7 @@ class DocumentDetailsInteractorImpl(
 
             val successIds: MutableList<String> = mutableListOf()
             var isDeferred = false
+            var issuerNotTrusted = false
             var error: String? = null
             var authenticationData: Pair<BiometricCrypto, DeviceAuthenticationResult>? = null
 
@@ -302,6 +305,10 @@ class DocumentDetailsInteractorImpl(
 
                 is IssueDocumentsPartialState.Failure -> {
                     error = state.errorMessage
+                }
+
+                is IssueDocumentsPartialState.IssuerNotTrusted -> {
+                    issuerNotTrusted = true
                 }
 
                 is IssueDocumentsPartialState.PartialSuccess -> {
@@ -317,7 +324,9 @@ class DocumentDetailsInteractorImpl(
                 }
             }
 
-            val state = if (successIds.isNotEmpty() || isDeferred) {
+            val state = if (issuerNotTrusted) {
+                DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted
+            } else if (successIds.isNotEmpty() || isDeferred) {
                 DocumentDetailsInteractorIssuancePartialState.Success
             } else if (error != null) {
                 DocumentDetailsInteractorIssuancePartialState.Failure(error)
