@@ -35,7 +35,9 @@ import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.iso18013.transfer.toKotlinResult
 import eu.europa.ec.eudi.wallet.EudiWallet
+import eu.europa.ec.eudi.wallet.dcapi.process.openid4vp.ProcessedOpenId4VpDCAPIRequest
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +83,8 @@ sealed class TransferEventPartialState {
         val verifierName: String?,
         val verifierIsTrusted: Boolean,
     ) : TransferEventPartialState()
+
+    data object VerifierNotTrusted : TransferEventPartialState()
 
     data object ResponseSent : TransferEventPartialState()
     data class Redirect(val uri: URI) : TransferEventPartialState()
@@ -147,6 +151,17 @@ interface WalletCorePresentationController {
     val verifierName: String?
 
     val verifierIsTrusted: Boolean?
+
+    /**
+     * Indicates whether the received request permits per-claim disclosure.
+     *
+     * Returns `false` for DCQL requests (including OpenID4VP over DC-API), as these protocols
+     * validate the selection as a complete set. Returns `true` for standard ISO-18013-5 requests
+     * where the user can selectively disclose specific attributes.
+     *
+     * @throws IllegalStateException if accessed before a request has been received and processed.
+     */
+    val requestAllowsClaimSelection: Boolean
 
     /**
      * Who started the presentation
@@ -257,6 +272,11 @@ class WalletCorePresentationControllerImpl(
 
     override var verifierIsTrusted: Boolean? = null
 
+    override val requestAllowsClaimSelection: Boolean
+        get() = processedRequest?.let {
+            it !is ProcessedDcqlRequest && it !is ProcessedOpenId4VpDCAPIRequest
+        } ?: error("requestAllowsClaimSelection read before a request was received")
+
     override val initiatorRoute: String
         get() = requireConfig().initiatorRoute
 
@@ -290,11 +310,15 @@ class WalletCorePresentationControllerImpl(
                     TransferEventPartialState.Disconnected
                 )
             },
-            onError = { errorMessage ->
+            onError = { throwable ->
                 trySendBlocking(
-                    TransferEventPartialState.Error(
-                        error = errorMessage.ifEmpty { genericErrorMessage }
-                    )
+                    if (throwable.isUntrustedVerifierRejection()) {
+                        TransferEventPartialState.VerifierNotTrusted
+                    } else {
+                        TransferEventPartialState.Error(
+                            error = throwable.message.orEmpty().ifEmpty { genericErrorMessage }
+                        )
+                    }
                 )
             },
             onRequestReceived = { result ->
@@ -551,10 +575,10 @@ class WalletCorePresentationControllerImpl(
     }
 
     /**
-     * Ingests a processed request from the Wallet Core SDK: stores the per-session state the rest of the
-     * flow needs (the raw [processedRequest], verifier identity/trust, the private [matchByKey])
-     * and projects it into a [TransferEventPartialState.RequestReceived].
-     * A throw here (ours or the SDK's) becomes an Error state, not a crash.
+     * Projects a received Wallet Core request into one of three [TransferEventPartialState]s:
+     * [TransferEventPartialState.RequestReceived], [TransferEventPartialState.VerifierNotTrusted], or
+     * [TransferEventPartialState.Error]. Wrapped in `runCatching` so a throw (ours or the SDK's)
+     * becomes an Error state rather than crashing the listener.
      */
     private fun handleRequestReceived(
         result: RequestProcessor.ProcessedRequest,
@@ -563,8 +587,12 @@ class WalletCorePresentationControllerImpl(
             val success = result.getOrThrow()
             processedRequest = success
 
-            verifierName = success.trustMetadata?.displayName
-            val isTrusted = success.trustMetadata != null
+            // unverified mdoc readers (BLE, DC-API) arrive with null trustMetadata and still reach
+            // consent; disclosure is refused later by the reader-auth policy. untrusted OpenID4VP
+            // never reaches this success path (rejected at resolution; see getOrElse / onError)
+            val trustMetadata = success.trustMetadata
+            verifierName = trustMetadata?.displayName
+            val isTrusted = trustMetadata != null
             verifierIsTrusted = isTrusted
 
             val combinationsDomain = success.buildCombinationsDomain()
@@ -577,9 +605,17 @@ class WalletCorePresentationControllerImpl(
                 verifierIsTrusted = isTrusted
             )
         }.getOrElse { throwable ->
-            TransferEventPartialState.Error(
-                error = throwable.localizedMessage ?: genericErrorMessage
-            )
+            // OpenID4VP over the DC-API delivers the untrusted-verifier rejection as a
+            // ProcessedRequest.Failure, which getOrThrow() surfaces here
+            if (throwable.isUntrustedVerifierRejection()) {
+                verifierName = null
+                verifierIsTrusted = false
+                TransferEventPartialState.VerifierNotTrusted
+            } else {
+                TransferEventPartialState.Error(
+                    error = throwable.localizedMessage ?: genericErrorMessage
+                )
+            }
         }
     }
 
@@ -616,6 +652,13 @@ class WalletCorePresentationControllerImpl(
         }
         return _config
     }
+}
+
+private fun Throwable.isUntrustedVerifierRejection(): Boolean {
+    //TODO: replace this class-name + message match with a typed check once Core surfaces a
+    // dedicated untrusted-verifier error instead of an implementation-only openid4vp exception
+    return this::class.qualifiedName == "eu.europa.ec.eudi.openid4vp.AuthorizationRequestException" &&
+            toString().contains("Untrusted x5c")
 }
 
 private fun RequestProcessor.ProcessedRequest.Success.buildCombinationsDomain(): List<PresentationCombinationDomain> {

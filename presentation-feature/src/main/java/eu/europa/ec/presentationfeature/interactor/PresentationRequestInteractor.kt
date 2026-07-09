@@ -46,6 +46,7 @@ sealed class PresentationRequestInteractorPartialState {
     ) : PresentationRequestInteractorPartialState()
 
     data class Failure(val error: String) : PresentationRequestInteractorPartialState()
+    data object VerifierNotTrusted : PresentationRequestInteractorPartialState()
     data object Disconnect : PresentationRequestInteractorPartialState()
 }
 
@@ -67,12 +68,11 @@ class PresentationRequestInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    // false for OpenID4VP (DCQL is all-or-nothing); true for DC-API.
-    private var claimsAreSelectable: Boolean = true
+    private val claimsAreSelectable: Boolean
+        get() = walletCorePresentationController.requestAllowsClaimSelection
 
     override fun setConfig(config: RequestUriConfig, intentAction: IntentAction?) {
         setScopeId(config.presentationScopeId)
-        claimsAreSelectable = config.mode.allowsClaimSelection
 
         walletCorePresentationController.setConfig(
             config.toDomainConfig(intentAction = intentAction)
@@ -134,6 +134,10 @@ class PresentationRequestInteractorImpl(
 
                 is TransferEventPartialState.Error -> {
                     PresentationRequestInteractorPartialState.Failure(error = response.error)
+                }
+
+                is TransferEventPartialState.VerifierNotTrusted -> {
+                    PresentationRequestInteractorPartialState.VerifierNotTrusted
                 }
 
                 is TransferEventPartialState.Disconnected -> {

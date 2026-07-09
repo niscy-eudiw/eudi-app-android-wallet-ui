@@ -28,6 +28,10 @@ class EudiWalletCorePlugin : Plugin<Project> {
             }
             dependencies {
                 add("api", libs.findLibrary("eudi.wallet.core").get())
+                add(
+                    "implementation",
+                    libs.findLibrary("eudi.lib.kmp.etsi119602.consultation").get()
+                )
                 add("implementation", libs.findLibrary("androidx.credentials.registry").get())
             }
         }

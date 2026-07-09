@@ -69,6 +69,10 @@ data class State(
     val documents: List<ListItemDataUi> = emptyList(),
     val noDocument: Boolean = false,
     val txCodeLength: Int? = null,
+
+    val isBottomSheetOpen: Boolean = false,
+    val bottomSheetClosingInProgress: Boolean = false,
+    val sheetContent: DocumentOfferBottomSheetContent = DocumentOfferBottomSheetContent.IssuerNotTrusted,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -80,6 +84,12 @@ sealed class Event : ViewEvent {
     data object DismissError : Event()
 
     data class StickyButtonPressed(val context: Context) : Event()
+
+    sealed class BottomSheet : Event() {
+        data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
+        data object Close : BottomSheet()
+    }
 }
 
 sealed class Effect : ViewSideEffect {
@@ -101,6 +111,17 @@ sealed class Effect : ViewSideEffect {
             val routeToPop: String? = null
         ) : Navigation()
     }
+
+    data object ShowBottomSheet : Effect()
+    data object CloseBottomSheet : Effect()
+}
+
+sealed class DocumentOfferBottomSheetContent {
+    data object IssuerNotTrusted : DocumentOfferBottomSheetContent()
+
+    data class PartialSuccessWithUntrustedIssuer(
+        val issuedDocumentIds: List<DocumentId>,
+    ) : DocumentOfferBottomSheetContent()
 }
 
 @KoinViewModel
@@ -202,6 +223,38 @@ class DocumentOfferViewModel(
                     )
                 }
             }
+
+            is Event.BottomSheet.UpdateBottomSheetState -> {
+                setState {
+                    copy(
+                        isBottomSheetOpen = event.isOpen,
+                        bottomSheetClosingInProgress = if (event.isOpen) false
+                        else bottomSheetClosingInProgress,
+                    )
+                }
+            }
+
+            is Event.BottomSheet.FinishedClosing -> {
+                when (val content = viewState.value.sheetContent) {
+                    is DocumentOfferBottomSheetContent.IssuerNotTrusted -> {
+                        doNavigation(viewState.value.offerUiConfig.onCancelNavigation)
+                    }
+
+                    is DocumentOfferBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
+                        goToDocumentIssuanceSuccessScreen(
+                            documentIds = content.issuedDocumentIds,
+                            onSuccessNavigation = viewState.value.offerUiConfig.onSuccessNavigation,
+                        )
+                    }
+                }
+            }
+
+            is Event.BottomSheet.Close -> {
+                if (!viewState.value.bottomSheetClosingInProgress) {
+                    setState { copy(bottomSheetClosingInProgress = true) }
+                    hideBottomSheet()
+                }
+            }
         }
     }
 
@@ -231,6 +284,17 @@ class DocumentOfferViewModel(
                                 )
                             )
                         }
+                    }
+
+                    is ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                isInitialised = false,
+                                error = null
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
                     }
 
                     is ResolveDocumentOfferInteractorPartialState.Success -> {
@@ -342,6 +406,30 @@ class DocumentOfferViewModel(
                                 )
                             )
                         }
+                    }
+
+                    is IssueDocumentsInteractorPartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                sheetContent = DocumentOfferBottomSheetContent.IssuerNotTrusted
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
+                    }
+
+                    is IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                sheetContent = DocumentOfferBottomSheetContent.PartialSuccessWithUntrustedIssuer(
+                                    issuedDocumentIds = response.issuedDocumentIds
+                                )
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
                     }
 
                     is IssueDocumentsInteractorPartialState.Success -> {
@@ -509,6 +597,12 @@ class DocumentOfferViewModel(
                     else -> {}
                 }
             }
+        }
+    }
+
+    private fun hideBottomSheet() {
+        setEffect {
+            Effect.CloseBottomSheet
         }
     }
 }

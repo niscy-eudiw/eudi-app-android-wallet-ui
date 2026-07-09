@@ -24,10 +24,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -37,6 +41,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.config.OfferUiConfig
+import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
+import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
@@ -60,6 +66,7 @@ import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.StickyBottomConfig
 import eu.europa.ec.uilogic.component.wrap.StickyBottomType
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
+import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
@@ -69,12 +76,15 @@ import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.navigation.DashboardScreens
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentOfferScreen(
     navController: NavController,
@@ -82,6 +92,12 @@ fun DocumentOfferScreen(
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    val isBottomSheetOpen = state.isBottomSheetOpen
+    val scope = rememberCoroutineScope()
+    val bottomSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
 
     ContentScreen(
         isLoading = state.isLoading,
@@ -129,11 +145,41 @@ fun DocumentOfferScreen(
         Content(
             state = state,
             effectFlow = viewModel.effect,
+            onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
                 handleNavigationEffect(context, navigationEffect, navController)
             },
             paddingValues = paddingValues,
+            coroutineScope = scope,
+            modalBottomSheetState = bottomSheetState,
         )
+
+        if (isBottomSheetOpen) {
+            WrapModalBottomSheet(
+                onDismissRequest = {
+                    viewModel.setEvent(Event.BottomSheet.Close)
+                },
+                sheetState = bottomSheetState
+            ) {
+                when (state.sheetContent) {
+                    is DocumentOfferBottomSheetContent.IssuerNotTrusted -> {
+                        IssuerNotTrustedSheetContent(
+                            onClose = {
+                                viewModel.setEvent(Event.BottomSheet.Close)
+                            },
+                        )
+                    }
+
+                    is DocumentOfferBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
+                        IssuerPartiallyTrustedSheetContent(
+                            onClose = {
+                                viewModel.setEvent(Event.BottomSheet.Close)
+                            },
+                        )
+                    }
+                }
+            }
+        }
     }
 
     LifecycleEffect(
@@ -151,12 +197,16 @@ fun DocumentOfferScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
     state: State,
     effectFlow: Flow<Effect>,
+    onEventSend: (Event) -> Unit,
     onNavigationRequested: (Effect.Navigation) -> Unit,
     paddingValues: PaddingValues,
+    coroutineScope: CoroutineScope,
+    modalBottomSheetState: SheetState,
 ) {
     Column(
         modifier = Modifier
@@ -187,6 +237,21 @@ private fun Content(
         effectFlow.onEach { effect ->
             when (effect) {
                 is Effect.Navigation -> onNavigationRequested(effect)
+
+                is Effect.ShowBottomSheet -> {
+                    onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+                }
+
+                is Effect.CloseBottomSheet -> {
+                    coroutineScope.launch {
+                        modalBottomSheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!modalBottomSheetState.isVisible) {
+                            onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                            onEventSend(Event.BottomSheet.FinishedClosing)
+                        }
+                    }
+                }
             }
         }.collect()
     }
@@ -250,6 +315,7 @@ private fun handleNavigationEffect(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @ThemeModePreviews
 @Composable
 private fun ContentPreview() {
@@ -291,8 +357,11 @@ private fun ContentPreview() {
         Content(
             state = previewState,
             effectFlow = Channel<Effect>().receiveAsFlow(),
+            onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(SPACING_MEDIUM.dp),
+            coroutineScope = rememberCoroutineScope(),
+            modalBottomSheetState = rememberModalBottomSheetState(),
         )
     }
 }

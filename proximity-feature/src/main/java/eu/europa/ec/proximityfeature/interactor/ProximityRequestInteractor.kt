@@ -43,6 +43,7 @@ sealed class ProximityRequestInteractorPartialState {
     ) : ProximityRequestInteractorPartialState()
 
     data class Failure(val error: String) : ProximityRequestInteractorPartialState()
+    data object VerifierNotTrusted : ProximityRequestInteractorPartialState()
     data object Disconnect : ProximityRequestInteractorPartialState()
 }
 
@@ -63,8 +64,8 @@ class ProximityRequestInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    // Proximity always allows selective disclosure.
-    private val claimsAreSelectable: Boolean = true
+    private val claimsAreSelectable: Boolean
+        get() = walletCorePresentationController.requestAllowsClaimSelection
 
     override fun getRequestDocuments(): Flow<ProximityRequestInteractorPartialState> =
         walletCorePresentationController.events.mapNotNull { response ->
@@ -121,6 +122,10 @@ class ProximityRequestInteractorImpl(
 
                 is TransferEventPartialState.Error -> {
                     ProximityRequestInteractorPartialState.Failure(error = response.error)
+                }
+
+                is TransferEventPartialState.VerifierNotTrusted -> {
+                    ProximityRequestInteractorPartialState.VerifierNotTrusted
                 }
 
                 is TransferEventPartialState.Disconnected -> {

@@ -39,6 +39,7 @@ data class State(
     val headerConfig: ContentHeaderConfig,
     val error: ContentErrorConfig? = null,
     val isBottomSheetOpen: Boolean = false,
+    val bottomSheetClosingInProgress: Boolean = false,
     val sheetContent: RequestBottomSheetContent = RequestBottomSheetContent.WARNING,
     val hasWarnedUser: Boolean = false,
     val presentationScopeId: String = "",
@@ -70,6 +71,10 @@ sealed class Event : ViewEvent {
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
+        sealed class VerifierNotTrusted : BottomSheet() {
+            data object Close : VerifierNotTrusted()
+        }
     }
 }
 
@@ -92,6 +97,7 @@ sealed class Effect : ViewSideEffect {
 
 enum class RequestBottomSheetContent {
     WARNING,
+    VERIFIER_NOT_TRUSTED,
 }
 
 abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
@@ -167,7 +173,27 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
 
             is Event.BottomSheet.UpdateBottomSheetState -> {
                 setState {
-                    copy(isBottomSheetOpen = event.isOpen)
+                    copy(
+                        isBottomSheetOpen = event.isOpen,
+                        bottomSheetClosingInProgress = if (event.isOpen) false
+                        else bottomSheetClosingInProgress,
+                    )
+                }
+            }
+
+            is Event.BottomSheet.FinishedClosing -> {
+                when (viewState.value.sheetContent) {
+                    RequestBottomSheetContent.WARNING -> Unit
+                    RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+                        setEvent(Event.OnBack)
+                    }
+                }
+            }
+
+            is Event.BottomSheet.VerifierNotTrusted.Close -> {
+                if (!viewState.value.bottomSheetClosingInProgress) {
+                    setState { copy(bottomSheetClosingInProgress = true) }
+                    hideBottomSheet()
                 }
             }
         }
@@ -285,7 +311,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
         updateData(updatedItems)
     }
 
-    private fun showBottomSheet(sheetContent: RequestBottomSheetContent) {
+    protected fun showBottomSheet(sheetContent: RequestBottomSheetContent) {
         setState {
             copy(sheetContent = sheetContent)
         }

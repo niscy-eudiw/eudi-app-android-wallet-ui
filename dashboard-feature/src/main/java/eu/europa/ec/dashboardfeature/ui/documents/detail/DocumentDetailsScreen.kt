@@ -45,6 +45,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
@@ -422,6 +423,14 @@ private fun SheetContent(
                 textData = sheetContent.bottomSheetTextData,
                 leadingIcon = AppIcons.Verified,
                 leadingIconTint = MaterialTheme.colorScheme.success,
+            )
+        }
+
+        is DocumentDetailsBottomSheetContent.IssuerNotTrusted -> {
+            IssuerNotTrustedSheetContent(
+                onClose = {
+                    onEventSent(Event.BottomSheet.IssuerNotTrusted.CloseButtonPressed)
+                },
             )
         }
     }

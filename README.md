@@ -52,6 +52,9 @@ The app consumes the SDK called EUDIW Wallet core [Wallet core](https://github.c
 - ISO18013-5 (proximity presentation),
  
 - OpenID4VCI v1 (issuing)
+
+- ETSI TS 119 602 trusted lists (LoTE) for trust management — issuer trust, status-list signer
+  trust, and reader/verifier authentication (see [wiki/CONFIGURATION.md](wiki/CONFIGURATION.md))
  
 - Issuer functionality, to support development and testing, one can access an OID4VCI test/demo service for issuing at: 
 
@@ -73,7 +76,10 @@ To support development and testing, one can access a test/demo service for remot
 
 To support proximity, the EUDI Verifier App is available [here](https://github.com/eu-digital-identity-wallet/eudi-app-multiplatform-verifier-ui) and can request PID and mDL, with reader authentication enabled.
 
-The issuer, verifier service, and verifier app authentication are based on the EUDIW development [IACA](https://github.com/niscy-eudiw/eudi-app-android-wallet-ui/tree/main/resources-logic/src/main/res/raw)
+The issuer, verifier service, and verifier app authentication are validated against the EUDIW
+development trusted lists (LoTE) in both flavors — see [wiki/CONFIGURATION.md](wiki/CONFIGURATION.md). 
+The `pidissuerca02_*` certificates under [`resources-logic/src/main/res/raw`](https://github.com/eu-digital-identity-wallet/eudi-app-android-wallet-ui/tree/main/resources-logic/src/main/res/raw)
+remain as the RQES document-retrieval trust anchors, not reader/verifier trust anchors.
 
 ## Important things to know
 

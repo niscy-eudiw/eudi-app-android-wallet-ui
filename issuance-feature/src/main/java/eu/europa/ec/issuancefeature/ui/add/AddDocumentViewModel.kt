@@ -73,6 +73,8 @@ data class State(
     val subtitle: String = "",
     val options: List<Pair<String, List<AddDocumentUi>>> = emptyList(),
     val noOptions: Boolean = false,
+
+    val isBottomSheetOpen: Boolean = false,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -90,6 +92,11 @@ sealed class Event : ViewEvent {
         val configIds: List<String>,
         val context: Context
     ) : Event()
+
+    sealed class BottomSheet : Event() {
+        data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object Close : BottomSheet()
+    }
 }
 
 sealed class Effect : ViewSideEffect {
@@ -99,6 +106,9 @@ sealed class Effect : ViewSideEffect {
         data class SwitchScreen(val screenRoute: String, val inclusive: Boolean) : Navigation()
         data class OpenDeepLinkAction(val deepLinkUri: Uri, val arguments: String?) : Navigation()
     }
+
+    data object ShowBottomSheet : Effect()
+    data object CloseBottomSheet : Effect()
 }
 
 @KoinViewModel
@@ -193,6 +203,14 @@ class AddDocumentViewModel(
 
             is Event.GoToQrScan -> {
                 navigateToQrScanScreen()
+            }
+
+            is Event.BottomSheet.UpdateBottomSheetState -> {
+                setState { copy(isBottomSheetOpen = event.isOpen) }
+            }
+
+            is Event.BottomSheet.Close -> {
+                setEffect { Effect.CloseBottomSheet }
             }
         }
     }
@@ -299,6 +317,16 @@ class AddDocumentViewModel(
                                 isLoading = false
                             )
                         }
+                    }
+
+                    is AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                error = null,
+                                isLoading = false
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
                     }
 
                     is AddDocumentInteractorIssueDocumentsPartialState.Success -> {

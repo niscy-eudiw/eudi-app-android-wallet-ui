@@ -28,8 +28,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -105,6 +107,7 @@ import eu.europa.ec.uilogic.component.wrap.FabDataUi
 import eu.europa.ec.uilogic.component.wrap.GenericBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
+import eu.europa.ec.uilogic.component.wrap.WrapFabDefaults
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.component.wrap.WrapIconButton
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
@@ -367,6 +370,15 @@ private fun Content(
                     if (index != state.documentsUi.lastIndex) {
                         VSpacer.ExtraLarge()
                     }
+                }
+
+                item(key = "fab-spacer") {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = SPACING_SMALL.dp)
+                            .height(WrapFabDefaults.Height)
+                    )
                 }
             }
         }

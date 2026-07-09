@@ -38,6 +38,7 @@ import eu.europa.ec.corelogic.model.ScopedDocumentDomain
 import eu.europa.ec.corelogic.model.TransactionLogDataDomain
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataError
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.statium.Status
@@ -57,6 +58,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.eudi.wallet.trust.IssuerNotTrustedException
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
@@ -94,7 +96,15 @@ sealed class IssueDocumentsPartialState {
         val nonIssuedDocuments: Map<String, String>,
     ) : IssueDocumentsPartialState()
 
+    data class PartialSuccessWithUntrustedIssuer(
+        val issuedDocumentIds: List<DocumentId>,
+        val untrustedDocuments: Map<FormatType, String>,
+    ) : IssueDocumentsPartialState()
+
     data class Failure(val errorMessage: String) : IssueDocumentsPartialState()
+
+    data object IssuerNotTrusted : IssueDocumentsPartialState()
+
     data class UserAuthRequired(
         val crypto: BiometricCrypto,
         val resultHandler: DeviceAuthenticationResult,
@@ -114,6 +124,8 @@ sealed class DeleteAllDocumentsPartialState {
 sealed class ResolveDocumentOfferPartialState {
     data class Success(val offer: Offer) : ResolveDocumentOfferPartialState()
     data class Failure(val errorMessage: String) : ResolveDocumentOfferPartialState()
+
+    data object IssuerNotTrusted : ResolveDocumentOfferPartialState()
 }
 
 sealed class FetchScopedDocumentsPartialState {
@@ -375,6 +387,10 @@ class WalletCoreDocumentsControllerImpl(
                             )
                         )
 
+                        is IssueDocumentsPartialState.IssuerNotTrusted -> emit(
+                            IssueDocumentsPartialState.IssuerNotTrusted
+                        )
+
                         is IssueDocumentsPartialState.Success -> emit(
                             IssueDocumentsPartialState.Success(
                                 response.documentIds
@@ -391,6 +407,13 @@ class WalletCoreDocumentsControllerImpl(
                         is IssueDocumentsPartialState.PartialSuccess -> emit(
                             IssueDocumentsPartialState.Success(
                                 response.documentIds
+                            )
+                        )
+
+                        is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> emit(
+                            IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = response.issuedDocumentIds,
+                                untrustedDocuments = response.untrustedDocuments
                             )
                         )
 
@@ -563,9 +586,13 @@ class WalletCoreDocumentsControllerImpl(
                 when (result) {
                     is OfferResult.Failure -> {
                         trySendBlocking(
-                            ResolveDocumentOfferPartialState.Failure(
-                                result.cause.localizedMessage ?: genericErrorMessage
-                            )
+                            if (result.cause.indicatesUntrustedIssuer()) {
+                                ResolveDocumentOfferPartialState.IssuerNotTrusted
+                            } else {
+                                ResolveDocumentOfferPartialState.Failure(
+                                    result.cause.localizedMessage ?: genericErrorMessage
+                                )
+                            }
                         )
                     }
 
@@ -756,6 +783,7 @@ class WalletCoreDocumentsControllerImpl(
     ): OpenId4VciManager.OnIssueEvent {
 
         var totalDocumentsToBeIssued = 0
+        val untrustedDocuments: MutableMap<FormatType, String> = mutableMapOf()
         val nonIssuedDocuments: MutableMap<FormatType, String> = mutableMapOf()
         val deferredDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
         val issuedDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
@@ -763,7 +791,11 @@ class WalletCoreDocumentsControllerImpl(
         val listener = OpenId4VciManager.OnIssueEvent { event ->
             when (event) {
                 is IssueEvent.DocumentFailed -> {
-                    nonIssuedDocuments[event.docType] = event.name
+                    if (event.cause.indicatesUntrustedIssuer()) {
+                        untrustedDocuments[event.docType] = event.name
+                    } else {
+                        nonIssuedDocuments[event.docType] = event.name
+                    }
                 }
 
                 is IssueEvent.DocumentRequiresCreateSettings -> {
@@ -840,13 +872,32 @@ class WalletCoreDocumentsControllerImpl(
 
                 is IssueEvent.Failure -> {
                     trySendBlocking(
-                        IssueDocumentsPartialState.Failure(
-                            errorMessage = documentErrorMessage
-                        )
+                        if (event.cause.indicatesUntrustedIssuer()) {
+                            IssueDocumentsPartialState.IssuerNotTrusted
+                        } else {
+                            IssueDocumentsPartialState.Failure(
+                                errorMessage = documentErrorMessage
+                            )
+                        }
                     )
                 }
 
                 is IssueEvent.Finished -> {
+
+                    if (untrustedDocuments.isNotEmpty() && event.issuedDocuments.isEmpty()) {
+                        trySendBlocking(IssueDocumentsPartialState.IssuerNotTrusted)
+                        return@OnIssueEvent
+                    }
+
+                    if (untrustedDocuments.isNotEmpty()) {
+                        trySendBlocking(
+                            IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = event.issuedDocuments,
+                                untrustedDocuments = untrustedDocuments
+                            )
+                        )
+                        return@OnIssueEvent
+                    }
 
                     if (deferredDocuments.isNotEmpty() && (prioritizeDeferred || (issuedDocuments.isEmpty()))) {
                         trySendBlocking(IssueDocumentsPartialState.DeferredSuccess(deferredDocuments))
@@ -918,4 +969,27 @@ class WalletCoreDocumentsControllerImpl(
         return manager?.let(Result.Companion::success)
             ?: Result.failure(RuntimeException(errorMessage))
     }
+}
+
+/**
+ * Determines whether a failure indicates that the issuer could not be verified as trusted.
+ *
+ * This checks if the error (or any of its underlying causes) is due to an untrusted
+ * credential signer (under the ENFORCE policy), or issuer metadata that is unsigned
+ * or fails trust verification when signed metadata is required.
+ *
+ * @return `true` if the error relates to a lack of trust in the issuer, `false` otherwise.
+ */
+private fun Throwable.indicatesUntrustedIssuer(): Boolean {
+    var throwable: Throwable? = this
+    while (throwable != null) {
+        if (throwable is IssuerNotTrustedException ||
+            throwable is CredentialIssuerMetadataError.InvalidSignedMetadata ||
+            throwable is CredentialIssuerMetadataError.MissingSignedMetadata
+        ) {
+            return true
+        }
+        throwable = throwable.cause
+    }
+    return false
 }

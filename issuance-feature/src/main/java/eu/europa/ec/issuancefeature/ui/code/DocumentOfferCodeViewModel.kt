@@ -49,13 +49,23 @@ data class State(
     val notifyOnAuthenticationFailure: Boolean = false,
 
     val screenTitle: String,
-    val screenSubtitle: String
+    val screenSubtitle: String,
+
+    val isBottomSheetOpen: Boolean = false,
+    val bottomSheetClosingInProgress: Boolean = false,
+    val sheetContent: DocumentOfferCodeBottomSheetContent = DocumentOfferCodeBottomSheetContent.IssuerNotTrusted,
 ) : ViewState
 
 sealed class Event : ViewEvent {
     data object Pop : Event()
     data object DismissError : Event()
     data class OnPinEntered(val code: SecurePin, val context: Context) : Event()
+
+    sealed class BottomSheet : Event() {
+        data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
+        data object Close : BottomSheet()
+    }
 }
 
 sealed class Effect : ViewSideEffect {
@@ -66,6 +76,17 @@ sealed class Effect : ViewSideEffect {
 
         data object Pop : Navigation()
     }
+
+    data object ShowBottomSheet : Effect()
+    data object CloseBottomSheet : Effect()
+}
+
+sealed class DocumentOfferCodeBottomSheetContent {
+    data object IssuerNotTrusted : DocumentOfferCodeBottomSheetContent()
+
+    data class PartialSuccessWithUntrustedIssuer(
+        val issuedDocumentIds: List<DocumentId>,
+    ) : DocumentOfferCodeBottomSheetContent()
 }
 
 @KoinViewModel
@@ -117,6 +138,38 @@ class DocumentOfferCodeViewModel(
                     pinCode = event.code
                 )
             }
+
+            is Event.BottomSheet.UpdateBottomSheetState -> {
+                setState {
+                    copy(
+                        isBottomSheetOpen = event.isOpen,
+                        bottomSheetClosingInProgress = if (event.isOpen) false
+                        else bottomSheetClosingInProgress,
+                    )
+                }
+            }
+
+            is Event.BottomSheet.FinishedClosing -> {
+                when (val content = viewState.value.sheetContent) {
+                    is DocumentOfferCodeBottomSheetContent.IssuerNotTrusted -> {
+                        setEvent(Event.Pop)
+                    }
+
+                    is DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
+                        goToDocumentIssuanceSuccessScreen(
+                            documentIds = content.issuedDocumentIds,
+                            onSuccessNavigation = viewState.value.offerCodeUiConfig.onSuccessNavigation,
+                        )
+                    }
+                }
+            }
+
+            is Event.BottomSheet.Close -> {
+                if (!viewState.value.bottomSheetClosingInProgress) {
+                    setState { copy(bottomSheetClosingInProgress = true) }
+                    hideBottomSheet()
+                }
+            }
         }
     }
 
@@ -151,6 +204,30 @@ class DocumentOfferCodeViewModel(
                                 onCancel = { setEvent(Event.DismissError) }
                             )
                         )
+                    }
+
+                    is IssueDocumentsInteractorPartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                sheetContent = DocumentOfferCodeBottomSheetContent.IssuerNotTrusted
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
+                    }
+
+                    is IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                sheetContent = DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer(
+                                    issuedDocumentIds = response.issuedDocumentIds
+                                )
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
                     }
 
                     is IssueDocumentsInteractorPartialState.Success -> {
@@ -230,4 +307,10 @@ class DocumentOfferCodeViewModel(
 
     private fun calculateScreenCaption(txCodeLength: Int): String =
         resourceProvider.getString(R.string.issuance_code_caption, txCodeLength)
+
+    private fun hideBottomSheet() {
+        setEffect {
+            Effect.CloseBottomSheet
+        }
+    }
 }

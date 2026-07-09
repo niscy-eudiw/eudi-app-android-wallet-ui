@@ -90,6 +90,10 @@ sealed class Event : ViewEvent {
             data object PrimaryButtonPressed : Delete()
             data object SecondaryButtonPressed : Delete()
         }
+
+        sealed class IssuerNotTrusted : BottomSheet() {
+            data object CloseButtonPressed : IssuerNotTrusted()
+        }
     }
 
     data object ChangeContentVisibility : Event()
@@ -148,6 +152,8 @@ sealed class DocumentDetailsBottomSheetContent {
     data class TrustedRelyingPartyInfo(
         val bottomSheetTextData: BottomSheetTextDataUi
     ) : DocumentDetailsBottomSheetContent()
+
+    data object IssuerNotTrusted : DocumentDetailsBottomSheetContent()
 }
 
 @KoinViewModel
@@ -192,6 +198,10 @@ class DocumentDetailsViewModel(
             }
 
             is Event.BottomSheet.Delete.SecondaryButtonPressed -> {
+                hideBottomSheet()
+            }
+
+            is Event.BottomSheet.IssuerNotTrusted.CloseButtonPressed -> {
                 hideBottomSheet()
             }
 
@@ -530,6 +540,16 @@ class DocumentDetailsViewModel(
                                 )
                             )
                         }
+                    }
+
+                    is DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        showBottomSheet(sheetContent = DocumentDetailsBottomSheetContent.IssuerNotTrusted)
                     }
 
                     is DocumentDetailsInteractorIssuancePartialState.Success -> {

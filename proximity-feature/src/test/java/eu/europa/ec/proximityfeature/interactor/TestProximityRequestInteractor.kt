@@ -91,6 +91,7 @@ class TestProximityRequestInteractor {
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
+        mockRequestAllowsClaimSelection(response = mockedSelectableClaims)
     }
 
     @After
@@ -849,6 +850,29 @@ class TestProximityRequestInteractor {
         }
     }
 
+    // Case 17:
+    // 1. walletCorePresentationController.events emits:
+    // TransferEventPartialState.VerifierNotTrusted.
+
+    // Case 17 Expected Result:
+    // ProximityRequestInteractorPartialState.VerifierNotTrusted
+    @Test
+    fun `Given Case 17, When getRequestDocuments is called, Then Case 17 expected result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.VerifierNotTrusted
+            )
+
+            // When
+            interactor.getRequestDocuments().runFlowTest {
+                val expectedResult = ProximityRequestInteractorPartialState.VerifierNotTrusted
+
+                // Then
+                assertEquals(expectedResult, awaitItem())
+            }
+        }
+
     // Constructor default
     // the null-controller default: construction must not trigger the lazy Koin lookup
     @Test
@@ -894,8 +918,8 @@ class TestProximityRequestInteractor {
     }
 
     // Case 2:
-    // updateRequestedDocuments is called with a selected combination (a single mDL match), with
-    // the interactor on its BLE (selectable) path.
+    // updateRequestedDocuments is called with a selected combination (a single mDL match), for
+    // a BLE request (the controller derives requestAllowsClaimSelection = true).
 
     // Case 2 Expected Result:
     // The controller's updateRequestedDocuments is called with the selection built from that
@@ -981,6 +1005,11 @@ class TestProximityRequestInteractor {
         whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenAnswer {
             (it.arguments.first() as String) in revokedIds
         }
+    }
+
+    private fun mockRequestAllowsClaimSelection(response: Boolean) {
+        whenever(walletCorePresentationController.requestAllowsClaimSelection)
+            .thenReturn(response)
     }
     //endregion
 }

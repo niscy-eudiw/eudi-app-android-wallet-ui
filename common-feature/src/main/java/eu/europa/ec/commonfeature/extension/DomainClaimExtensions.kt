@@ -37,8 +37,8 @@ fun DocumentPayloadDomain.toSelectiveExpandableListItems(): List<ExpandableListI
 
 /**
  * Read-only sibling of [toSelectiveExpandableListItems]: the same claim tree without leaf
- * checkboxes, for presentation modes whose claims aren't individually selectable (OpenID4VP - see
- * [PresentationMode.allowsClaimSelection][eu.europa.ec.commonfeature.config.PresentationMode.allowsClaimSelection]).
+ * checkboxes, for requests whose claims aren't individually selectable (DCQL — see
+ * [WalletCorePresentationController.requestAllowsClaimSelection][eu.europa.ec.corelogic.controller.WalletCorePresentationController.requestAllowsClaimSelection]).
  */
 fun DocumentPayloadDomain.toExpandableListItems(): List<ExpandableListItemUi> {
     return this.docClaimsDomain.map { claimDomain ->
