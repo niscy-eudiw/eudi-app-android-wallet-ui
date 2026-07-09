@@ -46,6 +46,7 @@
     <string name="generic_filters_title">Filter by</string>
     <string name="generic_filters_sort_by">Sort by</string>
     <string name="generic_search">Search</string>
+    <string name="generic_unknown_issuer">Unknown</string>
     <!--endregion-->
 
     <!-- region Content Description -->
@@ -286,7 +287,7 @@
     <string name="documents_screen_filters_filter_by_expiry_period_4">Before today (expired)</string>
     <string name="documents_screen_filters_apply">@string/generic_filters_apply</string>
     <string name="documents_screen_filters_reset">@string/generic_filters_reset</string>
-    <string name="documents_screen_filters_unknown_issuer">Unknown</string>
+    <string name="documents_screen_filters_unknown_issuer">@string/generic_unknown_issuer</string>
     <!--endregion-->
 
     <!-- region Transactions Screen -->
@@ -349,6 +350,7 @@
     <string name="document_details_document_credentials_info_text">Instances remaining %d/%d</string>
     <string name="document_details_main_section_text">DOCUMENT DATA</string>
     <string name="document_details_issuer_section_text">ISSUER DETAILS</string>
+    <string name="document_details_issuer_card_unknown_issuer">@string/generic_unknown_issuer</string>
     <string name="document_details_issuer_card_expires_on_text">Expires on:\ %1$s</string>
     <string name="document_details_issuer_card_revoked_text">Document revoked</string>
     <string name="document_details_issuer_card_issued_on_text">Issued on:\ %1$s</string>
