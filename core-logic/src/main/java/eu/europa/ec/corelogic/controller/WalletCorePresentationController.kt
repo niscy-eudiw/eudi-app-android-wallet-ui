@@ -655,10 +655,9 @@ class WalletCorePresentationControllerImpl(
 }
 
 private fun Throwable.isUntrustedVerifierRejection(): Boolean {
-    //TODO: replace this class-name + message match with a typed check once Core surfaces a
+    //TODO: replace this rendered-cause match with a typed check once Core surfaces a
     // dedicated untrusted-verifier error instead of an implementation-only openid4vp exception
-    return this::class.qualifiedName == "eu.europa.ec.eudi.openid4vp.AuthorizationRequestException" &&
-            toString().contains("Untrusted x5c")
+    return toString().contains(other = "Untrusted x5c", ignoreCase = true)
 }
 
 private fun RequestProcessor.ProcessedRequest.Success.buildCombinationsDomain(): List<PresentationCombinationDomain> {

@@ -152,6 +152,10 @@ sealed class IssueDeferredDocumentPartialState {
     data class Expired(
         val documentId: DocumentId,
     ) : IssueDeferredDocumentPartialState()
+
+    data class IssuerNotTrusted(
+        val documentId: DocumentId,
+    ) : IssueDeferredDocumentPartialState()
 }
 
 /**
@@ -629,11 +633,17 @@ class WalletCoreDocumentsControllerImpl(
                         when (deferredIssuanceResult) {
                             is DeferredIssueResult.DocumentFailed -> {
                                 trySendBlocking(
-                                    IssueDeferredDocumentPartialState.Failed(
-                                        documentId = deferredIssuanceResult.documentId,
-                                        errorMessage = deferredIssuanceResult.cause.localizedMessage
-                                            ?: documentErrorMessage
-                                    )
+                                    if (deferredIssuanceResult.cause.indicatesUntrustedIssuer()) {
+                                        IssueDeferredDocumentPartialState.IssuerNotTrusted(
+                                            documentId = deferredIssuanceResult.documentId
+                                        )
+                                    } else {
+                                        IssueDeferredDocumentPartialState.Failed(
+                                            documentId = deferredIssuanceResult.documentId,
+                                            errorMessage = deferredIssuanceResult.cause.localizedMessage
+                                                ?: documentErrorMessage
+                                        )
+                                    }
                                 )
                             }
 
@@ -884,7 +894,13 @@ class WalletCoreDocumentsControllerImpl(
 
                 is IssueEvent.Finished -> {
 
-                    if (untrustedDocuments.isNotEmpty() && event.issuedDocuments.isEmpty()) {
+                    // event.issuedDocuments folds in deferred ids too — the Core emits
+                    // Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted
+                    // outcome is decided on the locally tracked *actually issued* documents.
+                    // Otherwise a batch of "one untrusted + one deferred from the same issuer"
+                    // would be treated as a partial success and navigate the user on the success screen with a deferred
+                    // (un-issued) id instead of the "Issuance blocked" sheet.
+                    if (untrustedDocuments.isNotEmpty() && issuedDocuments.isEmpty()) {
                         trySendBlocking(IssueDocumentsPartialState.IssuerNotTrusted)
                         return@OnIssueEvent
                     }
@@ -892,7 +908,7 @@ class WalletCoreDocumentsControllerImpl(
                     if (untrustedDocuments.isNotEmpty()) {
                         trySendBlocking(
                             IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
-                                issuedDocumentIds = event.issuedDocuments,
+                                issuedDocumentIds = issuedDocuments.keys.toList(),
                                 untrustedDocuments = untrustedDocuments
                             )
                         )

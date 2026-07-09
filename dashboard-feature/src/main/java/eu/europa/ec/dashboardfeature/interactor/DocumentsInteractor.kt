@@ -120,6 +120,10 @@ sealed class DocumentInteractorRetryIssuingDeferredDocumentPartialState {
     data class Expired(
         val documentId: DocumentId,
     ) : DocumentInteractorRetryIssuingDeferredDocumentPartialState()
+
+    data class IssuerNotTrusted(
+        val documentId: DocumentId,
+    ) : DocumentInteractorRetryIssuingDeferredDocumentPartialState()
 }
 
 sealed class DocumentInteractorRetryIssuingDeferredDocumentsPartialState {
@@ -536,6 +540,10 @@ class DocumentsInteractorImpl(
                     is DocumentInteractorRetryIssuingDeferredDocumentPartialState.Expired -> {
                         deleteDocument(result.documentId).lastOrNull()
                     }
+
+                    is DocumentInteractorRetryIssuingDeferredDocumentPartialState.IssuerNotTrusted -> {
+                        deleteDocument(result.documentId).lastOrNull()
+                    }
                 }
             }
         }
@@ -582,6 +590,12 @@ class DocumentsInteractorImpl(
 
                         is IssueDeferredDocumentPartialState.Expired -> {
                             DocumentInteractorRetryIssuingDeferredDocumentPartialState.Expired(
+                                documentId = result.documentId
+                            )
+                        }
+
+                        is IssueDeferredDocumentPartialState.IssuerNotTrusted -> {
+                            DocumentInteractorRetryIssuingDeferredDocumentPartialState.IssuerNotTrusted(
                                 documentId = result.documentId
                             )
                         }
