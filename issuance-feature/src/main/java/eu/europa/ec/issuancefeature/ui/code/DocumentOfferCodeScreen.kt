@@ -41,6 +41,7 @@ import androidx.navigation.NavController
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
+import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -110,11 +111,23 @@ fun DocumentOfferCodeScreen(
                 },
                 sheetState = bottomSheetState
             ) {
-                IssuerNotTrustedSheetContent(
-                    onClose = {
-                        viewModel.setEvent(Event.BottomSheet.Close)
-                    },
-                )
+                when (state.sheetContent) {
+                    is DocumentOfferCodeBottomSheetContent.IssuerNotTrusted -> {
+                        IssuerNotTrustedSheetContent(
+                            onClose = {
+                                viewModel.setEvent(Event.BottomSheet.Close)
+                            },
+                        )
+                    }
+
+                    is DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
+                        IssuerPartiallyTrustedSheetContent(
+                            onClose = {
+                                viewModel.setEvent(Event.BottomSheet.Close)
+                            },
+                        )
+                    }
+                }
             }
         }
     }

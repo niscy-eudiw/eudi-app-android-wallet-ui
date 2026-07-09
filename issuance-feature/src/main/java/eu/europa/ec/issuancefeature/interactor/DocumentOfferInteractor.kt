@@ -76,6 +76,10 @@ sealed class IssueDocumentsInteractorPartialState {
         val documentIds: List<DocumentId>,
     ) : IssueDocumentsInteractorPartialState()
 
+    data class PartialSuccessWithUntrustedIssuer(
+        val issuedDocumentIds: List<DocumentId>,
+    ) : IssueDocumentsInteractorPartialState()
+
     data class DeferredSuccess(
         val successRoute: String,
     ) : IssueDocumentsInteractorPartialState()
@@ -236,6 +240,12 @@ class DocumentOfferInteractorImpl(
                         is IssueDocumentsPartialState.PartialSuccess -> {
                             IssueDocumentsInteractorPartialState.Success(
                                 documentIds = response.documentIds
+                            )
+                        }
+
+                        is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> {
+                            IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = response.issuedDocumentIds
                             )
                         }
 

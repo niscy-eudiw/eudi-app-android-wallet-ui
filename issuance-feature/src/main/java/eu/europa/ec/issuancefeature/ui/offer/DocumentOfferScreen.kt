@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
+import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
@@ -160,11 +161,23 @@ fun DocumentOfferScreen(
                 },
                 sheetState = bottomSheetState
             ) {
-                IssuerNotTrustedSheetContent(
-                    onClose = {
-                        viewModel.setEvent(Event.BottomSheet.Close)
-                    },
-                )
+                when (state.sheetContent) {
+                    is DocumentOfferBottomSheetContent.IssuerNotTrusted -> {
+                        IssuerNotTrustedSheetContent(
+                            onClose = {
+                                viewModel.setEvent(Event.BottomSheet.Close)
+                            },
+                        )
+                    }
+
+                    is DocumentOfferBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
+                        IssuerPartiallyTrustedSheetContent(
+                            onClose = {
+                                viewModel.setEvent(Event.BottomSheet.Close)
+                            },
+                        )
+                    }
+                }
             }
         }
     }

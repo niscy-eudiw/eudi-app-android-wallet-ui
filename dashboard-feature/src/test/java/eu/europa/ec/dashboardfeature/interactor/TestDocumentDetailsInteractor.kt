@@ -1279,6 +1279,37 @@ class TestDocumentDetailsInteractor {
         }
     }
 
+    // Single-document re-issue cannot mix an issued and a trust-blocked document; this locks in the
+    // defensive mapping to Success.
+    @Test
+    fun `Given controller emits PartialSuccessWithUntrustedIssuer, When reIssueDocument is called, Then Success is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.reIssueDocument(
+                    documentId = mockedPidId,
+                    issuerId = mockedReIssueIssuerId,
+                    allowAuthorizationFallback = true,
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                    issuedDocumentIds = listOf(mockedPidId),
+                    untrustedDocuments = emptyMap(),
+                ).toFlow()
+            )
+
+            // When
+            interactor.reIssueDocument(documentId = mockedPidId, issuerId = mockedReIssueIssuerId)
+                .runFlowTest {
+                    // Then
+                    assertEquals(
+                        DocumentDetailsInteractorIssuancePartialState.Success,
+                        awaitItem()
+                    )
+                }
+        }
+    }
+
     @Test
     fun `Given controller emits UserAuthRequired, When reIssueDocument is called, Then UserAuthRequired is emitted`() {
         coroutineRule.runTest {

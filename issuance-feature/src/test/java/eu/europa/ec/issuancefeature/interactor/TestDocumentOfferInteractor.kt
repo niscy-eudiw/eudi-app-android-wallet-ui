@@ -1116,6 +1116,44 @@ class TestDocumentOfferInteractor {
                 )
             }
         }
+
+    // Case 12:
+    // 1. walletCoreDocumentsController.issueDocumentsByOffer emits
+    // IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer with:
+    // - an issued (mDL) documentId, and
+    // - an untrusted, trust-blocked document (a PID).
+
+    // Case 12 Expected Result:
+    // IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer with:
+    // - the same issued documentIds (the trust-blocked document is dropped).
+    @Test
+    fun `Given Case 12, When issueDocuments is called, Then Case 12 Expected Result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            mockWalletDocumentsControllerIssueByUriEventEmission(
+                offerUri = mockedUriPath1,
+                event = IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                    issuedDocumentIds = listOf(mockedMdlId),
+                    untrustedDocuments = mapOf(mockedMdocPidDocType to mockedOfferedDocumentName)
+                )
+            )
+
+            // When
+            interactor.issueDocuments(
+                offerUri = mockedUriPath1,
+                issuerName = mockedIssuerName,
+                navigation = mockedConfigNavigationTypePop,
+                txCode = securePin(mockedTxCode)
+            ).runFlowTest {
+                // Then
+                assertEquals(
+                    IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer(
+                        issuedDocumentIds = listOf(mockedMdlId)
+                    ),
+                    awaitItem()
+                )
+            }
+        }
     //endregion
 
     //region handleUserAuthentication

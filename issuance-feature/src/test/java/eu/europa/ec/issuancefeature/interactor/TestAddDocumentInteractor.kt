@@ -587,6 +587,43 @@ class TestAddDocumentInteractor {
         }
     }
 
+    // Case C2:
+    // walletCoreDocumentsController.issueDocuments returns PartialSuccessWithUntrustedIssuer
+    // → AddDocumentInteractorIssueDocumentsPartialState.Success with the issued ids.
+    // Add-document issues a single non-PID or the combined PID set (one signer), so it cannot
+    // actually produce this mixed result; this locks in the defensive mapping.
+    @Test
+    fun `Given controller emits PartialSuccessWithUntrustedIssuer, When issueDocuments is called, Then Success with the issued ids is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.issueDocuments(
+                    issuanceMethod = IssuanceMethod.OPENID4VCI,
+                    configIds = listOf("id"),
+                    issuerId = "issuerId",
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                    issuedDocumentIds = listOf(mockedPidId),
+                    untrustedDocuments = emptyMap(),
+                ).toFlow()
+            )
+
+            // When
+            interactor.issueDocuments(
+                issuanceMethod = IssuanceMethod.OPENID4VCI,
+                configIds = listOf("id"),
+                issuerId = "issuerId",
+            ).runFlowTest {
+                // Then
+                assertEquals(
+                    AddDocumentInteractorIssueDocumentsPartialState.Success(listOf(mockedPidId)),
+                    awaitItem()
+                )
+            }
+        }
+    }
+
     // Case D:
     // walletCoreDocumentsController.issueDocuments returns UserAuthRequired
     // → AddDocumentInteractorIssueDocumentsPartialState.UserAuthRequired with the crypto + handler

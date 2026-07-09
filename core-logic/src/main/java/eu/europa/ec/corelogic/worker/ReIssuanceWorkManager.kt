@@ -96,6 +96,11 @@ class ReIssuanceWorkManager(
                             idsRemoved.add(document.id)
                         }
 
+                        is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> {
+                            succeed.addAll(state.issuedDocumentIds)
+                            idsRemoved.add(document.id)
+                        }
+
                         is IssueDocumentsPartialState.Success -> {
                             succeed.addAll(state.documentIds)
                             idsRemoved.add(document.id)

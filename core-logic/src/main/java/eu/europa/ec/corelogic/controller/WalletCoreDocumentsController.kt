@@ -96,6 +96,11 @@ sealed class IssueDocumentsPartialState {
         val nonIssuedDocuments: Map<String, String>,
     ) : IssueDocumentsPartialState()
 
+    data class PartialSuccessWithUntrustedIssuer(
+        val issuedDocumentIds: List<DocumentId>,
+        val untrustedDocuments: Map<FormatType, String>,
+    ) : IssueDocumentsPartialState()
+
     data class Failure(val errorMessage: String) : IssueDocumentsPartialState()
 
     data object IssuerNotTrusted : IssueDocumentsPartialState()
@@ -402,6 +407,13 @@ class WalletCoreDocumentsControllerImpl(
                         is IssueDocumentsPartialState.PartialSuccess -> emit(
                             IssueDocumentsPartialState.Success(
                                 response.documentIds
+                            )
+                        )
+
+                        is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> emit(
+                            IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = response.issuedDocumentIds,
+                                untrustedDocuments = response.untrustedDocuments
                             )
                         )
 
@@ -771,7 +783,7 @@ class WalletCoreDocumentsControllerImpl(
     ): OpenId4VciManager.OnIssueEvent {
 
         var totalDocumentsToBeIssued = 0
-        var issuerNotTrusted = false
+        val untrustedDocuments: MutableMap<FormatType, String> = mutableMapOf()
         val nonIssuedDocuments: MutableMap<FormatType, String> = mutableMapOf()
         val deferredDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
         val issuedDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
@@ -780,9 +792,10 @@ class WalletCoreDocumentsControllerImpl(
             when (event) {
                 is IssueEvent.DocumentFailed -> {
                     if (event.cause.indicatesUntrustedIssuer()) {
-                        issuerNotTrusted = true
+                        untrustedDocuments[event.docType] = event.name
+                    } else {
+                        nonIssuedDocuments[event.docType] = event.name
                     }
-                    nonIssuedDocuments[event.docType] = event.name
                 }
 
                 is IssueEvent.DocumentRequiresCreateSettings -> {
@@ -871,8 +884,18 @@ class WalletCoreDocumentsControllerImpl(
 
                 is IssueEvent.Finished -> {
 
-                    if (issuerNotTrusted) {
+                    if (untrustedDocuments.isNotEmpty() && event.issuedDocuments.isEmpty()) {
                         trySendBlocking(IssueDocumentsPartialState.IssuerNotTrusted)
+                        return@OnIssueEvent
+                    }
+
+                    if (untrustedDocuments.isNotEmpty()) {
+                        trySendBlocking(
+                            IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = event.issuedDocuments,
+                                untrustedDocuments = untrustedDocuments
+                            )
+                        )
                         return@OnIssueEvent
                     }
 

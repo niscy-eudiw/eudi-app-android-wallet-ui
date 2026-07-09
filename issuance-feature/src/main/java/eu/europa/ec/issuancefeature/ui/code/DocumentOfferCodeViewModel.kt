@@ -52,6 +52,7 @@ data class State(
     val screenSubtitle: String,
 
     val isBottomSheetOpen: Boolean = false,
+    val sheetContent: DocumentOfferCodeBottomSheetContent = DocumentOfferCodeBottomSheetContent.IssuerNotTrusted,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -76,6 +77,14 @@ sealed class Effect : ViewSideEffect {
 
     data object ShowBottomSheet : Effect()
     data object CloseBottomSheet : Effect()
+}
+
+sealed class DocumentOfferCodeBottomSheetContent {
+    data object IssuerNotTrusted : DocumentOfferCodeBottomSheetContent()
+
+    data class PartialSuccessWithUntrustedIssuer(
+        val issuedDocumentIds: List<DocumentId>,
+    ) : DocumentOfferCodeBottomSheetContent()
 }
 
 @KoinViewModel
@@ -133,7 +142,16 @@ class DocumentOfferCodeViewModel(
             }
 
             is Event.BottomSheet.Close -> {
-                setEvent(Event.Pop)
+                when (val content = viewState.value.sheetContent) {
+                    is DocumentOfferCodeBottomSheetContent.IssuerNotTrusted -> setEvent(Event.Pop)
+
+                    is DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
+                        goToDocumentIssuanceSuccessScreen(
+                            documentIds = content.issuedDocumentIds,
+                            onSuccessNavigation = viewState.value.offerCodeUiConfig.onSuccessNavigation,
+                        )
+                    }
+                }
             }
         }
     }
@@ -175,7 +193,21 @@ class DocumentOfferCodeViewModel(
                         setState {
                             copy(
                                 isLoading = false,
-                                error = null
+                                error = null,
+                                sheetContent = DocumentOfferCodeBottomSheetContent.IssuerNotTrusted
+                            )
+                        }
+                        setEffect { Effect.ShowBottomSheet }
+                    }
+
+                    is IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                sheetContent = DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer(
+                                    issuedDocumentIds = response.issuedDocumentIds
+                                )
                             )
                         }
                         setEffect { Effect.ShowBottomSheet }

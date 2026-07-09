@@ -315,6 +315,10 @@ class DocumentDetailsInteractorImpl(
                     successIds.addAll(state.documentIds)
                 }
 
+                is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> {
+                    successIds.addAll(state.issuedDocumentIds)
+                }
+
                 is IssueDocumentsPartialState.Success -> {
                     successIds.addAll(state.documentIds)
                 }
