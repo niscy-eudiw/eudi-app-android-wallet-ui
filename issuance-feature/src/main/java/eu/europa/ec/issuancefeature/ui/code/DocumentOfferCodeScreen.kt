@@ -27,11 +27,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -60,11 +62,13 @@ import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +83,7 @@ fun DocumentOfferCodeScreen(
     )
 
     val isBottomSheetOpen = state.isBottomSheetOpen
+    val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
@@ -101,7 +106,9 @@ fun DocumentOfferCodeScreen(
                 handleNavigationEffect(navigationEffect, navController)
             },
             paddingValues = paddingValues,
-            state = state
+            state = state,
+            coroutineScope = scope,
+            modalBottomSheetState = bottomSheetState,
         )
 
         if (isBottomSheetOpen) {
@@ -133,6 +140,7 @@ fun DocumentOfferCodeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
     context: Context,
@@ -143,7 +151,9 @@ private fun Content(
     effectFlow: Flow<Effect>,
     onEventSend: (Event) -> Unit,
     onNavigationRequested: (Effect.Navigation) -> Unit,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    coroutineScope: CoroutineScope,
+    modalBottomSheetState: SheetState,
 ) {
     Column(
         modifier = Modifier
@@ -206,7 +216,14 @@ private fun Content(
                 }
 
                 is Effect.CloseBottomSheet -> {
-                    onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                    coroutineScope.launch {
+                        modalBottomSheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!modalBottomSheetState.isVisible) {
+                            onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                            onEventSend(Event.BottomSheet.FinishedClosing)
+                        }
+                    }
                 }
             }
         }.collect()
@@ -249,6 +266,7 @@ private fun handleNavigationEffect(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @ThemeModePreviews
 @Composable
 private fun DocumentOfferCodeScreenEmptyPreview() {
@@ -282,6 +300,8 @@ private fun DocumentOfferCodeScreenEmptyPreview() {
                     )
                 )
             ),
+            coroutineScope = rememberCoroutineScope(),
+            modalBottomSheetState = rememberModalBottomSheetState(),
         )
     }
 }

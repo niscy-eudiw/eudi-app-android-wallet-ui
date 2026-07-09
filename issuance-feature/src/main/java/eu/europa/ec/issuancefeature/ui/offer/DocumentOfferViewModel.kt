@@ -86,6 +86,7 @@ sealed class Event : ViewEvent {
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
         data object Close : BottomSheet()
     }
 }
@@ -226,7 +227,7 @@ class DocumentOfferViewModel(
                 setState { copy(isBottomSheetOpen = event.isOpen) }
             }
 
-            is Event.BottomSheet.Close -> {
+            is Event.BottomSheet.FinishedClosing -> {
                 when (val content = viewState.value.sheetContent) {
                     is DocumentOfferBottomSheetContent.IssuerNotTrusted -> {
                         doNavigation(viewState.value.offerUiConfig.onCancelNavigation)
@@ -239,6 +240,10 @@ class DocumentOfferViewModel(
                         )
                     }
                 }
+            }
+
+            is Event.BottomSheet.Close -> {
+                hideBottomSheet()
             }
         }
     }
@@ -582,6 +587,12 @@ class DocumentOfferViewModel(
                     else -> {}
                 }
             }
+        }
+    }
+
+    private fun hideBottomSheet() {
+        setEffect {
+            Effect.CloseBottomSheet
         }
     }
 }

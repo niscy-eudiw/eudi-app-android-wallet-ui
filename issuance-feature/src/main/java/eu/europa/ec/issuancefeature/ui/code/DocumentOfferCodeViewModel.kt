@@ -62,6 +62,7 @@ sealed class Event : ViewEvent {
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
         data object Close : BottomSheet()
     }
 }
@@ -141,9 +142,11 @@ class DocumentOfferCodeViewModel(
                 setState { copy(isBottomSheetOpen = event.isOpen) }
             }
 
-            is Event.BottomSheet.Close -> {
+            is Event.BottomSheet.FinishedClosing -> {
                 when (val content = viewState.value.sheetContent) {
-                    is DocumentOfferCodeBottomSheetContent.IssuerNotTrusted -> setEvent(Event.Pop)
+                    is DocumentOfferCodeBottomSheetContent.IssuerNotTrusted -> {
+                        setEvent(Event.Pop)
+                    }
 
                     is DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
                         goToDocumentIssuanceSuccessScreen(
@@ -152,6 +155,10 @@ class DocumentOfferCodeViewModel(
                         )
                     }
                 }
+            }
+
+            is Event.BottomSheet.Close -> {
+                hideBottomSheet()
             }
         }
     }
@@ -290,4 +297,10 @@ class DocumentOfferCodeViewModel(
 
     private fun calculateScreenCaption(txCodeLength: Int): String =
         resourceProvider.getString(R.string.issuance_code_caption, txCodeLength)
+
+    private fun hideBottomSheet() {
+        setEffect {
+            Effect.CloseBottomSheet
+        }
+    }
 }

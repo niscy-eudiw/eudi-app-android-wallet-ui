@@ -70,6 +70,10 @@ sealed class Event : ViewEvent {
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
+        sealed class VerifierNotTrusted : BottomSheet() {
+            data object Close : VerifierNotTrusted()
+        }
     }
 }
 
@@ -170,6 +174,19 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
                 setState {
                     copy(isBottomSheetOpen = event.isOpen)
                 }
+            }
+
+            is Event.BottomSheet.FinishedClosing -> {
+                when (viewState.value.sheetContent) {
+                    RequestBottomSheetContent.WARNING -> Unit
+                    RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+                        setEvent(Event.OnBack)
+                    }
+                }
+            }
+
+            is Event.BottomSheet.VerifierNotTrusted.Close -> {
+                hideBottomSheet()
             }
         }
     }

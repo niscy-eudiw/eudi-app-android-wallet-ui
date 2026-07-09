@@ -177,7 +177,7 @@ fun RequestScreen(
                             }
 
                             RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
-                                Event.OnBack
+                                Event.BottomSheet.VerifierNotTrusted.Close
                             }
                         }
                     )
@@ -253,6 +253,7 @@ private fun Content(
                     }.invokeOnCompletion {
                         if (!modalBottomSheetState.isVisible) {
                             onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                            onEventSend(Event.BottomSheet.FinishedClosing)
                         }
                     }
                 }
@@ -429,7 +430,7 @@ private fun SheetContent(
                 ),
                 leadingIcon = AppIcons.Warning,
                 leadingIconTint = MaterialTheme.colorScheme.warning,
-                onPositiveClick = { onEventSent(Event.OnBack) },
+                onPositiveClick = { onEventSent(Event.BottomSheet.VerifierNotTrusted.Close) },
             )
         }
     }
