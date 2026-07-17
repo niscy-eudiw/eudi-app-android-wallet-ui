@@ -1,10 +1,10 @@
 [versions]
 # Kotlin
-kotlin = "2.4.0"
+kotlin = "2.4.10"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
 kotlinxSerializationJson = "1.11.0"
-ksp = "2.3.9"
+ksp = "2.3.10"
 
 # AndroidX
 androidxActivity = "1.13.0"
@@ -45,10 +45,10 @@ ktor = "3.5.1"
 
 # Koin (dependency injection)
 koin = "4.2.2"
-koinPlugin = "1.0.1"
+koinPlugin = "1.0.2"
 
 # EUDI wallet SDKs
-eudiWalletCore = "0.29.0-SNAPSHOT"
+eudiWalletCore = "0.29.0"
 rqesUiSDK = "0.3.9"
 eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
 
@@ -59,9 +59,9 @@ treessence = "1.1.2"
 
 # Other libraries
 androidDesugarJdkLibs = "2.1.5"
-googlePhoneNumber = "9.0.34"
+googlePhoneNumber = "9.0.35"
 gson = "2.14.0"
-lint = "32.2.1"
+lint = "32.3.0"
 material = "1.14.0"
 protobuf = "4.35.1"
 sqlcipher = "4.17.0"
@@ -83,11 +83,11 @@ robolectric = "4.16.1"
 turbine = "1.2.1"
 
 # Gradle plugins
-androidGradlePlugin = "9.2.1"
+androidGradlePlugin = "9.3.0"
 baselineprofile = "1.5.0-alpha07"
 dependencyGraphPlugin = "0.13.0"
 gmsPlugin = "4.5.0"
-kover = "0.9.8"
+kover = "0.9.9"
 owaspDependencyCheck = "12.2.2"
 protobufPlugin = "0.10.0"
 secrets = "2.0.1"
