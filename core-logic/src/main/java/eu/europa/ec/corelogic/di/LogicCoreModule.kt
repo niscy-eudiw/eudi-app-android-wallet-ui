@@ -75,9 +75,7 @@ fun provideEudiWallet(
 }
 
 @Single
-fun provideWalletCoreConfig(
-    context: Context,
-): WalletCoreConfig = WalletCoreConfigImpl(context)
+fun provideWalletCoreConfig(): WalletCoreConfig = WalletCoreConfigImpl()
 
 @Factory
 fun provideWalletCoreLogController(logController: LogController): WalletCoreLogController =

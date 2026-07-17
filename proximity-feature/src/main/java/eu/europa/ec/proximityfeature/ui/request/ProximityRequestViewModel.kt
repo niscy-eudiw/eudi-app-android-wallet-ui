@@ -22,7 +22,9 @@ import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.ui.request.Event
+import eu.europa.ec.commonfeature.ui.request.RequestBottomSheetContent
 import eu.europa.ec.commonfeature.ui.request.RequestViewModel
+import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
@@ -106,6 +108,7 @@ class ProximityRequestViewModel(
             )
         }
 
+        viewModelJob?.cancel()
         viewModelJob = viewModelScope.launch {
 
             interactor.setScopeId(presentationScopeId)
@@ -126,7 +129,7 @@ class ProximityRequestViewModel(
                     }
 
                     is ProximityRequestInteractorPartialState.Success -> {
-                        updateData(response.requestDocuments)
+                        val requestData = RequestDataUi.of(combinations = response.combinationsUi)
 
                         val updatedHeaderConfig = viewState.value.headerConfig.copy(
                             relyingPartyData = getRelyingPartyData(
@@ -140,9 +143,23 @@ class ProximityRequestViewModel(
                                 isLoading = false,
                                 error = null,
                                 headerConfig = updatedHeaderConfig,
-                                items = response.requestDocuments
+                                requestDataUi = requestData,
+                                claimsAreSelectable = response.claimsAreSelectable,
                             )
                         }
+
+                        updateData(updatedItems = requestData.selectedDocuments)
+                    }
+
+                    is ProximityRequestInteractorPartialState.VerifierNotTrusted -> {
+                        interactor.stopPresentation()
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        showBottomSheet(sheetContent = RequestBottomSheetContent.VERIFIER_NOT_TRUSTED)
                     }
 
                     is ProximityRequestInteractorPartialState.Disconnect -> {
@@ -162,7 +179,7 @@ class ProximityRequestViewModel(
                                 isLoading = false,
                                 error = null,
                                 headerConfig = updatedHeaderConfig,
-                                noItems = true,
+                                requestDataUi = RequestDataUi.NoData,
                             )
                         }
                     }
@@ -171,12 +188,11 @@ class ProximityRequestViewModel(
         }
     }
 
-    override fun updateData(
-        updatedItems: List<RequestDocumentItemUi>,
-        allowShare: Boolean?
-    ) {
-        super.updateData(updatedItems, allowShare)
-        interactor.updateRequestedDocuments(updatedItems)
+    override fun updateData(updatedItems: List<RequestDocumentItemUi>) {
+        super.updateData(updatedItems)
+        interactor.updateRequestedDocuments(
+            selectedCombination = viewState.value.requestDataUi.selectedCombination,
+        )
     }
 
     override fun cleanUp() {

@@ -22,9 +22,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import eu.europa.ec.resourceslogic.theme.values.allCorneredShapeLarge
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -44,6 +47,11 @@ private val secondaryFabContainerColor: Color
 
 private val secondaryFabContentColor: Color
     @Composable get() = contentColorFor(secondaryFabContainerColor)
+
+@Immutable
+object WrapFabDefaults {
+    val Height: Dp = 56.dp
+}
 
 /**
  * Data class that is used to construct and initialize a fab button.

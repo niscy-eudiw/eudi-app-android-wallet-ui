@@ -30,21 +30,31 @@ sealed interface PresentationMode {
 
     @Serializable
     @SerialName("OpenId4Vp")
-    data class OpenId4Vp(val uri: String, val initiatorRoute: String) : PresentationMode {
+    data class OpenId4Vp(
+        val uri: String,
+        val initiatorRoute: String,
+    ) : PresentationMode {
+
         override val scopeId: String
             get() = "vp_presentation_scope_id"
     }
 
     @Serializable
     @SerialName("Ble")
-    data class Ble(val initiatorRoute: String) : PresentationMode {
+    data class Ble(
+        val initiatorRoute: String,
+    ) : PresentationMode {
+
         override val scopeId: String
             get() = "ble_presentation_scope_id"
     }
 
     @Serializable
     @SerialName("DcApi")
-    data class DcApi(val initiatorRoute: String) : PresentationMode {
+    data class DcApi(
+        val initiatorRoute: String,
+    ) : PresentationMode {
+
         override val scopeId: String
             get() = "dc_api_presentation_scope_id"
     }

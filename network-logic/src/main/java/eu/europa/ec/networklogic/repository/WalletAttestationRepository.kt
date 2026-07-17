@@ -51,7 +51,7 @@ class WalletAttestationRepositoryImpl(
 
     private companion object {
         const val WALLET_INSTANCE_ATTESTATION_PATH = "/wallet-instance-attestation/jwk"
-        const val WALLET_UNIT_ATTESTATION_PATH = "/wallet-unit-attestation/jwk-set"
+        const val WALLET_KEY_ATTESTATION_PATH = "/key-attestation/jwk-set"
     }
 
     override suspend fun getWalletAttestation(
@@ -76,7 +76,7 @@ class WalletAttestationRepositoryImpl(
         keys: List<JsonObject>,
         nonce: String?
     ): Result<String> = runCatching {
-        httpClient.post(baseUrl + WALLET_UNIT_ATTESTATION_PATH) {
+        httpClient.post(baseUrl + WALLET_KEY_ATTESTATION_PATH) {
             contentType(ContentType.Application.Json)
             setBody(
                 buildJsonObject {
@@ -90,7 +90,7 @@ class WalletAttestationRepositoryImpl(
             )
         }.bodyAsText()
             .let { Json.decodeFromString<JsonObject>(it) }
-            .let { it.jsonObject["walletUnitAttestation"]?.jsonPrimitive?.content }
+            .let { it.jsonObject["keyAttestation"]?.jsonPrimitive?.content }
             ?: throw IllegalStateException("No attestation response")
     }
 }

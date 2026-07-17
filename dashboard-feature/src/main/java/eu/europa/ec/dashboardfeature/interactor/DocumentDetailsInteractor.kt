@@ -29,6 +29,7 @@ import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
@@ -50,6 +51,8 @@ sealed class DocumentDetailsInteractorIssuancePartialState {
     data object Success : DocumentDetailsInteractorIssuancePartialState()
 
     data class Failure(val errorMessage: String) : DocumentDetailsInteractorIssuancePartialState()
+
+    data object IssuerNotTrusted : DocumentDetailsInteractorIssuancePartialState()
 
     data class UserAuthRequired(
         val crypto: BiometricCrypto,
@@ -172,10 +175,15 @@ class DocumentDetailsInteractorImpl(
                 val issuerDetails = IssuerDetailsCardDataUi(
                     issuerName = issuerName,
                     issuerLogo = issuerLogo?.uri,
-                    documentState = if (documentIsRevoked) {
-                        IssuerDetailsCardDataUi.DocumentState.Revoked
-                    } else {
-                        IssuerDetailsCardDataUi.DocumentState.Issued(
+                    documentState = when {
+                        documentIsRevoked -> IssuerDetailsCardDataUi.DocumentState.Revoked
+
+                        safeIssuedDocument.isExpired() -> IssuerDetailsCardDataUi.DocumentState.Expired(
+                            issuanceDate = documentDetailsDomain.documentIssuanceDate,
+                            expirationDate = documentDetailsDomain.documentExpirationDate
+                        )
+
+                        else -> IssuerDetailsCardDataUi.DocumentState.Issued(
                             issuanceDate = documentDetailsDomain.documentIssuanceDate,
                             expirationDate = documentDetailsDomain.documentExpirationDate
                         )
@@ -286,6 +294,7 @@ class DocumentDetailsInteractorImpl(
 
             val successIds: MutableList<String> = mutableListOf()
             var isDeferred = false
+            var issuerNotTrusted = false
             var error: String? = null
             var authenticationData: Pair<BiometricCrypto, DeviceAuthenticationResult>? = null
 
@@ -298,8 +307,16 @@ class DocumentDetailsInteractorImpl(
                     error = state.errorMessage
                 }
 
+                is IssueDocumentsPartialState.IssuerNotTrusted -> {
+                    issuerNotTrusted = true
+                }
+
                 is IssueDocumentsPartialState.PartialSuccess -> {
                     successIds.addAll(state.documentIds)
+                }
+
+                is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> {
+                    successIds.addAll(state.issuedDocumentIds)
                 }
 
                 is IssueDocumentsPartialState.Success -> {
@@ -311,7 +328,9 @@ class DocumentDetailsInteractorImpl(
                 }
             }
 
-            val state = if (successIds.isNotEmpty() || isDeferred) {
+            val state = if (issuerNotTrusted) {
+                DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted
+            } else if (successIds.isNotEmpty() || isDeferred) {
                 DocumentDetailsInteractorIssuancePartialState.Success
             } else if (error != null) {
                 DocumentDetailsInteractorIssuancePartialState.Failure(error)

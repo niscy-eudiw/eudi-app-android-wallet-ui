@@ -49,6 +49,7 @@ import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.WrapButton
+import eu.europa.ec.uilogic.component.wrap.WrapCard
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableCard
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import java.net.URI
@@ -74,6 +75,11 @@ data class IssuerDetailsCardDataUi(
             val expirationDate: String?
         ) : DocumentState()
 
+        data class Expired(
+            val issuanceDate: String,
+            val expirationDate: String?
+        ) : DocumentState()
+
         data object Revoked : DocumentState()
     }
 
@@ -87,6 +93,10 @@ data class IssuerDetailsCardDataUi(
             return when (documentState) {
                 is DocumentState.Issued -> {
                     R.string.document_details_issuer_card_issued_message_text
+                }
+
+                is DocumentState.Expired -> {
+                    R.string.document_details_issuer_card_expired_message_text
                 }
 
                 is DocumentState.Revoked -> {
@@ -107,10 +117,29 @@ data class IssuerDetailsCardDataUi(
                     R.string.document_details_issuer_card_issued_action_btn_text
                 }
 
+                is DocumentState.Expired -> {
+                    R.string.document_details_issuer_card_expired_action_btn_text
+                }
+
                 is DocumentState.Revoked -> {
                     null
                 }
             }
+        }
+
+
+    /**
+     * Indicates whether the card should bypass its expandable behavior and only display its
+     * expanded content. This occurs when the collapsed header would be empty (no issuer name
+     * and no expiration date for an issued document). Documents in Expired or Revoked states
+     * always show status information, so this property remains false for those states.
+     */
+    val showsExpandedContentOnly: Boolean
+        get() {
+            val state = documentState
+            return issuerName == null
+                    && state is DocumentState.Issued
+                    && state.expirationDate == null
         }
 }
 
@@ -119,7 +148,9 @@ data class IssuerDetailsCardDataUi(
  *
  * This card shows information about an issuer, such as their logo, name,
  * and document status (e.g., Issued or Revoked). It supports an expandable
- * state to reveal additional details and action buttons.
+ * state to reveal additional details and action buttons. When
+ * [IssuerDetailsCardDataUi.showsExpandedContentOnly] is true, it shows those details directly
+ * instead.
  *
  * @param data The data object containing the issuer details and current state to display.
  * @param modifier Modifier used to adjust the layout or appearance of the card.
@@ -137,103 +168,126 @@ fun IssuerDetailsCard(
     onExpandedChange: (() -> Unit),
     onActionButtonClick: (() -> Unit),
 ) {
-    WrapExpandableCard(
-        modifier = modifier,
-        isExpanded = data.isExpanded,
-        onExpandedChange = onExpandedChange,
-        cardCollapsedContent = {
-            val issuerLogoContentDescription =
-                stringResource(R.string.content_description_issuer_logo_icon)
+    if (data.showsExpandedContentOnly) {
+        WrapCard(
+            modifier = modifier,
+            shape = shape,
+            colors = colors,
+        ) {
+            IssuerDetailsCardExpanded(
+                data = data,
+                onActionButtonClick = onActionButtonClick,
+            )
+        }
+    } else {
+        WrapExpandableCard(
+            modifier = modifier,
+            isExpanded = data.isExpanded,
+            onExpandedChange = onExpandedChange,
+            cardCollapsedContent = {
+                val issuerLogoContentDescription =
+                    stringResource(R.string.content_description_issuer_logo_icon)
 
-            val leadingContent = remember(data.issuerLogo) {
-                data.issuerLogo?.let { safeIssuerLogo ->
+                val leadingContent = remember(data.issuerLogo) {
                     ListItemLeadingContentDataUi.AsyncImage(
-                        imageUrl = safeIssuerLogo.toString(),
+                        imageUrl = data.issuerLogo?.toString().orEmpty(),
                         contentDescription = issuerLogoContentDescription,
                         errorImage = AppIcons.Id,
                     )
                 }
-            }
 
-            val (supportingText: String?, supportingTextColor: Color) = when (data.documentState) {
-                is IssuerDetailsCardDataUi.DocumentState.Issued -> {
-                    data.documentState.expirationDate?.let { safeExpirationDate ->
-                        stringResource(
-                            R.string.document_details_issuer_card_expires_on_text,
-                            safeExpirationDate
+                val (supportingText: String?, supportingTextColor: Color) = when (data.documentState) {
+                    is IssuerDetailsCardDataUi.DocumentState.Issued -> {
+                        data.documentState.expirationDate?.let { safeExpirationDate ->
+                            stringResource(
+                                R.string.document_details_issuer_card_expires_on_text,
+                                safeExpirationDate
+                            )
+                        } to MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+
+                    is IssuerDetailsCardDataUi.DocumentState.Expired -> {
+                        val expiredText =
+                            data.documentState.expirationDate?.let { safeExpirationDate ->
+                                stringResource(
+                                    R.string.document_details_issuer_card_expired_on_text,
+                                    safeExpirationDate
+                                )
+                            } ?: stringResource(R.string.document_details_issuer_card_expired_text)
+                        expiredText to MaterialTheme.colorScheme.error
+                    }
+
+                    is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
+                        stringResource(R.string.document_details_issuer_card_revoked_text) to MaterialTheme.colorScheme.error
+                    }
+                }
+
+                WrapListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    item = ListItemDataUi(
+                        itemId = ISSUER_DETAILS_CARD_ITEM_ID,
+                        mainContentData = ListItemMainContentDataUi.Text(
+                            text = data.issuerName
+                                ?: stringResource(R.string.document_details_issuer_card_unknown_issuer)
+                        ),
+                        supportingText = supportingText,
+                        leadingContentData = leadingContent,
+                        trailingContentData = ListItemTrailingContentDataUi.Icon(
+                            iconData = if (data.isExpanded)
+                                AppIcons.KeyboardArrowUp
+                            else AppIcons.KeyboardArrowDown
                         )
-                    } to MaterialTheme.colorScheme.onSurfaceVariant
-                }
-
-                is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
-                    stringResource(R.string.document_details_issuer_card_revoked_text) to MaterialTheme.colorScheme.error
-                }
-            }
-
-            WrapListItem(
-                modifier = Modifier.fillMaxWidth(),
-                item = ListItemDataUi(
-                    itemId = ISSUER_DETAILS_CARD_ITEM_ID,
-                    mainContentData = ListItemMainContentDataUi.Text(
-                        text = data.issuerName.orEmpty()
                     ),
-                    supportingText = supportingText,
-                    leadingContentData = leadingContent,
-                    trailingContentData = ListItemTrailingContentDataUi.Icon(
-                        iconData = if (data.isExpanded)
-                            AppIcons.KeyboardArrowUp
-                        else AppIcons.KeyboardArrowDown
-                    )
-                ),
-                onItemClick = {
-                    onExpandedChange()
-                },
-                mainContentVerticalPadding = SPACING_MEDIUM.dp,
-                supportingTextColor = supportingTextColor,
-                colors = colors,
-            )
-        },
-        cardExpandedContent = {
-            IssuerDetailsCardExpanded(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        top = SPACING_MEDIUM.dp,
-                        bottom = SPACING_SMALL.dp,
-                        start = SPACING_MEDIUM.dp,
-                        end = SPACING_MEDIUM.dp,
-                    ),
-                data = data,
-                onActionButtonClick = onActionButtonClick
-            )
-        },
-        shape = shape,
-        colors = colors,
-        throttleClicks = true,
-    )
+                    onItemClick = {
+                        onExpandedChange()
+                    },
+                    mainContentVerticalPadding = SPACING_MEDIUM.dp,
+                    supportingTextColor = supportingTextColor,
+                    colors = colors,
+                )
+            },
+            cardExpandedContent = {
+                IssuerDetailsCardExpanded(
+                    data = data,
+                    onActionButtonClick = onActionButtonClick
+                )
+            },
+            shape = shape,
+            colors = colors,
+            throttleClicks = true,
+        )
+    }
 }
 
 @Composable
 private fun IssuerDetailsCardExpanded(
-    modifier: Modifier = Modifier,
     data: IssuerDetailsCardDataUi,
     onActionButtonClick: () -> Unit
 ) {
     Column(
-        modifier = modifier,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                top = SPACING_MEDIUM.dp,
+                bottom = SPACING_SMALL.dp,
+                start = SPACING_MEDIUM.dp,
+                end = SPACING_MEDIUM.dp,
+            ),
         verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
         horizontalAlignment = Alignment.Start
     ) {
         when (val docState = data.documentState) {
             is IssuerDetailsCardDataUi.DocumentState.Issued -> {
-                Text(
-                    text = stringResource(
-                        R.string.document_details_issuer_card_issued_on_text,
-                        docState.issuanceDate
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
+                IssuedOnText(
+                    issuanceDate = docState.issuanceDate,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            is IssuerDetailsCardDataUi.DocumentState.Expired -> {
+                IssuedOnText(
+                    issuanceDate = docState.issuanceDate,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
@@ -274,6 +328,22 @@ private fun IssuerDetailsCardExpanded(
     }
 }
 
+@Composable
+private fun IssuedOnText(
+    issuanceDate: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = stringResource(
+            R.string.document_details_issuer_card_issued_on_text,
+            issuanceDate
+        ),
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium
+    )
+}
+
 private const val ISSUER_DETAILS_CARD_ITEM_ID = "issuerDetailsCardId"
 
 @ThemeModePreviews
@@ -289,6 +359,14 @@ private fun IssuerDetailsCardPreview() {
             expirationDate = "22 March 2030"
         )
         val revokedState = IssuerDetailsCardDataUi.DocumentState.Revoked
+        val expiredState = IssuerDetailsCardDataUi.DocumentState.Expired(
+            issuanceDate = "16 February 2024 - 13:18",
+            expirationDate = "22 March 2024"
+        )
+        val issuedNoNameNoExpiryState = IssuerDetailsCardDataUi.DocumentState.Issued(
+            issuanceDate = "16 February 2024 - 13:18",
+            expirationDate = null
+        )
 
         val issuerDetailsItems = listOf(
             IssuerDetailsCardDataUi(
@@ -314,6 +392,24 @@ private fun IssuerDetailsCardPreview() {
                 issuerLogo = null,
                 documentState = revokedState,
                 isExpanded = true,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = expiredState,
+                isExpanded = false,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = expiredState,
+                isExpanded = true,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = null,
+                issuerLogo = null,
+                documentState = issuedNoNameNoExpiryState,
+                isExpanded = false,
             )
         )
 

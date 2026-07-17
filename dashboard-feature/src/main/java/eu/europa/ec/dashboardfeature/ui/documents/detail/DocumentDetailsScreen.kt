@@ -45,10 +45,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
-import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentIssuanceStateUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.dashboardfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
@@ -425,6 +425,14 @@ private fun SheetContent(
                 leadingIconTint = MaterialTheme.colorScheme.success,
             )
         }
+
+        is DocumentDetailsBottomSheetContent.IssuerNotTrusted -> {
+            IssuerNotTrustedSheetContent(
+                onClose = {
+                    onEventSent(Event.BottomSheet.IssuerNotTrusted.CloseButtonPressed)
+                },
+            )
+        }
     }
 }
 
@@ -590,7 +598,6 @@ private fun DocumentDetailsScreenPreview() {
                         )
                     )
                 ),
-                documentIssuanceStateUi = DocumentIssuanceStateUi.Issued,
             ),
             hideSensitiveContent = false,
             sheetContent = DocumentDetailsBottomSheetContent.DeleteDocumentConfirmation

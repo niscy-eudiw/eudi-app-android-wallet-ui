@@ -38,6 +38,7 @@ import eu.europa.ec.corelogic.model.ScopedDocumentDomain
 import eu.europa.ec.corelogic.model.TransactionLogDataDomain
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
+import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataError
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.statium.Status
@@ -46,6 +47,7 @@ import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateDocumentSettings
+import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultCreateKeySettings
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -56,6 +58,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.eudi.wallet.trust.IssuerNotTrustedException
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
@@ -93,7 +96,15 @@ sealed class IssueDocumentsPartialState {
         val nonIssuedDocuments: Map<String, String>,
     ) : IssueDocumentsPartialState()
 
+    data class PartialSuccessWithUntrustedIssuer(
+        val issuedDocumentIds: List<DocumentId>,
+        val untrustedDocuments: Map<FormatType, String>,
+    ) : IssueDocumentsPartialState()
+
     data class Failure(val errorMessage: String) : IssueDocumentsPartialState()
+
+    data object IssuerNotTrusted : IssueDocumentsPartialState()
+
     data class UserAuthRequired(
         val crypto: BiometricCrypto,
         val resultHandler: DeviceAuthenticationResult,
@@ -113,6 +124,8 @@ sealed class DeleteAllDocumentsPartialState {
 sealed class ResolveDocumentOfferPartialState {
     data class Success(val offer: Offer) : ResolveDocumentOfferPartialState()
     data class Failure(val errorMessage: String) : ResolveDocumentOfferPartialState()
+
+    data object IssuerNotTrusted : ResolveDocumentOfferPartialState()
 }
 
 sealed class FetchScopedDocumentsPartialState {
@@ -137,6 +150,10 @@ sealed class IssueDeferredDocumentPartialState {
     ) : IssueDeferredDocumentPartialState()
 
     data class Expired(
+        val documentId: DocumentId,
+    ) : IssueDeferredDocumentPartialState()
+
+    data class IssuerNotTrusted(
         val documentId: DocumentId,
     ) : IssueDeferredDocumentPartialState()
 }
@@ -277,8 +294,8 @@ class WalletCoreDocumentsControllerImpl(
             runCatching {
 
                 val metadata: Map<VciConfig, CredentialIssuerMetadata> =
-                    openId4VciManagers.mapValues { (_, manager) ->
-                        manager.getIssuerMetadata().getOrThrow()
+                    openId4VciManagers.mapValues { (vciConfig, manager) ->
+                        manager.getIssuerMetadata(vciConfig.issuerUrl).getOrThrow()
                     }
 
                 val documents: List<ScopedDocumentDomain> =
@@ -306,7 +323,7 @@ class WalletCoreDocumentsControllerImpl(
                             ScopedDocumentDomain(
                                 name = name,
                                 configurationId = id.value,
-                                credentialIssuerId = vciConfig.config.issuerUrl,
+                                credentialIssuerId = vciConfig.issuerUrl,
                                 credentialIssuerOrder = vciConfig.order,
                                 formatType = formatType,
                                 isPid = isPid
@@ -374,6 +391,10 @@ class WalletCoreDocumentsControllerImpl(
                             )
                         )
 
+                        is IssueDocumentsPartialState.IssuerNotTrusted -> emit(
+                            IssueDocumentsPartialState.IssuerNotTrusted
+                        )
+
                         is IssueDocumentsPartialState.Success -> emit(
                             IssueDocumentsPartialState.Success(
                                 response.documentIds
@@ -390,6 +411,13 @@ class WalletCoreDocumentsControllerImpl(
                         is IssueDocumentsPartialState.PartialSuccess -> emit(
                             IssueDocumentsPartialState.Success(
                                 response.documentIds
+                            )
+                        )
+
+                        is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> emit(
+                            IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = response.issuedDocumentIds,
+                                untrustedDocuments = response.untrustedDocuments
                             )
                         )
 
@@ -562,9 +590,13 @@ class WalletCoreDocumentsControllerImpl(
                 when (result) {
                     is OfferResult.Failure -> {
                         trySendBlocking(
-                            ResolveDocumentOfferPartialState.Failure(
-                                result.cause.localizedMessage ?: genericErrorMessage
-                            )
+                            if (result.cause.indicatesUntrustedIssuer()) {
+                                ResolveDocumentOfferPartialState.IssuerNotTrusted
+                            } else {
+                                ResolveDocumentOfferPartialState.Failure(
+                                    result.cause.localizedMessage ?: genericErrorMessage
+                                )
+                            }
                         )
                     }
 
@@ -601,11 +633,17 @@ class WalletCoreDocumentsControllerImpl(
                         when (deferredIssuanceResult) {
                             is DeferredIssueResult.DocumentFailed -> {
                                 trySendBlocking(
-                                    IssueDeferredDocumentPartialState.Failed(
-                                        documentId = deferredIssuanceResult.documentId,
-                                        errorMessage = deferredIssuanceResult.cause.localizedMessage
-                                            ?: documentErrorMessage
-                                    )
+                                    if (deferredIssuanceResult.cause.indicatesUntrustedIssuer()) {
+                                        IssueDeferredDocumentPartialState.IssuerNotTrusted(
+                                            documentId = deferredIssuanceResult.documentId
+                                        )
+                                    } else {
+                                        IssueDeferredDocumentPartialState.Failed(
+                                            documentId = deferredIssuanceResult.documentId,
+                                            errorMessage = deferredIssuanceResult.cause.localizedMessage
+                                                ?: documentErrorMessage
+                                        )
+                                    }
                                 )
                             }
 
@@ -711,7 +749,7 @@ class WalletCoreDocumentsControllerImpl(
     override suspend fun isDocumentLowOnCredentials(document: IssuedDocument): Boolean {
         val documentRemainingCredentials = document.credentialsCount()
 
-        return document.credentialPolicy == CreateDocumentSettings.CredentialPolicy.OneTimeUse
+        return document.credentialPolicy is CreateDocumentSettings.CredentialPolicy.OnceOnly
                 && documentRemainingCredentials <= 1
     }
 
@@ -738,6 +776,7 @@ class WalletCoreDocumentsControllerImpl(
             ).getOrThrow()
 
             manager.issueDocumentByConfigurationIdentifiers(
+                issuerUrl = issuerId,
                 credentialConfigurationIds = configIds,
                 onIssueEvent = issuanceCallback(prioritizeDeferred)
             )
@@ -755,6 +794,7 @@ class WalletCoreDocumentsControllerImpl(
     ): OpenId4VciManager.OnIssueEvent {
 
         var totalDocumentsToBeIssued = 0
+        val untrustedDocuments: MutableMap<FormatType, String> = mutableMapOf()
         val nonIssuedDocuments: MutableMap<FormatType, String> = mutableMapOf()
         val deferredDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
         val issuedDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
@@ -762,24 +802,58 @@ class WalletCoreDocumentsControllerImpl(
         val listener = OpenId4VciManager.OnIssueEvent { event ->
             when (event) {
                 is IssueEvent.DocumentFailed -> {
-                    nonIssuedDocuments[event.docType] = event.name
+                    if (event.cause.indicatesUntrustedIssuer()) {
+                        untrustedDocuments[event.docType] = event.name
+                    } else {
+                        nonIssuedDocuments[event.docType] = event.name
+                    }
                 }
 
                 is IssueEvent.DocumentRequiresCreateSettings -> {
-                    launch {
-                        val offeredDocIdentifier = event.offeredDocument.documentIdentifier
+                    when (event) {
+                        is IssueEvent.DocumentRequiresCreateSettings.MandatoryReusePolicy -> {
+                            val (secureAreaId, createKeySettings) = eudiWallet.getDefaultCreateKeySettings()
+                            event.resume(secureAreaId, createKeySettings)
+                        }
 
-                        val documentIssuanceRule = walletCoreConfig
-                            .documentIssuanceConfig
-                            .getRuleForDocument(documentIdentifier = offeredDocIdentifier)
+                        is IssueEvent.DocumentRequiresCreateSettings.OptionalReusePolicy -> {
+                            val offeredDocIdentifier = event.offeredDocument.documentIdentifier
+                            val configuredPolicy = walletCoreConfig
+                                .documentIssuanceConfig
+                                .getPolicyForDocument(documentIdentifier = offeredDocIdentifier)
 
-                        event.resume(
-                            eudiWallet.getDefaultCreateDocumentSettings(
-                                offeredDocument = event.offeredDocument,
-                                credentialPolicy = documentIssuanceRule.policy,
-                                numberOfCredentials = documentIssuanceRule.numberOfCredentials,
+                            val maxBatchSize = event.offeredDocument.batchCredentialIssuanceSize
+                            val safeMaxNumberOfCredentials = minOf(
+                                maxBatchSize,
+                                configuredPolicy.numberOfCredentials
                             )
-                        )
+
+                            val adjustedPolicy = when (configuredPolicy) {
+                                is CreateDocumentSettings.CredentialPolicy.LimitedTime -> {
+                                    configuredPolicy
+                                }
+
+                                is CreateDocumentSettings.CredentialPolicy.OnceOnly -> {
+                                    configuredPolicy.copy(
+                                        numberOfCredentials = safeMaxNumberOfCredentials
+                                    )
+                                }
+
+                                is CreateDocumentSettings.CredentialPolicy.RotatingBatch -> {
+                                    configuredPolicy.copy(
+                                        numberOfCredentials = safeMaxNumberOfCredentials
+                                    )
+                                }
+                            }
+
+                            val createDocumentSettings =
+                                eudiWallet.getDefaultCreateDocumentSettings(
+                                    offeredDocument = event.offeredDocument,
+                                    credentialPolicy = adjustedPolicy
+                                )
+
+                            event.resume(createDocumentSettings)
+                        }
                     }
                 }
 
@@ -809,13 +883,38 @@ class WalletCoreDocumentsControllerImpl(
 
                 is IssueEvent.Failure -> {
                     trySendBlocking(
-                        IssueDocumentsPartialState.Failure(
-                            errorMessage = documentErrorMessage
-                        )
+                        if (event.cause.indicatesUntrustedIssuer()) {
+                            IssueDocumentsPartialState.IssuerNotTrusted
+                        } else {
+                            IssueDocumentsPartialState.Failure(
+                                errorMessage = documentErrorMessage
+                            )
+                        }
                     )
                 }
 
                 is IssueEvent.Finished -> {
+
+                    // event.issuedDocuments folds in deferred ids too — the Core emits
+                    // Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted
+                    // outcome is decided on the locally tracked *actually issued* documents.
+                    // Otherwise a batch of "one untrusted + one deferred from the same issuer"
+                    // would be treated as a partial success and navigate the user on the success screen with a deferred
+                    // (un-issued) id instead of the "Issuance blocked" sheet.
+                    if (untrustedDocuments.isNotEmpty() && issuedDocuments.isEmpty()) {
+                        trySendBlocking(IssueDocumentsPartialState.IssuerNotTrusted)
+                        return@OnIssueEvent
+                    }
+
+                    if (untrustedDocuments.isNotEmpty()) {
+                        trySendBlocking(
+                            IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = issuedDocuments.keys.toList(),
+                                untrustedDocuments = untrustedDocuments
+                            )
+                        )
+                        return@OnIssueEvent
+                    }
 
                     if (deferredDocuments.isNotEmpty() && (prioritizeDeferred || (issuedDocuments.isEmpty()))) {
                         trySendBlocking(IssueDocumentsPartialState.DeferredSuccess(deferredDocuments))
@@ -880,11 +979,34 @@ class WalletCoreDocumentsControllerImpl(
     ): Result<OpenId4VciManager> {
 
         val manager = openId4VciManagers.entries
-            .firstOrNull { (vciConfig, _) -> vciConfig.config.issuerUrl == issuerId }
+            .firstOrNull { (vciConfig, _) -> vciConfig.issuerUrl == issuerId }
             ?.value
             ?: if (useDefault) openId4VciManagers.values.firstOrNull() else null
 
         return manager?.let(Result.Companion::success)
             ?: Result.failure(RuntimeException(errorMessage))
     }
+}
+
+/**
+ * Determines whether a failure indicates that the issuer could not be verified as trusted.
+ *
+ * This checks if the error (or any of its underlying causes) is due to an untrusted
+ * credential signer (under the ENFORCE policy), or issuer metadata that is unsigned
+ * or fails trust verification when signed metadata is required.
+ *
+ * @return `true` if the error relates to a lack of trust in the issuer, `false` otherwise.
+ */
+private fun Throwable.indicatesUntrustedIssuer(): Boolean {
+    var throwable: Throwable? = this
+    while (throwable != null) {
+        if (throwable is IssuerNotTrustedException ||
+            throwable is CredentialIssuerMetadataError.InvalidSignedMetadata ||
+            throwable is CredentialIssuerMetadataError.MissingSignedMetadata
+        ) {
+            return true
+        }
+        throwable = throwable.cause
+    }
+    return false
 }

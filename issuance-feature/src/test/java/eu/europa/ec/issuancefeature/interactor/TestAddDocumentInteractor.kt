@@ -587,6 +587,43 @@ class TestAddDocumentInteractor {
         }
     }
 
+    // Case C2:
+    // walletCoreDocumentsController.issueDocuments returns PartialSuccessWithUntrustedIssuer
+    // → AddDocumentInteractorIssueDocumentsPartialState.Success with the issued ids.
+    // Add-document issues a single non-PID or the combined PID set (one signer), so it cannot
+    // actually produce this mixed result; this locks in the defensive mapping.
+    @Test
+    fun `Given controller emits PartialSuccessWithUntrustedIssuer, When issueDocuments is called, Then Success with the issued ids is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.issueDocuments(
+                    issuanceMethod = IssuanceMethod.OPENID4VCI,
+                    configIds = listOf("id"),
+                    issuerId = "issuerId",
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                    issuedDocumentIds = listOf(mockedPidId),
+                    untrustedDocuments = emptyMap(),
+                ).toFlow()
+            )
+
+            // When
+            interactor.issueDocuments(
+                issuanceMethod = IssuanceMethod.OPENID4VCI,
+                configIds = listOf("id"),
+                issuerId = "issuerId",
+            ).runFlowTest {
+                // Then
+                assertEquals(
+                    AddDocumentInteractorIssueDocumentsPartialState.Success(listOf(mockedPidId)),
+                    awaitItem()
+                )
+            }
+        }
+    }
+
     // Case D:
     // walletCoreDocumentsController.issueDocuments returns UserAuthRequired
     // → AddDocumentInteractorIssueDocumentsPartialState.UserAuthRequired with the crypto + handler
@@ -625,6 +662,38 @@ class TestAddDocumentInteractor {
         }
     }
 
+    // Case E:
+    // walletCoreDocumentsController.issueDocuments returns IssuerNotTrusted
+    // → AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted
+    @Test
+    fun `Given controller emits IssuerNotTrusted, When issueDocuments is called, Then IssuerNotTrusted is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.issueDocuments(
+                    issuanceMethod = IssuanceMethod.OPENID4VCI,
+                    configIds = listOf("id"),
+                    issuerId = "issuerId",
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+            )
+
+            // When
+            interactor.issueDocuments(
+                issuanceMethod = IssuanceMethod.OPENID4VCI,
+                configIds = listOf("id"),
+                issuerId = "issuerId",
+            ).runFlowTest {
+                // Then
+                assertEquals(
+                    AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted,
+                    awaitItem()
+                )
+            }
+        }
+    }
+
     // Case F:
     // walletCoreDocumentsController.issueDocuments throws WITH a message
     // → safeAsync catches → Failure with the exception's localizedMessage (elvis left side)
@@ -657,7 +726,7 @@ class TestAddDocumentInteractor {
         }
     }
 
-    // Case E:
+    // Case G:
     // walletCoreDocumentsController.issueDocuments throws with no message
     // → safeAsync catches → Failure with the generic error message
     @Test

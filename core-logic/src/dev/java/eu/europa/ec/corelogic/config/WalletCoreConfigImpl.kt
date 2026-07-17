@@ -16,22 +16,29 @@
 
 package eu.europa.ec.corelogic.config
 
-import android.content.Context
 import eu.europa.ec.corelogic.BuildConfig
 import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.eudi.etsi119602.datamodel.Uri
+import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationClassifications
+import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationIdentifier
+import eu.europa.ec.eudi.etsi1196x2.consultation.AttestationIdentifierPredicate
+import eu.europa.ec.eudi.etsi1196x2.consultation.SupportedLists
+import eu.europa.ec.eudi.iso18013.transfer.response.ReaderAuthPolicy
+import eu.europa.ec.eudi.openid4vci.CredentialReusePolicies
+import eu.europa.ec.eudi.openid4vci.EudiReusePolicyType
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
+import eu.europa.ec.eudi.wallet.dcapi.DCAPIProtocol
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
-import eu.europa.ec.resourceslogic.R
-import java.time.Duration
+import eu.europa.ec.eudi.wallet.trust.TrustPolicy
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-internal class WalletCoreConfigImpl(
-    private val context: Context
-) : WalletCoreConfig {
+internal class WalletCoreConfigImpl : WalletCoreConfig {
 
     private var _config: EudiWalletConfig? = null
 
@@ -66,21 +73,56 @@ internal class WalletCoreConfigImpl(
 
                     configureDCAPI {
                         withEnabled(true)
+                        withSupportedProtocols(
+                            DCAPIProtocol.ISO_MDOC,
+                            DCAPIProtocol.OPENID4VP_V1_SIGNED,
+                        )
                     }
 
-                    configureReaderTrustStore(
-                        context,
-                        R.raw.pidissuerca02_cz,
-                        R.raw.pidissuerca02_ee,
-                        R.raw.pidissuerca02_eu,
-                        R.raw.pidissuerca02_lu,
-                        R.raw.pidissuerca02_nl,
-                        R.raw.pidissuerca02_pt,
-                        R.raw.pidissuerca02_ut,
-                        R.raw.dc4eu,
-                        R.raw.r45_staging,
-                        R.raw.multipaz,
-                    )
+                    configureEtsiTrust {
+                        loteLocations(
+                            SupportedLists(
+                                pidProviders = Uri("https://trustedlist.serviceproviders.eudiw.dev/LOTE/json/PIDProviders.jwt"),
+                                wrpacProviders = Uri("https://trustedlist.serviceproviders.eudiw.dev/LOTE/json/WRPACProviders.jwt"),
+                                pubEaaProviders = Uri("https://trustedlist.serviceproviders.eudiw.dev/LOTE/json/PubEAAProviders.jwt"),
+                            )
+                        )
+
+                        classifications(
+                            AttestationClassifications(
+                                pids = AttestationIdentifierPredicate.any(
+                                    identifiers = setOf(
+                                        AttestationIdentifier.MDoc(
+                                            docType = DocumentIdentifier.MdocPid.formatType
+                                        ),
+                                        AttestationIdentifier.SDJwtVc(
+                                            vct = DocumentIdentifier.SdJwtPid.formatType
+                                        ),
+                                    )
+                                )
+                            )
+                        )
+
+                        relaxCertificateProfiles()
+                        relaxPkixRevocation()
+                    }
+
+                    configureIssuerTrust {
+                        policy { default(TrustPolicy.Action.ENFORCE) }
+                        requireSignedMetadata()
+                    }
+
+                    configureDocumentStatusResolver {
+                        configureTrust {
+                            policy {
+                                default(TrustPolicy.Action.INFORM)
+                            }
+                        }
+                    }
+
+                    configureReaderTrustStore {
+                        readerAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+                    }
                 }
             }
             return _config!!
@@ -89,22 +131,48 @@ internal class WalletCoreConfigImpl(
     override val issuersConfig: List<VciConfig>
         get() = listOf(
             VciConfig(
+                issuerUrl = "https://ec.dev.issuer.eudiw.dev",
                 config = OpenId4VciManager.Config.Builder()
-                    .withIssuerUrl(issuerUrl = "https://ec.dev.issuer.eudiw.dev")
-                    .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+                    .withClientAuthenticationType(
+                        OpenId4VciManager.ClientAuthenticationType.AttestationBased(
+                            clientId = "eudiw-abca"
+                        )
+                    )
                     .withAuthFlowRedirectionURI(BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK)
                     .withParUsage(OpenId4VciManager.Config.ParUsage.IF_SUPPORTED)
                     .withDPopConfig(DPopConfig.Default)
+                    .withSupportedCredentialReusePolicies(
+                        CredentialReusePolicies.Supported(
+                            policyTypes = setOf(
+                                EudiReusePolicyType.RotatingBatch,
+                                EudiReusePolicyType.OnceOnly,
+                                EudiReusePolicyType.LimitedTime,
+                            )
+                        )
+                    )
                     .build(),
                 order = 0
             ),
             VciConfig(
+                issuerUrl = "https://dev.issuer-backend.eudiw.dev",
                 config = OpenId4VciManager.Config.Builder()
-                    .withIssuerUrl(issuerUrl = "https://dev.issuer-backend.eudiw.dev")
-                    .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+                    .withClientAuthenticationType(
+                        OpenId4VciManager.ClientAuthenticationType.AttestationBased(
+                            clientId = "eudiw-abca"
+                        )
+                    )
                     .withAuthFlowRedirectionURI(BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK)
                     .withParUsage(OpenId4VciManager.Config.ParUsage.IF_SUPPORTED)
                     .withDPopConfig(DPopConfig.Default)
+                    .withSupportedCredentialReusePolicies(
+                        CredentialReusePolicies.Supported(
+                            policyTypes = setOf(
+                                EudiReusePolicyType.RotatingBatch,
+                                EudiReusePolicyType.OnceOnly,
+                                EudiReusePolicyType.LimitedTime,
+                            )
+                        )
+                    )
                     .build(),
                 order = 1
             )
@@ -112,24 +180,22 @@ internal class WalletCoreConfigImpl(
 
     override val documentIssuanceConfig: DocumentIssuanceConfig
         get() = DocumentIssuanceConfig(
-            defaultRule = DocumentIssuanceRule(
-                policy = CredentialPolicy.RotateUse,
-                numberOfCredentials = 1
+            defaultPolicy = CredentialPolicy.RotatingBatch(
+                numberOfCredentials = 1,
+                reissueTriggerLifetimeLeft = 24.hours
             ),
-            documentSpecificRules = mapOf(
-                DocumentIdentifier.MdocPid to DocumentIssuanceRule(
-                    policy = CredentialPolicy.OneTimeUse,
-                    numberOfCredentials = 60
+            documentSpecificPolicies = mapOf(
+                DocumentIdentifier.MdocPid to CredentialPolicy.OnceOnly(
+                    numberOfCredentials = 60,
+                    reissueTriggerUnused = 2
                 ),
-                DocumentIdentifier.SdJwtPid to DocumentIssuanceRule(
-                    policy = CredentialPolicy.OneTimeUse,
-                    numberOfCredentials = 60
+                DocumentIdentifier.SdJwtPid to CredentialPolicy.OnceOnly(
+                    numberOfCredentials = 60,
+                    reissueTriggerUnused = 2
                 ),
             ),
             reissuanceRule = ReIssuanceRule(
-                minNumberOfCredentials = 2,
-                minExpirationHours = 24,
-                backgroundInterval = Duration.ofMinutes(15)
+                backgroundInterval = 15.minutes
             )
         )
 

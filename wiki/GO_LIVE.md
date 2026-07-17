@@ -68,27 +68,27 @@ redirect, or issuer-specific entry point after the enrollment policy has been sa
 
 Use this checklist before the first production release.
 
-| Area | Required production outcome |
-| --- | --- |
-| App identity | Final application ID, app name, icon, signing key, Play Console or alternative distribution identity are defined. |
-| Branding and theme | App name, launcher icon, in-app logos, light and dark color palette, splash screen, and any sub-SDK (RQES) theme are replaced with the production brand; no EUDI reference assets remain; text/background contrast meets accessibility targets. See [THEMING.md](THEMING.md). |
-| Build variants | A dedicated production flavor exists, for example `prodRelease`; `dev` and `demo` remain non-production only. |
-| Signing | Release keys are generated, stored in HSM/KMS or CI secret storage, rotated according to policy, and never committed. |
-| Issuers | All OpenID4VCI issuer URLs point to production issuer services controlled or approved by the implementer. |
-| Wallet provider | `walletProviderHost` points to the production Wallet Provider service and supports the expected attestation endpoints. |
-| Trust anchors | Demo and development certificates are replaced by production IACA/reader/verifier trust anchors. |
-| RQES | QTSP, TSA, client ID, redirect URI, and certificate retrieval settings are production values. |
-| Secrets | No production secret is hardcoded in Kotlin, Gradle, resources, or `BuildConfig`. |
-| Network | Cleartext traffic is disabled; trust-all certificate logic is absent; TLS policy and certificate pinning strategy are agreed. |
-| Storage | Wallet data, database keys, PIN material, and logs are protected, excluded from backup, and migration-safe. |
-| Authentication | PIN, biometrics, device credential fallback, key authentication, lockout, and recovery policies are approved. |
-| Deep links | All inbound URI schemes, hosts, and parameters are validated and threat-modeled. |
-| Presentation relay risk | Relay attack risk is documented, verifier compensating controls are defined, and residual risk is accepted for each presentation scenario. |
-| Logs | Production logs do not include PID, credentials, tokens, request objects, signatures, keys, or user decisions. |
-| RASP | Play Integrity, commercial protection such as DexGuard, or a manual RASP strategy is implemented. |
-| MASVS | Controls are mapped to evidence and tested with static, dynamic, and manual security testing. |
-| Privacy | DPIA, data minimization, retention, telemetry, consent, and privacy notice are complete. |
-| Operations | Monitoring, incident response, vulnerability disclosure, certificate rotation, and forced update processes exist. |
+| Area                    | Required production outcome                                                                                                                                                                                                                                                   |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| App identity            | Final application ID, app name, icon, signing key, Play Console or alternative distribution identity are defined.                                                                                                                                                             |
+| Branding and theme      | App name, launcher icon, in-app logos, light and dark color palette, splash screen, and any sub-SDK (RQES) theme are replaced with the production brand; no EUDI reference assets remain; text/background contrast meets accessibility targets. See [THEMING.md](THEMING.md). |
+| Build variants          | A dedicated production flavor exists, for example `prodRelease`; `dev` and `demo` remain non-production only.                                                                                                                                                                 |
+| Signing                 | Release keys are generated, stored in HSM/KMS or CI secret storage, rotated according to policy, and never committed.                                                                                                                                                         |
+| Issuers                 | All OpenID4VCI issuer URLs point to production issuer services controlled or approved by the implementer.                                                                                                                                                                     |
+| Wallet provider         | `walletProviderHost` points to the production Wallet Provider service and supports the expected attestation endpoints.                                                                                                                                                        |
+| Trust anchors           | Demo and development certificates are replaced by production IACA/reader/verifier trust anchors, or by a production ETSI trusted-list (LoTE) source with the dev relaxations removed.                                                                                         |
+| RQES                    | QTSP, TSA, client ID, redirect URI, and certificate retrieval settings are production values.                                                                                                                                                                                 |
+| Secrets                 | No production secret is hardcoded in Kotlin, Gradle, resources, or `BuildConfig`.                                                                                                                                                                                             |
+| Network                 | Cleartext traffic is disabled; trust-all certificate logic is absent; TLS policy and certificate pinning strategy are agreed.                                                                                                                                                 |
+| Storage                 | Wallet data, database keys, PIN material, and logs are protected, excluded from backup, and migration-safe.                                                                                                                                                                   |
+| Authentication          | PIN, biometrics, device credential fallback, key authentication, lockout, and recovery policies are approved.                                                                                                                                                                 |
+| Deep links              | All inbound URI schemes, hosts, and parameters are validated and threat-modeled.                                                                                                                                                                                              |
+| Presentation relay risk | Relay attack risk is documented, verifier compensating controls are defined, and residual risk is accepted for each presentation scenario.                                                                                                                                    |
+| Logs                    | Production logs do not include PID, credentials, tokens, request objects, signatures, keys, or user decisions.                                                                                                                                                                |
+| RASP                    | Play Integrity, commercial protection such as DexGuard, or a manual RASP strategy is implemented.                                                                                                                                                                             |
+| MASVS                   | Controls are mapped to evidence and tested with static, dynamic, and manual security testing.                                                                                                                                                                                 |
+| Privacy                 | DPIA, data minimization, retention, telemetry, consent, and privacy notice are complete.                                                                                                                                                                                      |
+| Operations              | Monitoring, incident response, vulnerability disclosure, certificate rotation, and forced update processes exist.                                                                                                                                                             |
 
 ## Current Project Shape
 
@@ -452,7 +452,9 @@ Current flavor implementations configure:
 * Document key creation.
 * OpenID4VP.
 * Digital Credential API.
-* Reader trust store.
+* Reader trust store (ETSI trusted lists in both reference flavors).
+* ETSI trusted-list (LoTE) trust: one trust source shared by issuer trust, status-list signer
+  trust, and reader authentication.
 
 ### Document Key Creation
 
@@ -733,17 +735,26 @@ Evidence to collect:
 
 ### Digital Credential API
 
-Current code:
+Current code (both flavors):
 
 ```kotlin
 configureDCAPI {
     withEnabled(true)
+    withSupportedProtocols(
+        DCAPIProtocol.ISO_MDOC,
+        DCAPIProtocol.OPENID4VP_V1_SIGNED
+    )
 }
 ```
 
 Production guidance:
 
 * Keep enabled only if your product supports Android Digital Credential API flows.
+* When enabled, at least one supported protocol is mandatory — `DCAPIConfig` fails at build time
+  otherwise. A request for any protocol not listed is rejected.
+* Enable only the protocols approved by your ecosystem profile. Do not enable
+  `OPENID4VP_V1_UNSIGNED` unless unsigned (unauthenticated) OpenID4VP requests over the DC API are
+  explicitly acceptable.
 * Test with all supported Android versions and browsers.
 * Validate all inbound DC API intents.
 * Confirm policy implications for relying parties and browser mediation.
@@ -751,13 +762,20 @@ Production guidance:
 
 ### Reader Trust Store
 
-Current code loads PEM files from:
+Both reference flavors derive reader trust from ETSI trusted lists — see
+[ETSI Trusted Lists (LoTE)](#etsi-trusted-lists-lote) below. The Wallet Core SDK also supports a
+static trust store built from PEM files under:
 
 ```text
 resources-logic/src/main/res/raw
 ```
 
-The current resources include development/demo trust anchors. In production:
+The two models are either/or: a custom store wins over the ETSI store, which wins over static
+certificates.
+
+The repository still ships development/demo trust-anchor resources, although the reference
+flavors no longer load them for reader trust. If your deployment uses the static model, in
+production:
 
 * Remove trust anchors that are not part of the production trust framework.
 * Add production IACA, reader root, verifier, or scheme certificates according to your trust model.
@@ -782,13 +800,76 @@ Certificate governance:
 * Define rotation before expiry.
 * Define emergency distrust and app update procedures.
 
+### ETSI Trusted Lists (LoTE)
+
+Both reference flavors (`dev` and `demo`) configure trust from ETSI TS 119 602 Lists of Trusted
+Entities instead of static certificates. One trust source is built from the configured list URLs
+and shared by issuer trust, status-list signer trust, and reader/verifier authentication:
+
+```kotlin
+configureEtsiTrust {
+  loteLocations(
+    SupportedLists(
+      /* production LoTE URLs */
+    )
+  )
+  classifications(
+    AttestationClassifications(
+      /* credential-type → context mapping */
+    )
+  )
+}
+configureIssuerTrust {
+  policy {
+    default(TrustPolicy.Action.ENFORCE)
+  }
+}
+configureDocumentStatusResolver {
+  configureTrust {
+    policy {
+      default(TrustPolicy.Action.INFORM)
+    }
+  }
+}
+configureReaderTrustStore {
+  readerAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+}
+```
+
+The behavior differs per area and protocol. For example, untrusted verifiers are handled
+differently by OpenID4VP (request rejected at resolution) and by the ISO 18013 paths (consent
+shown; disclosure then gated at send by `ReaderAuthPolicy`). Change this configuration carefully.
+
+Production requirements for a trusted-list deployment:
+
+* Use production LoTE URLs from the approved trust framework, over HTTPS.
+* Remove the dev relaxations. `relaxCertificateProfiles()` disables the ETSI TS 119 412-6 /
+  TS 119 411-8 end-entity certificate profile checks and `relaxPkixRevocation()` disables CRL/OCSP
+  revocation checking — both are dev-PKI workarounds and must not ship.
+* Classify every credential type you issue (`classifications`) so issuer and status-list trust
+  actually evaluate it; unclassified types are silently skipped.
+* Decide the trust policies deliberately: `INFORM` records the verdict without blocking,
+  `ENFORCE` rejects (issuance: document deleted; status: resolution fails). If the app must show
+  or act on `INFORM` verdicts, consume `IssueEvent.DocumentIssued.issuerTrustResult`.
+* Decide the `ReaderAuthPolicy`. `AlwaysRequire` refuses any reader without verified reader
+  authentication (empty status-10 response); `EnforceIfPresent` admits readers that send no
+  reader authentication.
+* Verify how the trusted-list JWTs themselves are authenticated. The SDK's default verifier
+  checks each list's signature against the certificate embedded in the list itself; if your trust
+  framework requires pinning or full chain validation of the list signer, provide a custom
+  `jwtSignatureVerifier`.
+* Review the cache windows (defaults: 24-hour on-disk list cache, 20-minute in-memory anchor
+  cache) against how quickly distrust must propagate.
+* Test both directions: a verifier/issuer on the list succeeds; one not on the list is refused in
+  every protocol.
+
 ## Issuer Configuration: `issuersConfig`
 
 Current demo code contains issuer URLs such as:
 
 ```kotlin
-.withIssuerUrl(issuerUrl = "https://issuer.eudiw.dev")
-.withIssuerUrl(issuerUrl = "https://issuer-backend.eudiw.dev")
+issuerUrl = "https://issuer.eudiw.dev"
+issuerUrl = "https://issuer-backend.eudiw.dev"
 ```
 
 Production values must point to your production OpenID4VCI issuers.
@@ -799,10 +880,12 @@ Example:
 override val issuersConfig: List<VciConfig>
     get() = listOf(
         VciConfig(
+            issuerUrl = "https://issuer.pid.example.eu",
             config = OpenId4VciManager.Config.Builder()
-                .withIssuerUrl(issuerUrl = "https://issuer.pid.example.eu")
                 .withClientAuthenticationType(
-                    OpenId4VciManager.ClientAuthenticationType.AttestationBased
+                    OpenId4VciManager.ClientAuthenticationType.AttestationBased(
+                        clientId = "your-wallet-client-id"
+                    )
                 )
                 .withAuthFlowRedirectionURI(BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK)
                 .withParUsage(OpenId4VciManager.Config.ParUsage.IF_SUPPORTED)
@@ -815,8 +898,9 @@ override val issuersConfig: List<VciConfig>
 
 | Field | Meaning | Production value |
 | --- | --- | --- |
-| `issuerUrl` | Base URL of an OpenID4VCI credential issuer. | Your production issuer base URL. It must expose valid issuer metadata and authorization metadata. |
-| `ClientAuthenticationType.AttestationBased` | Wallet authenticates with wallet/key attestation. | Use if your issuer requires wallet instance or wallet unit attestation. Align with Wallet Provider. |
+| `issuerUrl` | Base URL of an OpenID4VCI credential issuer (a `VciConfig` field). | Your production issuer base URL. It must expose valid issuer metadata and authorization metadata. |
+| `ClientAuthenticationType.AttestationBased(clientId = …)` | Wallet authenticates with wallet/key attestation, identifying itself with `clientId`. | Use if your issuer requires wallet instance or key attestation. Align with Wallet Provider. |
+| `clientId` | OAuth client identifier the wallet presents to the issuer under attestation-based client authentication. | Your production wallet client ID, registered with the issuer and aligned with the Wallet Provider. Do not ship a development or sample value. |
 | `withAuthFlowRedirectionURI` | Redirect URI for authorization-code issuance flow. | Must exactly match the app manifest and the issuer client registration. |
 | `withParUsage` | Pushed Authorization Request use. | Prefer `REQUIRED` if issuer mandates PAR. `IF_SUPPORTED` is acceptable for interoperability where issuer policy allows it. |
 | `DPopConfig.Default` | Enables default DPoP behavior for proof-of-possession. | Keep enabled unless your issuer profile explicitly does not support it. |
@@ -854,7 +938,7 @@ The app currently calls the following relative paths through `WalletAttestationR
 
 ```text
 /wallet-instance-attestation/jwk
-/wallet-unit-attestation/jwk-set
+/key-attestation/jwk-set
 ```
 
 Important: these plain-JWK endpoints are suitable only for testing/reference integration unless your
@@ -873,7 +957,7 @@ The Wallet Provider also exposes Android platform key attestation endpoints:
 
 ```text
 /wallet-instance-attestation/platform-key-attestation/android
-/wallet-unit-attestation/platform-key-attestation/android
+/key-attestation/platform-key-attestation/android
 ```
 
 These endpoints accept Android Key Attestation evidence instead of plain JWKs and are more
@@ -888,7 +972,7 @@ current `WalletAttestationRepository` constants point to the plain-JWK paths and
 payload. A production build that uses Android platform key attestation must change those repository
 paths, request/generate Android Key Attestation evidence for the relevant wallet keys, send the
 attestation certificate chain and challenge-bound payload expected by the Wallet Provider, and parse
-the same `walletInstanceAttestation` / `walletUnitAttestation` response fields after backend
+the same `walletInstanceAttestation` / `keyAttestation` response fields after backend
 validation. Do not only configure the backend and leave the app calling the JWK endpoints.
 
 Production endpoints must also validate wallet application integrity, not only key provenance. Use
@@ -899,11 +983,11 @@ fresh backend nonce.
 
 The production Wallet Provider must:
 
-* Use attestation-backed endpoints for production wallet instance and wallet unit attestations.
+* Use attestation-backed endpoints for production wallet instance and key attestations.
 * Treat plain-JWK endpoints as non-production unless additional server-side validation makes them
   equivalent to the production attestation policy.
 * Validate wallet app, device, and key evidence according to your policy.
-* Return `walletInstanceAttestation` and `walletUnitAttestation` values in the expected response fields.
+* Return `walletInstanceAttestation` and `keyAttestation` values in the expected response fields.
 * Use HTTPS with production TLS.
 * Rate-limit requests.
 * Detect abuse and replay.
@@ -914,28 +998,28 @@ Do not point production builds to EUDI demo wallet-provider services.
 
 ## Document Issuance Rules
 
-Current code:
+`WalletCoreConfig.documentIssuanceConfig` holds the wallet's per-document issuance and re-issuance
+defaults. They apply when the issuer does not advertise a credential reuse policy; when it does, the
+issuer's policy takes precedence and these act as the fallback.
 
 ```kotlin
 DocumentIssuanceConfig(
-    defaultRule = DocumentIssuanceRule(
-        policy = CredentialPolicy.RotateUse,
-        numberOfCredentials = 1
+  defaultPolicy = CredentialPolicy.RotatingBatch(
+    numberOfCredentials = 1,
+    reissueTriggerLifetimeLeft = 24.hours
     ),
-    documentSpecificRules = mapOf(
-        DocumentIdentifier.MdocPid to DocumentIssuanceRule(
-            policy = CredentialPolicy.OneTimeUse,
-            numberOfCredentials = 10
+  documentSpecificPolicies = mapOf(
+    DocumentIdentifier.MdocPid to CredentialPolicy.OnceOnly(
+      numberOfCredentials = 10,
+      reissueTriggerUnused = 2
         ),
-        DocumentIdentifier.SdJwtPid to DocumentIssuanceRule(
-            policy = CredentialPolicy.OneTimeUse,
-            numberOfCredentials = 10
+    DocumentIdentifier.SdJwtPid to CredentialPolicy.OnceOnly(
+      numberOfCredentials = 10,
+      reissueTriggerUnused = 2
         ),
     ),
     reissuanceRule = ReIssuanceRule(
-        minNumberOfCredentials = 2,
-        minExpirationHours = 24,
-        backgroundInterval = Duration.ofMinutes(15)
+      backgroundInterval = 15.minutes
     )
 )
 ```
@@ -946,18 +1030,22 @@ per flavor.
 
 Meaning:
 
-| Field | Meaning | Production decision |
-| --- | --- | --- |
-| `CredentialPolicy.RotateUse` | Reuse/rotate credentials according to Wallet Core behavior. | Use for documents where a single reusable credential is acceptable. |
-| `CredentialPolicy.OneTimeUse` | Issue a batch so each presentation can consume a credential. | Use for unlinkability/privacy-sensitive credentials such as PID where required. |
-| `numberOfCredentials` | Number of credentials requested at issuance. | Balance privacy, user offline needs, issuer load, and storage size. |
-| `minNumberOfCredentials` | Background reissuance starts when remaining credentials are at or below this count. | Set high enough to avoid users running out. |
-| `minExpirationHours` | Reissue when credentials expire within this window. | Set according to credential validity and issuer SLA. |
-| `backgroundInterval` | WorkManager interval for reissuance checks. | Android periodic work minimum is effectively 15 minutes. Avoid excessive issuer load. |
+| Field                                                        | Meaning                                                                                   | Production decision                                                                   |
+|--------------------------------------------------------------|-------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| `CredentialPolicy.RotatingBatch`                             | Batch of credentials rotated across presentations.                                        | Default for most documents where a rotating batch is acceptable.                      |
+| `CredentialPolicy.OnceOnly`                                  | Each credential is used once then deleted; issued in batches.                             | Use for unlinkability/privacy-sensitive credentials such as PID where required.       |
+| `CredentialPolicy.LimitedTime`                               | A single credential presented repeatedly until it expires.                                | Use where one long-lived credential is acceptable.                                    |
+| `numberOfCredentials`                                        | Batch size requested at issuance (`RotatingBatch`/`OnceOnly`; `LimitedTime` is always 1). | Balance privacy, user offline needs, issuer load, and storage size.                   |
+| `reissueTriggerUnused` (`OnceOnly`)                          | Reissue when the number of unused credentials is at or below this count.                  | Set high enough to avoid users running out between checks.                            |
+| `reissueTriggerLifetimeLeft` (`RotatingBatch`/`LimitedTime`) | Reissue when the remaining validity is at or below this.                                  | Set according to credential validity and issuer SLA.                                  |
+| `backgroundInterval` (`ReIssuanceRule`)                      | WorkManager interval for reissuance checks.                                               | Android periodic work minimum is effectively 15 minutes. Avoid excessive issuer load. |
+
+The re-issuance thresholds now travel with each credential's stored policy (`reissueTriggerUnused` /
+`reissueTriggerLifetimeLeft`); `ReIssuanceRule` only controls how often the background check runs.
 
 Production questions:
 
-* Which credential types require one-time-use?
+* Which credential types require once-only issuance?
 * How many offline presentations must users be able to perform?
 * What happens if reissuance fails for days?
 * Is authorization fallback allowed for background reissuance?
@@ -966,7 +1054,7 @@ Production questions:
 
 Recommended:
 
-* Keep PID and privacy-sensitive credentials as one-time-use if required by the profile.
+* Keep PID and privacy-sensitive credentials as once-only if required by the profile.
 * Start with a conservative batch size and tune after load testing.
 * Monitor reissuance failures.
 * Do not silently delete or replace user credentials without clear UX and audit behavior.
@@ -996,7 +1084,7 @@ Current default — an interface-level default getter on `WalletCoreConfig`
 `override`. A production flavor may override it in its `WalletCoreConfigImpl`:
 
 ```kotlin
-val revocationInterval: Duration get() = Duration.ofMinutes(15)
+val revocationInterval: Duration get() = 15.minutes
 ```
 
 The app enqueues `RevocationWorkManager`, which:
@@ -2000,7 +2088,7 @@ Must provide:
 Must provide:
 
 * Wallet instance attestation.
-* Wallet unit/key attestation.
+* Key attestation (formerly wallet unit attestation).
 * App/device risk policy.
 * Nonce and replay protection.
 * Availability aligned with issuance.

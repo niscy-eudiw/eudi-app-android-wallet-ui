@@ -40,8 +40,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
-import eu.europa.ec.commonfeature.ui.request.model.DomainDocumentFormat
+import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.corelogic.model.ClaimDomain
@@ -69,6 +71,7 @@ import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.CheckboxDataUi
+import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.component.wrap.SimpleBottomSheet
 import eu.europa.ec.uilogic.component.wrap.StickyBottomConfig
@@ -77,6 +80,7 @@ import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
+import eu.europa.ec.uilogic.component.wrap.WrapSelectableCard
 import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
@@ -167,15 +171,22 @@ fun RequestScreen(
             WrapModalBottomSheet(
                 onDismissRequest = {
                     viewModel.setEvent(
-                        Event.BottomSheet.UpdateBottomSheetState(
-                            isOpen = false
-                        )
+                        when (state.sheetContent) {
+                            RequestBottomSheetContent.WARNING -> {
+                                Event.BottomSheet.UpdateBottomSheetState(isOpen = false)
+                            }
+
+                            RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+                                Event.BottomSheet.VerifierNotTrusted.Close
+                            }
+                        }
                     )
                 },
                 sheetState = bottomSheetState
             ) {
                 SheetContent(
                     sheetContent = state.sheetContent,
+                    onEventSent = { viewModel.setEvent(it) },
                 )
             }
         }
@@ -197,13 +208,18 @@ private fun Content(
     coroutineScope: CoroutineScope,
     modalBottomSheetState: SheetState,
 ) {
+    val rendersDocuments = state.requestDataUi is RequestDataUi.Single ||
+            state.requestDataUi is RequestDataUi.Multiple
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .then(
-                other = if (state.noItems) Modifier else Modifier.verticalScroll(
-                    rememberScrollState()
-                )
+                other = if (rendersDocuments) {
+                    Modifier.verticalScroll(rememberScrollState())
+                } else {
+                    Modifier
+                }
             )
             .padding(paddingValues),
         verticalArrangement = Arrangement.Top
@@ -216,12 +232,12 @@ private fun Content(
         )
 
         // Screen Main Content.
-        DisplayRequestItems(
+        DisplayRequestContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = SPACING_SMALL.dp),
-            requestDocuments = state.items,
-            noData = state.noItems,
+            requestDataUi = state.requestDataUi,
+            claimsAreSelectable = state.claimsAreSelectable,
             onEventSend = onEventSend,
         )
     }
@@ -237,6 +253,7 @@ private fun Content(
                     }.invokeOnCompletion {
                         if (!modalBottomSheetState.isVisible) {
                             onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                            onEventSend(Event.BottomSheet.FinishedClosing)
                         }
                     }
                 }
@@ -250,69 +267,147 @@ private fun Content(
 }
 
 @Composable
-private fun DisplayRequestItems(
+private fun DisplayRequestContent(
     modifier: Modifier,
-    requestDocuments: List<RequestDocumentItemUi>,
-    noData: Boolean,
+    requestDataUi: RequestDataUi,
+    claimsAreSelectable: Boolean,
+    onEventSend: (Event) -> Unit,
+) {
+    when (requestDataUi) {
+        is RequestDataUi.Initial -> Unit // Nothing to render until the request resolves.
+
+        is RequestDataUi.NoData -> ErrorInfo(
+            modifier = modifier.fillMaxSize(),
+            informativeText = stringResource(id = R.string.request_no_data),
+        )
+
+        is RequestDataUi.Single -> DisplayRequestItems(
+            modifier = modifier,
+            requestDocuments = requestDataUi.combination.documents,
+            claimsAreSelectable = claimsAreSelectable,
+            onEventSend = onEventSend,
+            showWarning = true,
+        )
+
+        is RequestDataUi.Multiple -> DisplayCombinationCards(
+            modifier = modifier,
+            requestDataUi = requestDataUi,
+            claimsAreSelectable = claimsAreSelectable,
+            onEventSend = onEventSend,
+        )
+    }
+}
+
+@Composable
+private fun DisplayCombinationCards(
+    modifier: Modifier,
+    requestDataUi: RequestDataUi.Multiple,
+    claimsAreSelectable: Boolean,
     onEventSend: (Event) -> Unit,
 ) {
     Column(
         modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
     ) {
-        if (noData) {
-            ErrorInfo(
-                modifier = Modifier.fillMaxSize(),
-                informativeText = stringResource(id = R.string.request_no_data),
-            )
-        } else {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
+        requestDataUi.combinations.forEachIndexed { index, combination ->
+            WrapSelectableCard(
+                modifier = Modifier.fillMaxWidth(),
+                title = stringResource(
+                    R.string.request_combination_option_title,
+                    index + 1,
+                    requestDataUi.combinations.size,
+                ),
+                isSelected = index == requestDataUi.selectedIndex,
+                onSelected = { onEventSend(Event.CombinationSelected(index = index)) },
             ) {
-                requestDocuments.forEachIndexed { index, requestDocument ->
-                    WrapExpandableListItem(
-                        modifier = Modifier
-                            .applyTestTag(TestTag.RequestScreen.requestedDocument(index = index))
-                            .fillMaxWidth(),
-                        header = requestDocument.headerUi.header,
-                        data = requestDocument.headerUi.nestedItems,
-                        onItemClick = { item ->
-                            onEventSend(Event.UserIdentificationClicked(itemId = item.itemId))
-                        },
-                        onExpandedChange = { expandedItem ->
-                            onEventSend(Event.ExpandOrCollapseRequestDocumentItem(itemId = expandedItem.itemId))
-                        },
-                        isExpanded = requestDocument.headerUi.isExpanded,
-                        throttleClicks = false,
-                        hideSensitiveContent = false,
-                        collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                        expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceDim,
-                        ),
-                    )
-                }
-            }
-
-            if (requestDocuments.isNotEmpty()) {
-                SectionTitle(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = SPACING_SMALL.dp),
-                    text = stringResource(R.string.request_warning_text),
-                    textConfig = TextConfig(
-                        styleKey = TextStyleKey.BodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                DisplayRequestItems(
+                    modifier = Modifier.fillMaxWidth(),
+                    requestDocuments = combination.documents,
+                    claimsAreSelectable = claimsAreSelectable,
+                    onEventSend = onEventSend,
+                    showWarning = false,
                 )
             }
+        }
+
+        // the 'review-carefully' note renders once under the whole list here; the
+        // single-combination branch renders it inside DisplayRequestItems instead
+        RequestWarningNote(
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun DisplayRequestItems(
+    modifier: Modifier,
+    requestDocuments: List<RequestDocumentItemUi>,
+    claimsAreSelectable: Boolean,
+    onEventSend: (Event) -> Unit,
+    showWarning: Boolean,
+) {
+    Column(
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
+        ) {
+            requestDocuments.forEachIndexed { index, requestDocument ->
+                WrapExpandableListItem(
+                    modifier = Modifier
+                        .applyTestTag(TestTag.RequestScreen.requestedDocument(index = index))
+                        .fillMaxWidth(),
+                    header = requestDocument.headerUi.header,
+                    data = requestDocument.headerUi.nestedItems,
+                    onItemClick = if (claimsAreSelectable) {
+                        { item -> onEventSend(Event.UserIdentificationClicked(itemId = item.itemId)) }
+                    } else {
+                        null
+                    },
+                    onExpandedChange = { expandedItem ->
+                        onEventSend(Event.ExpandOrCollapseRequestDocumentItem(itemId = expandedItem.itemId))
+                    },
+                    isExpanded = requestDocument.headerUi.isExpanded,
+                    throttleClicks = false,
+                    hideSensitiveContent = false,
+                    collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+                    expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceDim,
+                    ),
+                )
+            }
+        }
+
+        if (showWarning && requestDocuments.isNotEmpty()) {
+            RequestWarningNote(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+            )
         }
     }
 }
 
 @Composable
+private fun RequestWarningNote(
+    modifier: Modifier,
+) {
+    SectionTitle(
+        modifier = modifier,
+        text = stringResource(R.string.request_warning_text),
+        textConfig = TextConfig(
+            styleKey = TextStyleKey.BodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    )
+}
+
+@Composable
 private fun SheetContent(
     sheetContent: RequestBottomSheetContent,
+    onEventSent: (Event) -> Unit,
 ) {
     when (sheetContent) {
         RequestBottomSheetContent.WARNING -> {
@@ -323,6 +418,19 @@ private fun SheetContent(
                 ),
                 leadingIcon = AppIcons.Warning,
                 leadingIconTint = MaterialTheme.colorScheme.warning
+            )
+        }
+
+        RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+            DialogBottomSheet(
+                textData = BottomSheetTextDataUi(
+                    title = stringResource(id = R.string.request_blocked_bottom_sheet_title),
+                    message = stringResource(id = R.string.request_blocked_bottom_sheet_message),
+                    positiveButtonText = stringResource(id = R.string.request_blocked_bottom_sheet_primary_button_text),
+                ),
+                leadingIcon = AppIcons.Warning,
+                leadingIconTint = MaterialTheme.colorScheme.warning,
+                onPositiveClick = { onEventSent(Event.BottomSheet.VerifierNotTrusted.Close) },
             )
         }
     }
@@ -344,65 +452,12 @@ private fun ContentPreview() {
                         description = stringResource(R.string.request_relying_party_description)
                     )
                 ),
-                items = listOf(
-                    RequestDocumentItemUi(
-                        domainPayload = DocumentPayloadDomain(
-                            docName = "docName",
-                            docId = "docId",
-                            domainDocFormat = DomainDocumentFormat.MsoMdoc,
-                            docClaimsDomain = listOf(
-                                ClaimDomain.Primitive(
-                                    key = "key",
-                                    displayTitle = "title",
-                                    value = "value",
-                                    isRequired = false,
-                                    path = ClaimPathDomain(
-                                        value = listOf(),
-                                        type = ClaimType.MsoMdoc(namespace = "namespace")
-                                    )
-                                ),
-                            )
-                        ),
-                        headerUi = ExpandableListItemUi.NestedListItem(
-                            header = ListItemDataUi(
-                                itemId = "000",
-                                mainContentData = ListItemMainContentDataUi.Text(text = "Digital ID"),
-                                supportingText = stringResource(R.string.request_collapsed_supporting_text),
-                                trailingContentData = ListItemTrailingContentDataUi.Icon(
-                                    iconData = AppIcons.KeyboardArrowDown
-                                ),
-                            ),
-                            nestedItems = listOf(
-                                ExpandableListItemUi.SingleListItem(
-                                    ListItemDataUi(
-                                        itemId = "00",
-                                        overlineText = "Family name",
-                                        mainContentData = ListItemMainContentDataUi.Text(text = "Doe"),
-                                        trailingContentData = ListItemTrailingContentDataUi.Checkbox(
-                                            checkboxData = CheckboxDataUi(
-                                                isChecked = true
-                                            )
-                                        )
-                                    )
-                                ),
-                                ExpandableListItemUi.SingleListItem(
-                                    ListItemDataUi(
-                                        itemId = "01",
-                                        overlineText = "Given name",
-                                        mainContentData = ListItemMainContentDataUi.Text(text = "John"),
-                                        trailingContentData = ListItemTrailingContentDataUi.Checkbox(
-                                            checkboxData = CheckboxDataUi(
-                                                isChecked = true
-                                            )
-                                        )
-                                    ),
-                                )
-
-                            ),
-                            isExpanded = true
-                        )
-                    )
-                )
+                requestDataUi = RequestDataUi.Single(
+                    combination = RequestCombinationUi(
+                        documents = listOf(previewRequestDocumentItem()),
+                        matches = emptyList(),
+                    ),
+                ),
             ),
             effectFlow = Channel<Effect>().receiveAsFlow(),
             onEventSend = {},
@@ -430,8 +485,7 @@ private fun ContentNoDataPreview() {
                         description = stringResource(R.string.request_relying_party_description)
                     )
                 ),
-                items = emptyList(),
-                noItems = true,
+                requestDataUi = RequestDataUi.NoData,
             ),
             effectFlow = Channel<Effect>().receiveAsFlow(),
             onEventSend = {},
@@ -443,12 +497,126 @@ private fun ContentNoDataPreview() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@ThemeModePreviews
+@Composable
+private fun ContentMultipleCombinationsPreview() {
+    PreviewTheme {
+        val previewItem = previewRequestDocumentItem()
+        Content(
+            state = State(
+                headerConfig = ContentHeaderConfig(
+                    description = stringResource(R.string.request_header_description),
+                    mainText = stringResource(R.string.request_header_main_text),
+                    relyingPartyData = RelyingPartyDataUi(
+                        isVerified = true,
+                        name = stringResource(R.string.request_relying_party_default_name),
+                        description = stringResource(R.string.request_relying_party_description)
+                    )
+                ),
+                requestDataUi = RequestDataUi.Multiple(
+                    combinations = listOf(
+                        RequestCombinationUi(
+                            documents = listOf(previewItem),
+                            matches = emptyList()
+                        ),
+                        RequestCombinationUi(
+                            documents = listOf(previewItem),
+                            matches = emptyList()
+                        ),
+                    ),
+                    selectedIndex = 0,
+                ),
+            ),
+            effectFlow = Channel<Effect>().receiveAsFlow(),
+            onEventSend = {},
+            onNavigationRequested = {},
+            paddingValues = PaddingValues(SPACING_MEDIUM.dp),
+            coroutineScope = rememberCoroutineScope(),
+            modalBottomSheetState = rememberModalBottomSheetState()
+        )
+    }
+}
+
+@Composable
+private fun previewRequestDocumentItem(): RequestDocumentItemUi {
+    return RequestDocumentItemUi(
+        domainPayload = DocumentPayloadDomain(
+            docName = "docName",
+            docId = "docId",
+            docFormatDomain = DocumentFormatDomain.MsoMdoc,
+            docClaimsDomain = listOf(
+                ClaimDomain.Primitive(
+                    key = "key",
+                    displayTitle = "title",
+                    value = "value",
+                    isRequired = false,
+                    path = ClaimPathDomain.ofPlainKeys(
+                        names = listOf(),
+                        type = ClaimType.MsoMdoc(namespace = "namespace")
+                    )
+                ),
+            )
+        ),
+        headerUi = ExpandableListItemUi.NestedListItem(
+            header = ListItemDataUi(
+                itemId = "000",
+                mainContentData = ListItemMainContentDataUi.Text(text = "Digital ID"),
+                supportingText = stringResource(R.string.request_collapsed_supporting_text),
+                trailingContentData = ListItemTrailingContentDataUi.Icon(
+                    iconData = AppIcons.KeyboardArrowDown
+                ),
+            ),
+            nestedItems = listOf(
+                ExpandableListItemUi.SingleListItem(
+                    ListItemDataUi(
+                        itemId = "00",
+                        overlineText = "Family name",
+                        mainContentData = ListItemMainContentDataUi.Text(text = "Doe"),
+                        trailingContentData = ListItemTrailingContentDataUi.Checkbox(
+                            checkboxData = CheckboxDataUi(
+                                isChecked = true
+                            )
+                        )
+                    )
+                ),
+                ExpandableListItemUi.SingleListItem(
+                    ListItemDataUi(
+                        itemId = "01",
+                        overlineText = "Given name",
+                        mainContentData = ListItemMainContentDataUi.Text(text = "John"),
+                        trailingContentData = ListItemTrailingContentDataUi.Checkbox(
+                            checkboxData = CheckboxDataUi(
+                                isChecked = true
+                            )
+                        )
+                    ),
+                )
+
+            ),
+            isExpanded = true
+        )
+    )
+}
+
 @ThemeModePreviews
 @Composable
 private fun SheetContentWarningPreview() {
     PreviewTheme {
         SheetContent(
             sheetContent = RequestBottomSheetContent.WARNING,
+            onEventSent = {},
+        )
+    }
+}
+
+@ThemeModePreviews
+@Composable
+private fun SheetContentVerifierNotTrustedPreview() {
+    PreviewTheme {
+        SheetContent(
+            sheetContent = RequestBottomSheetContent.VERIFIER_NOT_TRUSTED,
+            onEventSent = {},
         )
     }
 }

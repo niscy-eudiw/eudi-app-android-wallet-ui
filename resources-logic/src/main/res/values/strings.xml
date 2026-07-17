@@ -46,6 +46,7 @@
     <string name="generic_filters_title">Filter by</string>
     <string name="generic_filters_sort_by">Sort by</string>
     <string name="generic_search">Search</string>
+    <string name="generic_unknown_issuer">Unknown</string>
     <!--endregion-->
 
     <!-- region Content Description -->
@@ -176,11 +177,15 @@
     <string name="request_relying_party_description">requests the following</string>
     <string name="request_warning_text">Please review carefully before sharing your data.</string>
     <string name="request_collapsed_supporting_text">@string/generic_view_details</string>
+    <string name="request_combination_option_title">Option %1$d of %2$d</string>
     <string name="request_no_data">The requested document is not available in your EUDI Wallet.
         Please contact the authorised issuer for further information.</string>
     <string name="request_sticky_button_text">Share</string>
     <string name="request_bottom_sheet_warning_title">Warning</string>
     <string name="request_bottom_sheet_warning_subtitle">Choosing not to share certain data may result in failure to issue the requested document.</string>
+    <string name="request_blocked_bottom_sheet_title">Presentation blocked</string>
+    <string name="request_blocked_bottom_sheet_message">This presentation request has been blocked because the relying party could not be verified by your Wallet.\n\nYour personal information or other data has not been shared with this relying party.</string>
+    <string name="request_blocked_bottom_sheet_primary_button_text">@string/generic_close</string>
     <string name="request_gender_male">Male</string>
     <string name="request_gender_female">Female</string>
     <string name="request_gender_not_known">Not known</string>
@@ -285,7 +290,7 @@
     <string name="documents_screen_filters_filter_by_expiry_period_4">Before today (expired)</string>
     <string name="documents_screen_filters_apply">@string/generic_filters_apply</string>
     <string name="documents_screen_filters_reset">@string/generic_filters_reset</string>
-    <string name="documents_screen_filters_unknown_issuer">Unknown</string>
+    <string name="documents_screen_filters_unknown_issuer">@string/generic_unknown_issuer</string>
     <!--endregion-->
 
     <!-- region Transactions Screen -->
@@ -348,12 +353,17 @@
     <string name="document_details_document_credentials_info_text">Instances remaining %d/%d</string>
     <string name="document_details_main_section_text">DOCUMENT DATA</string>
     <string name="document_details_issuer_section_text">ISSUER DETAILS</string>
+    <string name="document_details_issuer_card_unknown_issuer">@string/generic_unknown_issuer</string>
     <string name="document_details_issuer_card_expires_on_text">Expires on:\ %1$s</string>
     <string name="document_details_issuer_card_revoked_text">Document revoked</string>
     <string name="document_details_issuer_card_issued_on_text">Issued on:\ %1$s</string>
     <string name="document_details_issuer_card_issued_message_text">You may reissue this document at any time.</string>
     <string name="document_details_issuer_card_issued_action_btn_text">Reissue document</string>
     <string name="document_details_issuer_card_revoked_message_text">This document cannot be used for verification.</string>
+    <string name="document_details_issuer_card_expired_action_btn_text">@string/document_details_issuer_card_issued_action_btn_text</string>
+    <string name="document_details_issuer_card_expired_on_text">Expired on:\ %1$s</string>
+    <string name="document_details_issuer_card_expired_text">Expired</string>
+    <string name="document_details_issuer_card_expired_message_text">This document has expired. You may reissue it.</string>
     <string name="document_details_secondary_button_text">Remove from wallet</string>
 
     <string name="document_details_bottom_sheet_bookmark_info_title">Saved to favourites</string>
@@ -438,6 +448,12 @@
 
     <!-- region Issuance Document Errors -->
     <string name="issuance_generic_error">Something went wrong issuing your document(s)</string>
+    <string name="issuance_blocked_bottom_sheet_title">Issuance blocked</string>
+    <string name="issuance_blocked_bottom_sheet_message">This issuance request has been blocked because the provider could not be verified by your Wallet.\n\nYour personal information or other data has not been shared with this provider.</string>
+    <string name="issuance_blocked_bottom_sheet_primary_button_text">@string/generic_close</string>
+    <string name="issuance_partially_blocked_bottom_sheet_title">Not all documents were added</string>
+    <string name="issuance_partially_blocked_bottom_sheet_message">Some documents were added to your Wallet. The rest were blocked because their provider could not be verified, and no data was shared for those.</string>
+    <string name="issuance_partially_blocked_bottom_sheet_primary_button_text">@string/generic_continue</string>
     <!--endregion-->
 
     <!-- region Document Categories -->

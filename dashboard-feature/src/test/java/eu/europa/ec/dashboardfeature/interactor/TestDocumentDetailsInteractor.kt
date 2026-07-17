@@ -442,8 +442,8 @@ class TestDocumentDetailsInteractor {
                                     key = "no_data_item",
                                     value = "0",
                                     displayTitle = "no_data_item",
-                                    path = ClaimPathDomain(
-                                        value = listOf("no_data_item"),
+                                    path = ClaimPathDomain.ofPlainKeys(
+                                        names = listOf("no_data_item"),
                                         type = ClaimType.MsoMdoc(namespace = mockedMdocPidNameSpace)
                                     ),
                                     isRequired = false,
@@ -1199,6 +1199,32 @@ class TestDocumentDetailsInteractor {
     }
 
     @Test
+    fun `Given controller emits IssuerNotTrusted, When reIssueDocument is called, Then IssuerNotTrusted is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.reIssueDocument(
+                    documentId = mockedPidId,
+                    issuerId = mockedReIssueIssuerId,
+                    allowAuthorizationFallback = true,
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+            )
+
+            // When
+            interactor.reIssueDocument(documentId = mockedPidId, issuerId = mockedReIssueIssuerId)
+                .runFlowTest {
+                    // Then
+                    assertEquals(
+                        DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted,
+                        awaitItem()
+                    )
+                }
+        }
+    }
+
+    @Test
     fun `Given controller emits Success, When reIssueDocument is called, Then Success is emitted`() {
         coroutineRule.runTest {
             // Given
@@ -1238,6 +1264,37 @@ class TestDocumentDetailsInteractor {
                 IssueDocumentsPartialState.PartialSuccess(
                     documentIds = listOf(mockedPidId),
                     nonIssuedDocuments = emptyMap(),
+                ).toFlow()
+            )
+
+            // When
+            interactor.reIssueDocument(documentId = mockedPidId, issuerId = mockedReIssueIssuerId)
+                .runFlowTest {
+                    // Then
+                    assertEquals(
+                        DocumentDetailsInteractorIssuancePartialState.Success,
+                        awaitItem()
+                    )
+                }
+        }
+    }
+
+    // Single-document re-issue cannot mix an issued and a trust-blocked document; this locks in the
+    // defensive mapping to Success.
+    @Test
+    fun `Given controller emits PartialSuccessWithUntrustedIssuer, When reIssueDocument is called, Then Success is emitted`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                walletCoreDocumentsController.reIssueDocument(
+                    documentId = mockedPidId,
+                    issuerId = mockedReIssueIssuerId,
+                    allowAuthorizationFallback = true,
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                    issuedDocumentIds = listOf(mockedPidId),
+                    untrustedDocuments = emptyMap(),
                 ).toFlow()
             )
 
