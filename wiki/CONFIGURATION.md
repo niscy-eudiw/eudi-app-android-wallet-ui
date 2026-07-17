@@ -55,9 +55,13 @@ Each flavor can use different issuer configs, wallet provider hosts, and trust s
     override val issuersConfig: List<VciConfig>
         get() = listOf(
             VciConfig(
+                issuerUrl = "https://ec.dev.issuer.eudiw.dev",
                 config = OpenId4VciManager.Config.Builder()
-                    .withIssuerUrl(issuerUrl = "https://ec.dev.issuer.eudiw.dev")
-                    .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+                    .withClientAuthenticationType(
+                        OpenId4VciManager.ClientAuthenticationType.AttestationBased(
+                            clientId = "eudiw-abca"
+                        )
+                    )
                     .withAuthFlowRedirectionURI(BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK)
                     .withParUsage(OpenId4VciManager.Config.ParUsage.IF_SUPPORTED)
                     .withDPopConfig(DPopConfig.Default)
@@ -65,9 +69,13 @@ Each flavor can use different issuer configs, wallet provider hosts, and trust s
                 order = 0
             ),
             VciConfig(
+                issuerUrl = "https://dev.issuer-backend.eudiw.dev",
                 config = OpenId4VciManager.Config.Builder()
-                    .withIssuerUrl(issuerUrl = "https://dev.issuer-backend.eudiw.dev")
-                    .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+                    .withClientAuthenticationType(
+                        OpenId4VciManager.ClientAuthenticationType.AttestationBased(
+                            clientId = "eudiw-abca"
+                        )
+                    )
                     .withAuthFlowRedirectionURI(BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK)
                     .withParUsage(OpenId4VciManager.Config.ParUsage.IF_SUPPORTED)
                     .withDPopConfig(DPopConfig.Default)

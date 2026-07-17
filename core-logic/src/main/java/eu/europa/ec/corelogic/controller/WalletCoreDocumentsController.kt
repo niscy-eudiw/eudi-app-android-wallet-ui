@@ -294,8 +294,8 @@ class WalletCoreDocumentsControllerImpl(
             runCatching {
 
                 val metadata: Map<VciConfig, CredentialIssuerMetadata> =
-                    openId4VciManagers.mapValues { (_, manager) ->
-                        manager.getIssuerMetadata().getOrThrow()
+                    openId4VciManagers.mapValues { (vciConfig, manager) ->
+                        manager.getIssuerMetadata(vciConfig.issuerUrl).getOrThrow()
                     }
 
                 val documents: List<ScopedDocumentDomain> =
@@ -323,7 +323,7 @@ class WalletCoreDocumentsControllerImpl(
                             ScopedDocumentDomain(
                                 name = name,
                                 configurationId = id.value,
-                                credentialIssuerId = vciConfig.config.issuerUrl,
+                                credentialIssuerId = vciConfig.issuerUrl,
                                 credentialIssuerOrder = vciConfig.order,
                                 formatType = formatType,
                                 isPid = isPid
@@ -776,6 +776,7 @@ class WalletCoreDocumentsControllerImpl(
             ).getOrThrow()
 
             manager.issueDocumentByConfigurationIdentifiers(
+                issuerUrl = issuerId,
                 credentialConfigurationIds = configIds,
                 onIssueEvent = issuanceCallback(prioritizeDeferred)
             )
@@ -978,7 +979,7 @@ class WalletCoreDocumentsControllerImpl(
     ): Result<OpenId4VciManager> {
 
         val manager = openId4VciManagers.entries
-            .firstOrNull { (vciConfig, _) -> vciConfig.config.issuerUrl == issuerId }
+            .firstOrNull { (vciConfig, _) -> vciConfig.issuerUrl == issuerId }
             ?.value
             ?: if (useDefault) openId4VciManagers.values.firstOrNull() else null
 

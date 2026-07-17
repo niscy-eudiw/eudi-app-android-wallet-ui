@@ -868,8 +868,8 @@ Production requirements for a trusted-list deployment:
 Current demo code contains issuer URLs such as:
 
 ```kotlin
-.withIssuerUrl(issuerUrl = "https://issuer.eudiw.dev")
-.withIssuerUrl(issuerUrl = "https://issuer-backend.eudiw.dev")
+issuerUrl = "https://issuer.eudiw.dev"
+issuerUrl = "https://issuer-backend.eudiw.dev"
 ```
 
 Production values must point to your production OpenID4VCI issuers.
@@ -880,10 +880,12 @@ Example:
 override val issuersConfig: List<VciConfig>
     get() = listOf(
         VciConfig(
+            issuerUrl = "https://issuer.pid.example.eu",
             config = OpenId4VciManager.Config.Builder()
-                .withIssuerUrl(issuerUrl = "https://issuer.pid.example.eu")
                 .withClientAuthenticationType(
-                    OpenId4VciManager.ClientAuthenticationType.AttestationBased
+                    OpenId4VciManager.ClientAuthenticationType.AttestationBased(
+                        clientId = "your-wallet-client-id"
+                    )
                 )
                 .withAuthFlowRedirectionURI(BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK)
                 .withParUsage(OpenId4VciManager.Config.ParUsage.IF_SUPPORTED)
@@ -896,8 +898,9 @@ override val issuersConfig: List<VciConfig>
 
 | Field | Meaning | Production value |
 | --- | --- | --- |
-| `issuerUrl` | Base URL of an OpenID4VCI credential issuer. | Your production issuer base URL. It must expose valid issuer metadata and authorization metadata. |
-| `ClientAuthenticationType.AttestationBased` | Wallet authenticates with wallet/key attestation. | Use if your issuer requires wallet instance or key attestation. Align with Wallet Provider. |
+| `issuerUrl` | Base URL of an OpenID4VCI credential issuer (a `VciConfig` field). | Your production issuer base URL. It must expose valid issuer metadata and authorization metadata. |
+| `ClientAuthenticationType.AttestationBased(clientId = …)` | Wallet authenticates with wallet/key attestation, identifying itself with `clientId`. | Use if your issuer requires wallet instance or key attestation. Align with Wallet Provider. |
+| `clientId` | OAuth client identifier the wallet presents to the issuer under attestation-based client authentication. | Your production wallet client ID, registered with the issuer and aligned with the Wallet Provider. Do not ship a development or sample value. |
 | `withAuthFlowRedirectionURI` | Redirect URI for authorization-code issuance flow. | Must exactly match the app manifest and the issuer client registration. |
 | `withParUsage` | Pushed Authorization Request use. | Prefer `REQUIRED` if issuer mandates PAR. `IF_SUPPORTED` is acceptable for interoperability where issuer policy allows it. |
 | `DPopConfig.Default` | Enables default DPoP behavior for proof-of-possession. | Keep enabled unless your issuer profile explicitly does not support it. |

@@ -132,8 +132,8 @@ The app is configured through `WalletCoreConfigImpl.kt` files in the `core-logic
 The current `dev` flavor uses reference development services similar to:
 
 ```kotlin
-.withIssuerUrl(issuerUrl = "https://ec.dev.issuer.eudiw.dev")
-.withIssuerUrl(issuerUrl = "https://dev.issuer-backend.eudiw.dev")
+issuerUrl = "https://ec.dev.issuer.eudiw.dev"
+issuerUrl = "https://dev.issuer-backend.eudiw.dev"
 
 override val walletProviderHost: String
     get() = "https://dev.wallet-provider.eudiw.dev"
@@ -142,8 +142,8 @@ override val walletProviderHost: String
 The current `demo` flavor uses reference demo services similar to:
 
 ```kotlin
-.withIssuerUrl(issuerUrl = "https://issuer.eudiw.dev")
-.withIssuerUrl(issuerUrl = "https://issuer-backend.eudiw.dev")
+issuerUrl = "https://issuer.eudiw.dev"
+issuerUrl = "https://issuer-backend.eudiw.dev"
 
 override val walletProviderHost: String
     get() = "https://wallet-provider.eudiw.dev"
@@ -175,9 +175,13 @@ and port used by the local service:
 override val issuersConfig: List<VciConfig>
     get() = listOf(
         VciConfig(
+            issuerUrl = "https://10.0.2.2:8443",
             config = OpenId4VciManager.Config.Builder()
-                .withIssuerUrl(issuerUrl = "https://10.0.2.2:8443")
-                .withClientAuthenticationType(OpenId4VciManager.ClientAuthenticationType.AttestationBased)
+                .withClientAuthenticationType(
+                    OpenId4VciManager.ClientAuthenticationType.AttestationBased(
+                        clientId = "eudiw-abca"
+                    )
+                )
                 .withAuthFlowRedirectionURI(BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK)
                 .withParUsage(OpenId4VciManager.Config.ParUsage.IF_SUPPORTED)
                 .withDPopConfig(DPopConfig.Default)
@@ -193,7 +197,7 @@ override val walletProviderHost: String
 For a physical device, use the host computer's LAN IP address instead:
 
 ```kotlin
-.withIssuerUrl(issuerUrl = "https://192.168.1.50:8443")
+issuerUrl = "https://192.168.1.50:8443"
 ```
 
 The issuer/verifier metadata, redirect URIs, and wallet deep links must match the app's configured
