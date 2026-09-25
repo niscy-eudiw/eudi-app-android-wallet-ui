@@ -55,6 +55,21 @@ sealed class DashboardScreens {
         parameters = "?documentId={documentId}"
     )
 
+    data object DataDeletionRequest : Screen(
+        name = "DATA_DELETION_REQUEST",
+        parameters = "?transactionId={transactionId}"
+    )
+
+    data object DpaReport : Screen(
+        name = "DPA_REPORT",
+        parameters = "?transactionId={transactionId}"
+    )
+
+    data object TransactionHistory : Screen(
+        name = "TRANSACTION_HISTORY",
+        parameters = "?transactionId={transactionId}&actionType={actionType}"
+    )
+
     data object TransactionDetails : Screen(
         name = "TRANSACTION_DETAILS",
         parameters = "?transactionId={transactionId}"

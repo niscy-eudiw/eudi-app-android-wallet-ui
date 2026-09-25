@@ -62,8 +62,8 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.securearea.KeyUnlockData
 import java.net.URI
 
@@ -211,7 +211,7 @@ interface WalletCorePresentationController {
     fun checkForKeyUnlock(): Flow<CheckKeyUnlockPartialState>
 
     /**
-     * Build the Wallet Core [CredentialPresentmentSelection] from [disclosedDocuments] and
+     * Build the Wallet Core [CredentialSelection] from [disclosedDocuments] and
      * dispatch it to the Wallet Core SDK.
      */
     suspend fun sendRequestedDocuments(): SendRequestedDocumentsPartialState
@@ -459,7 +459,7 @@ class WalletCorePresentationControllerImpl(
                 )
             }
 
-            val walletCoreSelection = CredentialPresentmentSelection(matches = walletCoreMatches)
+            val walletCoreSelection = CredentialSelection(matches = walletCoreMatches)
 
             val keyUnlockData = selectionsDomain.mapNotNull { selectionDomain ->
                 keyUnlockDataByCredentialId[selectionDomain.credentialId]?.let { keyUnlockData ->
