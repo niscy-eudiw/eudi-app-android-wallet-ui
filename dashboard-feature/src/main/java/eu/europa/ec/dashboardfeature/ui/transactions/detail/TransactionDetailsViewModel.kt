@@ -16,10 +16,13 @@
 
 package eu.europa.ec.dashboardfeature.ui.transactions.detail
 
+import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorDeleteTransactionPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorPartialState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PresentationActionCountsUiState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsBodyUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsSectionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
@@ -31,6 +34,9 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
+import eu.europa.ec.uilogic.navigation.DashboardScreens
+import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
+import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -68,6 +74,10 @@ sealed class Event : ViewEvent {
     data object ExpandOrCollapseCard : Event()
     data class OpenLink(val url: String) : Event()
 
+    data object RequestDataDeletionPressed : Event()
+    data object ReportSuspiciousTransactionPressed : Event()
+    data class HistoryPressed(val action: TransactionDataProtectionAction) : Event()
+    data object RetryPresentationActionCounts : Event()
 }
 
 sealed class Effect : ViewSideEffect {
@@ -77,6 +87,9 @@ sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data object Pop : Navigation()
         data class OpenUrlExternally(val url: String) : Navigation()
+        data class SwitchScreen(
+            val screenRoute: String,
+        ) : Navigation()
     }
 }
 
@@ -91,6 +104,7 @@ internal class TransactionDetailsViewModel(
     @InjectedParam private val transactionId: String,
 ) : MviViewModel<Event, State, Effect>() {
     private var transactionDetailsJob: Job? = null
+    private var presentationActionCountsJob: Job? = null
 
     override fun setInitialState(): State = State(
         title = resourceProvider.getString(R.string.transaction_details_screen_title),
@@ -133,6 +147,77 @@ internal class TransactionDetailsViewModel(
 
             is Event.BottomSheet.Delete.SecondaryButtonPressed -> {
                 hideBottomSheet()
+            }
+
+            is Event.RequestDataDeletionPressed -> {
+                if (viewState.value.isLoading) return
+
+                val body = viewState.value.transactionDetailsUi?.body
+                        as? TransactionDetailsBodyUi.Presentation ?: return
+
+                if (body.deletionContacts.isEmpty()) return
+
+                setState { copy(error = null) }
+                setEffect {
+                    Effect.Navigation.SwitchScreen(
+                        screenRoute = generateComposableNavigationLink(
+                            screen = DashboardScreens.DataDeletionRequest,
+                            arguments = generateComposableArguments(
+                                mapOf("transactionId" to Uri.encode(transactionId))
+                            ),
+                        )
+                    )
+                }
+            }
+
+            is Event.ReportSuspiciousTransactionPressed -> {
+                if (viewState.value.isLoading) return
+
+                val body = viewState.value.transactionDetailsUi?.body
+                        as? TransactionDetailsBodyUi.Presentation ?: return
+
+                if (body.reportContacts.isEmpty()) return
+
+                setState { copy(error = null) }
+                setEffect {
+                    Effect.Navigation.SwitchScreen(
+                        screenRoute = generateComposableNavigationLink(
+                            screen = DashboardScreens.DpaReport,
+                            arguments = generateComposableArguments(
+                                mapOf("transactionId" to Uri.encode(transactionId))
+                            ),
+                        )
+                    )
+                }
+            }
+
+            is Event.HistoryPressed -> {
+                if (viewState.value.isLoading) return
+                val details = viewState.value.transactionDetailsUi ?: return
+                val body = details.body as? TransactionDetailsBodyUi.Presentation ?: return
+                val counts = body.actionCounts as? PresentationActionCountsUiState.Content ?: return
+                val count = when (event.action) {
+                    TransactionDataProtectionAction.RequestDataDeletion -> counts.dataDeletionRequests
+                    TransactionDataProtectionAction.ReportSuspiciousTransaction -> counts.dpaReports
+                }
+                if (count <= 0) return
+                setEffect {
+                    Effect.Navigation.SwitchScreen(
+                        screenRoute = generateComposableNavigationLink(
+                            screen = DashboardScreens.TransactionHistory,
+                            arguments = generateComposableArguments(
+                                mapOf(
+                                    "transactionId" to Uri.encode(details.transactionId),
+                                    "actionType" to event.action.name,
+                                )
+                            ),
+                        )
+                    )
+                }
+            }
+
+            is Event.RetryPresentationActionCounts -> {
+                observePresentationActionCounts()
             }
 
             is Event.ExpandOrCollapseGroupItem -> {
@@ -244,8 +329,33 @@ internal class TransactionDetailsViewModel(
         setEffect { Effect.CloseBottomSheet }
     }
 
+    private fun observePresentationActionCounts() {
+        val details = viewState.value.transactionDetailsUi ?: return
+        if (details.body !is TransactionDetailsBodyUi.Presentation) return
+
+        presentationActionCountsJob?.cancel()
+        presentationActionCountsJob = viewModelScope.launch {
+            interactor.observePresentationActionCounts(presentationId = details.transactionId)
+                .collect { actionCounts ->
+                    setState {
+                        val currentDetails = transactionDetailsUi ?: return@setState this
+                        if (currentDetails.transactionId != details.transactionId) return@setState this
+                        val presentation =
+                            currentDetails.body as? TransactionDetailsBodyUi.Presentation
+                                ?: return@setState this
+                        copy(
+                            transactionDetailsUi = currentDetails.copy(
+                                body = presentation.copy(actionCounts = actionCounts),
+                            )
+                        )
+                    }
+                }
+        }
+    }
+
     private fun getTransactionDetails(event: Event) {
         transactionDetailsJob?.cancel()
+        presentationActionCountsJob?.cancel()
 
         setState {
             copy(
@@ -276,6 +386,7 @@ internal class TransactionDetailsViewModel(
                                 isCardExpanded = isSameTransaction && isCardExpanded,
                             )
                         }
+                        observePresentationActionCounts()
                     }
 
                     is TransactionDetailsInteractorPartialState.Failure -> {

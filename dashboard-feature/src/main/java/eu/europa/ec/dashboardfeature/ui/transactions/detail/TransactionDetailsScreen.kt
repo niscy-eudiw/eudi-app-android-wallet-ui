@@ -48,6 +48,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PresentationActionCountsUiState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionContactUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsBodyUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsCardUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsFieldUi
@@ -74,12 +77,16 @@ import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.OncePerViewModelEffect
 import eu.europa.ec.uilogic.component.utils.SIZE_SMALL
+import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
+import eu.europa.ec.uilogic.component.wrap.ButtonConfig
+import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapCard
 import eu.europa.ec.uilogic.component.wrap.WrapChip
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableCard
@@ -173,6 +180,7 @@ private fun Content(
     onEventSend: (Event) -> Unit,
 ) {
     val details = state.transactionDetailsUi
+    val presentation = details?.body as? TransactionDetailsBodyUi.Presentation
 
     Column(modifier = modifier) {
         // Screen title.
@@ -208,6 +216,31 @@ private fun Content(
                             onEventSend(Event.ExpandOrCollapseGroupItem(id))
                         },
                         onLinkClick = { url -> onEventSend(Event.OpenLink(url)) },
+                    )
+                }
+
+                presentation?.let { body ->
+                    // Presentation history loading/error status and retry.
+                    HistoryStatus(
+                        state = body.actionCounts,
+                        isLoading = state.isLoading,
+                        onRetry = { onEventSend(Event.RetryPresentationActionCounts) },
+                    )
+
+                    // Deletion requests and transaction reports, with their history links.
+                    PresentationActionSections(
+                        counts = body.actionCounts,
+                        canRequestDeletion = body.deletionContacts.isNotEmpty(),
+                        canReport = body.reportContacts.isNotEmpty(),
+                        isLoading = state.isLoading,
+                        onDeletionHistoryClick = {
+                            onEventSend(Event.HistoryPressed(TransactionDataProtectionAction.RequestDataDeletion))
+                        },
+                        onReportHistoryClick = {
+                            onEventSend(Event.HistoryPressed(TransactionDataProtectionAction.ReportSuspiciousTransaction))
+                        },
+                        onRequestDeletionClick = { onEventSend(Event.RequestDataDeletionPressed) },
+                        onReportClick = { onEventSend(Event.ReportSuspiciousTransactionPressed) },
                     )
                 }
             }
@@ -262,6 +295,12 @@ private fun handleNavigationEffect(
     context: Context,
 ) {
     when (navigationEffect) {
+        is Effect.Navigation.SwitchScreen -> {
+            navController.navigate(navigationEffect.screenRoute) {
+                launchSingleTop = true
+            }
+        }
+
         is Effect.Navigation.Pop -> navController.popBackStack()
         is Effect.Navigation.OpenUrlExternally -> context.openUrl(navigationEffect.url.toUri())
     }
@@ -574,6 +613,154 @@ private fun CredentialGroup(
     )
 }
 
+@Composable
+private fun HistoryStatus(
+    state: PresentationActionCountsUiState,
+    isLoading: Boolean,
+    onRetry: () -> Unit,
+) {
+    when (state) {
+        is PresentationActionCountsUiState.Loading -> Text(
+            text = stringResource(R.string.privacy_history_loading),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        is PresentationActionCountsUiState.Content -> Unit
+
+        is PresentationActionCountsUiState.Failure -> {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp),
+            ) {
+                Text(
+                    text = state.errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                WrapButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    buttonConfig = ButtonConfig(
+                        type = ButtonType.SECONDARY,
+                        enabled = !isLoading,
+                        onClick = onRetry,
+                        isWarning = false,
+                    ),
+                ) {
+                    Text(text = stringResource(R.string.privacy_history_retry))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PresentationActionSections(
+    counts: PresentationActionCountsUiState,
+    canRequestDeletion: Boolean,
+    canReport: Boolean,
+    isLoading: Boolean,
+    onDeletionHistoryClick: () -> Unit,
+    onReportHistoryClick: () -> Unit,
+    onRequestDeletionClick: () -> Unit,
+    onReportClick: () -> Unit,
+) {
+    val content = counts as? PresentationActionCountsUiState.Content
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(SPACING_EXTRA_LARGE.dp),
+    ) {
+        PresentationActionSection(
+            title = stringResource(R.string.transaction_details_request_deletion_section_title),
+            description = stringResource(R.string.transaction_details_request_deletion_message),
+            historyLabel = if (content != null && content.dataDeletionRequests > 0) {
+                stringResource(R.string.privacy_history_deletion_link, content.dataDeletionRequests)
+            } else {
+                null
+            },
+            buttonLabel = stringResource(R.string.transaction_details_request_deletion_button),
+            isHistoryEnabled = !isLoading,
+            isActionEnabled = !isLoading && canRequestDeletion,
+            isWarning = true,
+            onHistoryClick = onDeletionHistoryClick,
+            onInitiateClick = onRequestDeletionClick,
+        )
+        PresentationActionSection(
+            title = stringResource(R.string.transaction_details_report_transaction_section_title),
+            description = stringResource(R.string.transaction_details_report_transaction_message),
+            historyLabel = if (content != null && content.dpaReports > 0) {
+                stringResource(R.string.privacy_history_report_link, content.dpaReports)
+            } else {
+                null
+            },
+            buttonLabel = stringResource(R.string.transaction_details_report_transaction_button),
+            isHistoryEnabled = !isLoading,
+            isActionEnabled = !isLoading && canReport,
+            isWarning = false,
+            onHistoryClick = onReportHistoryClick,
+            onInitiateClick = onReportClick,
+        )
+    }
+}
+
+@Composable
+private fun PresentationActionSection(
+    title: String,
+    description: String,
+    historyLabel: String?,
+    buttonLabel: String,
+    isHistoryEnabled: Boolean,
+    isActionEnabled: Boolean,
+    isWarning: Boolean,
+    onHistoryClick: () -> Unit,
+    onInitiateClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
+    ) {
+        SectionTitle(
+            modifier = Modifier.fillMaxWidth(),
+            text = title
+        )
+
+        Column {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            historyLabel?.let { text ->
+                WrapTextButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = text,
+                    enabled = isHistoryEnabled,
+                    contentAlignment = Alignment.Start,
+                    shape = RectangleShape,
+                    trailingIcon = AppIcons.KeyboardArrowRight,
+                    isRippleEnabled = false,
+                    onClick = onHistoryClick,
+                )
+            }
+        }
+
+        WrapButton(
+            modifier = Modifier.fillMaxWidth(),
+            buttonConfig = ButtonConfig(
+                type = ButtonType.SECONDARY,
+                enabled = isActionEnabled,
+                onClick = onInitiateClick,
+                isWarning = isWarning,
+            ),
+        ) {
+            Text(
+                text = buttonLabel,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
+}
+
 @ThemeModePreviews
 @Composable
 private fun DeleteTransactionConfirmationPreview() {
@@ -630,10 +817,14 @@ private fun TransactionDetailsCardLargeTextPreview() {
 private class TransactionDetailsPreviewProvider : PreviewParameterProvider<State> {
     override val values: Sequence<State>
         get() {
-            val contact = "https://example.com/support"
+            val contact =
+                TransactionContactUi("https://example.com/support", "https://example.com/support")
             val presentation = TransactionDetailsBodyUi.Presentation(
                 requested = previewClaims("requested", "DATA REQUESTED", isExpanded = false),
                 shared = previewClaims("shared", "DATA SHARED", isExpanded = false),
+                deletionContacts = listOf(contact),
+                reportContacts = listOf(contact),
+                actionCounts = PresentationActionCountsUiState.Content(2, 2),
             )
             val contacts = TransactionDetailsMetadataUi(
                 fields = listOf(
@@ -641,14 +832,14 @@ private class TransactionDetailsPreviewProvider : PreviewParameterProvider<State
                     TransactionDetailsFieldUi(
                         "party:contact:1",
                         "Contact",
-                        contact,
-                        contact
+                        contact.label,
+                        contact.url
                     ),
                     TransactionDetailsFieldUi(
                         "party:contact:2",
                         "Contact",
-                        contact,
-                        contact
+                        contact.label,
+                        contact.url
                     ),
                 ),
             )
@@ -715,6 +906,9 @@ private class TransactionDetailsPreviewProvider : PreviewParameterProvider<State
                         mainContentData = ListItemMainContentDataUi.Text("No data shared"),
                     ),
                 ),
+                deletionContacts = emptyList(),
+                reportContacts = emptyList(),
+                actionCounts = PresentationActionCountsUiState.Content(0, 0),
             )
             val states = listOf(
                 base,
@@ -852,7 +1046,26 @@ private class TransactionDetailsPreviewProvider : PreviewParameterProvider<State
                     isCardExpanded = true,
                 )
             }
-            return (states + otherTypes + base.copy(isLoading = true)).asSequence()
+            val histories = listOf(
+                PresentationActionCountsUiState.Content(1, 0),
+                PresentationActionCountsUiState.Content(0, 1),
+                PresentationActionCountsUiState.Loading,
+                PresentationActionCountsUiState.Failure("Previous attempts could not be loaded."),
+            ).map { counts ->
+                base.copy(
+                    transactionDetailsUi = TransactionDetailsUi(
+                        "presentation", card,
+                        presentation.copy(actionCounts = counts),
+                    ),
+                )
+            }
+            val independentActions = listOf(
+                presentation.copy(deletionContacts = emptyList()),
+                presentation.copy(reportContacts = emptyList()),
+            ).map { body ->
+                base.copy(transactionDetailsUi = TransactionDetailsUi("presentation", card, body))
+            }
+            return (states + otherTypes + histories + independentActions + base.copy(isLoading = true)).asSequence()
         }
 
     private fun previewFields(

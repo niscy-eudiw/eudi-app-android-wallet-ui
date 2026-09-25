@@ -1597,6 +1597,11 @@ Wallet operations and RQES signing activity appear in the app's locally stored t
 Keep transaction logging configured for every flavor, including release builds. Later updates to a
 transaction refresh its existing record.
 
+Data-deletion request and DPA-report attempts are associated with their originating presentation
+and communication method. They appear in that presentation's history rather than the main
+transaction list. An attempt records that the external application opened; it does not confirm that
+a request was sent, received, or fulfilled. Deleting a presentation also deletes its linked attempts.
+
 Deleting a pending issuance log removes its current entry. When issuance later completes, a log
 can appear again. Log deletion does not cancel issuance.
 
@@ -2297,6 +2302,10 @@ Exercise these cases in the release artifact that will be distributed, with R8 e
   the app and verify that the records remain available and display correctly.
 * Confirm that updates to the same transaction refresh its existing entry. Delete a pending
   issuance log and verify that a later completion can create the log again, as intended.
+* Verify exact-presentation association and communication methods in deletion-request/report
+  histories. Confirm that deleting the presentation removes its linked attempts.
+* Check external-launch failures and persistence failures separately. Retrying a failed save must
+  retain the same attempt and must not reopen the external application.
 
 Verify these behaviors in the minified release; passing debug tests alone is insufficient.
 

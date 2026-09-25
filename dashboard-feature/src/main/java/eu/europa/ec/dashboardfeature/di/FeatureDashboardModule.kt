@@ -26,6 +26,7 @@ import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -40,6 +41,8 @@ import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -139,11 +142,24 @@ fun provideDocumentDetailsInteractor(
     )
 
 @Factory
-fun provideTransactionDetailsInteractor(
+fun provideTransactionHistoryInteractor(
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
     resourceProvider: ResourceProvider,
+): TransactionHistoryInteractor = TransactionHistoryInteractorImpl(
+    walletCoreTransactionLogController,
+    resourceProvider,
+)
+
+@Factory
+fun provideTransactionDetailsInteractor(
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
+    walletCoreTransactionRecordingController: WalletCoreTransactionRecordingController,
+    resourceProvider: ResourceProvider,
+    uuidProvider: UuidProvider,
 ): TransactionDetailsInteractor =
     TransactionDetailsInteractorImpl(
         walletCoreTransactionLogController,
+        walletCoreTransactionRecordingController,
         resourceProvider,
+        uuidProvider,
     )

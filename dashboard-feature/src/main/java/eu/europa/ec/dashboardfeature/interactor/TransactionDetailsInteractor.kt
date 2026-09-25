@@ -17,10 +17,15 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
+import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.util.FULL_DATETIME_PATTERN
 import eu.europa.ec.businesslogic.util.formatLocalDateTime
+import eu.europa.ec.corelogic.controller.RecordTransactionPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
+import eu.europa.ec.corelogic.extension.preferredDataDeletionContact
 import eu.europa.ec.corelogic.extension.toPrivacyContactOrNull
+import eu.europa.ec.corelogic.extension.toPrivacyContacts
 import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimRefDomain
 import eu.europa.ec.corelogic.model.CommunicationMethodDomain
@@ -29,8 +34,14 @@ import eu.europa.ec.corelogic.model.CredentialRefDomain
 import eu.europa.ec.corelogic.model.DpaContactDomain
 import eu.europa.ec.corelogic.model.InteractingPartyDomain
 import eu.europa.ec.corelogic.model.IssuanceDetailsDomain
+import eu.europa.ec.corelogic.model.PrivacyContactDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.corelogic.model.TransactionResultDomain
+import eu.europa.ec.dashboardfeature.ui.transactions.data_deletion.model.DataDeletionRequestUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PendingTransactionActionUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PresentationActionCountsUiState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionContactUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsBodyUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsCardUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsFieldUi
@@ -39,6 +50,8 @@ import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDet
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsMetadataUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsSectionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
+import eu.europa.ec.dashboardfeature.ui.transactions.dpa_report.model.DpaReportContactUi
+import eu.europa.ec.dashboardfeature.ui.transactions.dpa_report.model.DpaReportUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi.Companion.toUiText
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi.Companion.toUiText
@@ -49,13 +62,17 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
+import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
+import eu.europa.ec.uilogic.component.ThemeColorKey
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonPrimitive
+import java.net.URI
+import java.net.URLEncoder
 
 sealed class TransactionDetailsInteractorPartialState {
     data class Success(
@@ -74,18 +91,65 @@ sealed class TransactionDetailsInteractorDeleteTransactionPartialState {
     ) : TransactionDetailsInteractorDeleteTransactionPartialState()
 }
 
+sealed class TransactionDetailsInteractorDataProtectionPartialState {
+    data class Success(
+        val pendingAction: PendingTransactionActionUi
+    ) : TransactionDetailsInteractorDataProtectionPartialState()
+
+    data class Failure(
+        val errorMessage: String
+    ) : TransactionDetailsInteractorDataProtectionPartialState()
+}
+
+sealed class TransactionDetailsInteractorDataDeletionPartialState {
+    data class Success(
+        val request: DataDeletionRequestUi
+    ) : TransactionDetailsInteractorDataDeletionPartialState()
+
+    data class Failure(
+        val errorMessage: String
+    ) : TransactionDetailsInteractorDataDeletionPartialState()
+}
+
+sealed class TransactionDetailsInteractorDpaReportPartialState {
+    data class Success(
+        val report: DpaReportUi
+    ) : TransactionDetailsInteractorDpaReportPartialState()
+
+    data class Failure(
+        val errorMessage: String
+    ) : TransactionDetailsInteractorDpaReportPartialState()
+}
+
 interface TransactionDetailsInteractor {
     fun getTransactionDetails(
         transactionId: String
     ): Flow<TransactionDetailsInteractorPartialState>
 
+    fun getDataDeletionRequest(transactionId: String): Flow<TransactionDetailsInteractorDataDeletionPartialState>
+
+    fun getDpaReport(transactionId: String): Flow<TransactionDetailsInteractorDpaReportPartialState>
+
+    fun observePresentationActionCounts(presentationId: String): Flow<PresentationActionCountsUiState>
+
     fun deleteTransaction(transactionId: String): Flow<TransactionDetailsInteractorDeleteTransactionPartialState>
 
+    fun prepareDataProtectionAction(
+        transactionId: String,
+        action: TransactionDataProtectionAction,
+        contactUrl: String,
+    ): Flow<TransactionDetailsInteractorDataProtectionPartialState>
+
+    fun recordDataProtectionAction(
+        pendingAction: PendingTransactionActionUi,
+    ): Flow<RecordTransactionPartialState>
 }
 
 class TransactionDetailsInteractorImpl(
     private val walletCoreTransactionLogController: WalletCoreTransactionLogController,
+    private val walletCoreTransactionRecordingController: WalletCoreTransactionRecordingController,
     private val resourceProvider: ResourceProvider,
+    private val uuidProvider: UuidProvider,
 ) : TransactionDetailsInteractor {
 
     private val genericErrorMsg
@@ -135,6 +199,169 @@ class TransactionDetailsInteractorImpl(
             )
         }
 
+    override fun getDataDeletionRequest(
+        transactionId: String,
+    ): Flow<TransactionDetailsInteractorDataDeletionPartialState> = flow {
+        val presentation = walletCoreTransactionLogController.getTransactionLog(id = transactionId)
+                as? TransactionLogDomain.Presentation
+
+        val contact = presentation
+            ?.takeIf { parent -> parent.canRequestDataDeletion }
+            ?.party
+            ?.contacts
+            ?.toPrivacyContacts()
+            ?.preferredDataDeletionContact()
+
+        if (presentation == null || contact == null) {
+            emit(
+                TransactionDetailsInteractorDataDeletionPartialState.Failure(
+                    errorMessage = resourceProvider.getString(R.string.transaction_details_action_unavailable),
+                )
+            )
+            return@flow
+        }
+        emit(
+            TransactionDetailsInteractorDataDeletionPartialState.Success(
+                request = contact.toDataDeletionRequestUi(
+                    relyingPartyName = presentation.party.name?.text
+                        ?.takeIf { name -> name.isNotBlank() }
+                        ?: resourceProvider.getString(R.string.data_deletion_relying_party_default_name),
+                )
+            )
+        )
+    }.safeAsync {
+        TransactionDetailsInteractorDataDeletionPartialState.Failure(
+            errorMessage = it.localizedMessage ?: genericErrorMsg,
+        )
+    }
+
+    override fun getDpaReport(
+        transactionId: String,
+    ): Flow<TransactionDetailsInteractorDpaReportPartialState> = flow {
+        val presentation = walletCoreTransactionLogController.getTransactionLog(id = transactionId)
+                as? TransactionLogDomain.Presentation
+
+        val authority = presentation?.registration?.dpa
+
+        val contacts = authority?.contacts.orEmpty().toPrivacyContacts().sortedBy { contact ->
+            when (contact.method) {
+                CommunicationMethodDomain.Phone -> 0
+                CommunicationMethodDomain.Email -> 1
+                CommunicationMethodDomain.Website -> 2
+            }
+        }
+
+        if (contacts.isEmpty()) {
+            emit(
+                TransactionDetailsInteractorDpaReportPartialState.Failure(
+                    errorMessage = resourceProvider.getString(R.string.transaction_details_action_unavailable),
+                )
+            )
+            return@flow
+        }
+
+        emit(
+            TransactionDetailsInteractorDpaReportPartialState.Success(
+                report = DpaReportUi(
+                    authority = authority?.name?.text?.takeIf { name -> name.isNotBlank() },
+                    responsibility = resourceProvider.getString(R.string.dpa_report_responsibility),
+                    followUp = resourceProvider.getString(R.string.dpa_report_follow_up),
+                    contacts = contacts.map { contact -> contact.toDpaReportContactUi() },
+                )
+            )
+        )
+    }.safeAsync {
+        TransactionDetailsInteractorDpaReportPartialState.Failure(
+            errorMessage = it.localizedMessage ?: genericErrorMsg,
+        )
+    }
+
+    private fun PrivacyContactDomain.toDataDeletionRequestUi(
+        relyingPartyName: String,
+    ): DataDeletionRequestUi {
+        val (descriptionRes, responsibilityRes, buttonRes) = when (method) {
+            CommunicationMethodDomain.Website -> Triple(
+                R.string.data_deletion_website_description,
+                R.string.data_deletion_website_responsibility,
+                R.string.data_deletion_website_button,
+            )
+
+            CommunicationMethodDomain.Email -> Triple(
+                R.string.data_deletion_email_description,
+                R.string.data_deletion_email_responsibility,
+                R.string.data_deletion_email_button,
+            )
+
+            CommunicationMethodDomain.Phone -> Triple(
+                R.string.data_deletion_phone_description,
+                R.string.data_deletion_phone_responsibility,
+                R.string.data_deletion_phone_button,
+            )
+        }
+        return DataDeletionRequestUi(
+            description = resourceProvider.getString(descriptionRes, relyingPartyName),
+            responsibility = resourceProvider.getString(responsibilityRes),
+            retentionNotice = resourceProvider.getString(
+                R.string.data_deletion_retention_notice,
+                relyingPartyName,
+            ),
+            buttonText = resourceProvider.getString(buttonRes, relyingPartyName),
+            contactUrl = url,
+        )
+    }
+
+    private fun PrivacyContactDomain.toDpaReportContactUi(): DpaReportContactUi {
+        val (icon, actionTextRes) = when (method) {
+            CommunicationMethodDomain.Phone -> AppIcons.Call to R.string.dpa_report_call_button
+            CommunicationMethodDomain.Email -> AppIcons.Email to R.string.dpa_report_email_button
+            CommunicationMethodDomain.Website -> AppIcons.Link to R.string.dpa_report_website_button
+        }
+        return DpaReportContactUi(
+            item = ListItemDataUi(
+                itemId = url,
+                mainContentData = ListItemMainContentDataUi.Text(text = displayValue),
+                leadingContentData = ListItemLeadingContentDataUi.Icon(
+                    iconData = icon,
+                    tint = ThemeColorKey.OnSurfaceVariant,
+                ),
+                trailingContentData = ListItemTrailingContentDataUi.TextWithIcon(
+                    text = resourceProvider.getString(actionTextRes),
+                    iconData = AppIcons.KeyboardArrowRight,
+                ),
+            ),
+            url = url,
+        )
+    }
+
+    override fun observePresentationActionCounts(
+        presentationId: String,
+    ): Flow<PresentationActionCountsUiState> = flow {
+        emit(PresentationActionCountsUiState.Loading)
+
+        walletCoreTransactionLogController.observePresentationActions(presentationId = presentationId)
+            .collect { actions ->
+                var dataDeletionRequests = 0
+                var dpaReports = 0
+                actions.forEach { action ->
+                    when (action) {
+                        is TransactionLogDomain.DataDeletionRequest -> dataDeletionRequests++
+                        is TransactionLogDomain.DpaReport -> dpaReports++
+                    }
+                }
+
+                emit(
+                    PresentationActionCountsUiState.Content(
+                        dataDeletionRequests = dataDeletionRequests,
+                        dpaReports = dpaReports,
+                    )
+                )
+            }
+    }.safeAsync {
+        PresentationActionCountsUiState.Failure(
+            errorMessage = it.localizedMessage ?: genericErrorMsg
+        )
+    }
+
     override fun deleteTransaction(transactionId: String): Flow<TransactionDetailsInteractorDeleteTransactionPartialState> =
         flow {
             walletCoreTransactionLogController.deleteTransactionLog(id = transactionId)
@@ -144,6 +371,185 @@ class TransactionDetailsInteractorImpl(
                 errorMessage = it.localizedMessage ?: genericErrorMsg
             )
         }
+
+    override fun prepareDataProtectionAction(
+        transactionId: String,
+        action: TransactionDataProtectionAction,
+        contactUrl: String,
+    ): Flow<TransactionDetailsInteractorDataProtectionPartialState> = flow {
+        val presentation = walletCoreTransactionLogController.getTransactionLog(id = transactionId)
+                as? TransactionLogDomain.Presentation
+
+        if (presentation == null
+            || presentation
+                .actionContacts(action)
+                .none { transactionContactUi ->
+                    transactionContactUi.url == contactUrl
+                }
+        ) {
+            emit(
+                TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                    errorMessage = resourceProvider.getString(R.string.transaction_details_action_unavailable),
+                )
+            )
+            return@flow
+        }
+
+        val communicationMethod = when (URI(contactUrl).scheme?.lowercase()) {
+            "http", "https" -> CommunicationMethodDomain.Website
+            "mailto" -> CommunicationMethodDomain.Email
+            "tel" -> CommunicationMethodDomain.Phone
+            else -> {
+                emit(
+                    TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                        errorMessage = resourceProvider.getString(R.string.transaction_details_action_unavailable),
+                    )
+                )
+                return@flow
+            }
+        }
+
+        emit(
+            TransactionDetailsInteractorDataProtectionPartialState.Success(
+                pendingAction = PendingTransactionActionUi(
+                    id = uuidProvider.provideUuid(),
+                    presentation = presentation,
+                    action = action,
+                    contactUrl = contactUrl,
+                    launchUrl = presentation.actionUrl(action = action, contactUrl = contactUrl),
+                    communicationMethod = communicationMethod,
+                    authority = if (action == TransactionDataProtectionAction.ReportSuspiciousTransaction) {
+                        presentation.registration?.dpa
+                    } else {
+                        null
+                    },
+                    launchedAt = null,
+                ),
+            )
+        )
+    }.safeAsync {
+        TransactionDetailsInteractorDataProtectionPartialState.Failure(
+            errorMessage = it.localizedMessage ?: genericErrorMsg,
+        )
+    }
+
+    override fun recordDataProtectionAction(
+        pendingAction: PendingTransactionActionUi,
+    ): Flow<RecordTransactionPartialState> = flow {
+        val launchedAt = pendingAction.launchedAt
+        if (launchedAt == null) {
+            emit(RecordTransactionPartialState.Failure(genericErrorMsg))
+            return@flow
+        }
+
+        val result = when (pendingAction.action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                walletCoreTransactionRecordingController.recordDataDeletionRequest(
+                    id = pendingAction.id,
+                    time = launchedAt,
+                    presentation = pendingAction.presentation,
+                    communicationMethod = pendingAction.communicationMethod,
+                )
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction -> {
+                val authority = pendingAction.authority
+                if (authority == null) {
+                    emit(RecordTransactionPartialState.Failure(genericErrorMsg))
+                    return@flow
+                }
+
+                walletCoreTransactionRecordingController.recordDpaReport(
+                    id = pendingAction.id,
+                    time = launchedAt,
+                    parentPresentationId = pendingAction.presentation.id,
+                    authority = authority,
+                    communicationMethod = pendingAction.communicationMethod,
+                )
+            }
+        }
+
+        emit(result)
+    }.safeAsync {
+        RecordTransactionPartialState.Failure(it.localizedMessage ?: genericErrorMsg)
+    }
+
+    private fun TransactionLogDomain.Presentation.actionContacts(
+        action: TransactionDataProtectionAction,
+    ): List<TransactionContactUi> {
+        val contacts = when (action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                if (canRequestDataDeletion) party.contacts else emptyList()
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction ->
+                registration?.dpa?.contacts.orEmpty()
+        }
+        return contacts.mapNotNull { contact ->
+            contact.toContactUrlOrNull()?.let { url ->
+                TransactionContactUi(label = contact.trim(), url = url)
+            }
+        }.distinctBy { contact -> contact.url }
+    }
+
+    private fun TransactionLogDomain.Presentation.actionUrl(
+        action: TransactionDataProtectionAction,
+        contactUrl: String,
+    ): String {
+        if (!contactUrl.startsWith("mailto:")) return contactUrl
+
+        val partyName = party.name?.text?.takeIf { name -> name.isNotBlank() }
+            ?: party.identifier?.value?.takeIf { identifier -> identifier.isNotBlank() }
+            ?: resourceProvider.getString(R.string.transaction_details_no_information)
+
+        val subjectRes = when (action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                R.string.transaction_details_deletion_email_subject
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction ->
+                R.string.transaction_details_report_email_subject
+        }
+
+        val bodyRes = when (action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                R.string.transaction_details_deletion_email_body
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction ->
+                R.string.transaction_details_report_email_body
+        }
+
+        val subject = resourceProvider.getString(
+            subjectRes, partyName.replace(Regex("[\\r\\n]+"), " "),
+        )
+
+        val identity = listOfNotNull(
+            party.name?.text?.takeIf { name -> name.isNotBlank() },
+            party.identifier?.value?.takeIf { identifier -> identifier.isNotBlank() },
+            party.identifier?.schemeUri?.takeIf { scheme -> scheme.isNotBlank() },
+        ).joinToString(separator = "\n")
+            .ifBlank { partyName }
+
+        val body = buildString {
+            append(
+                resourceProvider.getString(
+                    bodyRes, identity, time.formatLocalDateTime(pattern = FULL_DATETIME_PATTERN),
+                )
+            )
+            if (action == TransactionDataProtectionAction.ReportSuspiciousTransaction) {
+                intermediary?.name?.text?.takeIf { name -> name.isNotBlank() }?.let { name ->
+                    append(
+                        resourceProvider.getString(
+                            R.string.transaction_details_report_email_intermediary,
+                            name
+                        )
+                    )
+                }
+            }
+        }
+
+        return "$contactUrl?subject=${subject.encodeMailParameter()}&body=${body.encodeMailParameter()}"
+    }
+
+    private fun String.encodeMailParameter(): String =
+        URLEncoder.encode(this, Charsets.UTF_8.name()).replace("+", "%20")
 
     private fun TransactionLogDomain.toProviderType(): String? {
         return when (this) {
@@ -268,6 +674,9 @@ class TransactionDetailsInteractorImpl(
                 claims = claimsPresented,
                 emptyRes = R.string.transaction_details_no_data_shared,
             ),
+            deletionContacts = actionContacts(TransactionDataProtectionAction.RequestDataDeletion),
+            reportContacts = actionContacts(TransactionDataProtectionAction.ReportSuspiciousTransaction),
+            actionCounts = PresentationActionCountsUiState.Loading,
         )
 
         is TransactionLogDomain.CredentialIssuance -> TransactionDetailsBodyUi.Issuance(

@@ -82,6 +82,18 @@ enum class AppIconKey(
         contentDescriptionId = R.string.content_description_arrow_back_icon,
         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
     ),
+    Call(
+        resourceId = R.drawable.ic_phone,
+        contentDescriptionId = R.string.content_description_call_icon,
+    ),
+    Email(
+        resourceId = R.drawable.ic_mail,
+        contentDescriptionId = R.string.content_description_email_icon,
+    ),
+    Link(
+        resourceId = R.drawable.ic_link,
+        contentDescriptionId = R.string.content_description_link_icon,
+    ),
     Close(
         contentDescriptionId = R.string.content_description_close_icon,
         imageVector = Icons.Filled.Close,
@@ -332,6 +344,9 @@ enum class AppIconKey(
  */
 object AppIcons {
     val ArrowBack: IconDataUi = IconDataUi(AppIconKey.ArrowBack)
+    val Call: IconDataUi = IconDataUi(AppIconKey.Call)
+    val Email: IconDataUi = IconDataUi(AppIconKey.Email)
+    val Link: IconDataUi = IconDataUi(AppIconKey.Link)
     val Close: IconDataUi = IconDataUi(AppIconKey.Close)
     val VerticalMore: IconDataUi = IconDataUi(AppIconKey.VerticalMore)
     val Warning: IconDataUi = IconDataUi(AppIconKey.Warning)
