@@ -771,8 +771,9 @@ static trust store built from PEM files under:
 resources-logic/src/main/res/raw
 ```
 
-The two models are either/or: a custom store wins over the ETSI store, which wins over static
-certificates.
+Use the configured ETSI trusted lists or supply explicit trust anchors for reader authentication.
+Explicit `trustedCertificates(...)` take precedence over the shared trusted-list configuration for
+reader authentication.
 
 The repository still ships development/demo trust-anchor resources, although the reference
 flavors no longer load them for reader trust. If your deployment uses the static model, in
@@ -787,11 +788,14 @@ production:
 Example:
 
 ```kotlin
-configureReaderTrustStore(
-    context,
-    R.raw.ms_iaca_2026,
-    R.raw.ms_reader_root_2026
-)
+configureReaderAuthentication {
+    trustedCertificates(
+        context,
+        R.raw.ms_iaca_2026,
+        R.raw.ms_reader_root_2026
+    )
+    enforceIfPresent()
+}
 ```
 
 Certificate governance:
@@ -837,15 +841,16 @@ configureDocumentStatusResolver {
     }
   }
 }
-configureReaderTrustStore {
-  readerAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+configureReaderAuthentication {
+  enforceIfPresent()
 }
 configureWrpRegistrationPolicy(WrpRegistrationPolicy.Enabled)
 ```
 
 The behavior differs per area and protocol. For example, untrusted verifiers are handled
 differently by OpenID4VP (request rejected at resolution) and by the ISO 18013 paths (consent
-shown; disclosure then gated at send by `ReaderAuthPolicy`). Change this configuration carefully.
+shown; disclosure then gated at send by the reader-authentication policy). Change this configuration
+carefully.
 
 Production requirements for a trusted-list deployment:
 
@@ -861,9 +866,9 @@ Production requirements for a trusted-list deployment:
 * Decide the trust policies deliberately: `INFORM` records the verdict without blocking,
   `ENFORCE` rejects (issuance: document deleted; status: resolution fails). If the app must show
   or act on `INFORM` verdicts, consume `IssueEvent.DocumentIssued.issuerTrustResult`.
-* Decide the `ReaderAuthPolicy`. `AlwaysRequire` refuses any reader without verified reader
-  authentication (empty status-10 response); `EnforceIfPresent` admits readers that send no
-  reader authentication.
+* Choose the enforcement mode in `configureReaderAuthentication`. `alwaysRequire()` refuses any
+  reader without verified reader authentication (empty status-10 response); `enforceIfPresent()`
+  admits readers that send no reader authentication.
 * Verify how the trusted-list JWTs themselves are authenticated. The SDK's default verifier
   checks each list's signature against the certificate embedded in the list itself; if your trust
   framework requires pinning or full chain validation of the list signer, provide a custom
@@ -1211,16 +1216,22 @@ QtspData(
 
 Do not use demo RQES values in production.
 
-| Field | Meaning | Production value |
-| --- | --- | --- |
-| `name` | QTSP display name. | Official QTSP/service name shown to users. |
-| `endpoint` | CSC or QTSP signing endpoint. | Production HTTPS endpoint from the QTSP. |
-| `tsaUrl` | Timestamp authority URL. | Approved TSA endpoint, if required by the signing profile. |
-| `clientId` | OAuth/client identifier for the wallet or broker. | Production client ID issued by QTSP or authorization server. |
-| `clientSecret` | OAuth client secret in current SDK config. | Avoid embedding real confidential secrets in the app. Use a backend broker or public-client profile where possible. |
-| `authFlowRedirectionURI` | Redirect URI for RQES authorization. | Must match manifest placeholders and QTSP registration. |
-| `hashAlgorithm` | Hash algorithm for signing. | Use approved algorithm, currently SHA-256 in the reference config. |
-| `documentRetrievalConfig` | Certificate/trust config for retrieving documents. | Replace demo certificates with production trusted certificates. |
+When creating the production flavor, keep the `signingLogger` supplied through `ConfigLogicImpl`
+to `RQESConfigImpl` so signing activity appears in transaction history. This remains active when
+`printLogs` is false. See the [RQES example](CONFIGURATION.md#general-configuration) and
+[transaction-history behavior](#transaction-history).
+
+| Field                     | Meaning                                            | Production value                                                                                                    |
+|---------------------------|----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `name`                    | QTSP display name.                                 | Official QTSP/service name shown to users.                                                                          |
+| `endpoint`                | CSC or QTSP signing endpoint.                      | Production HTTPS endpoint from the QTSP.                                                                            |
+| `tsaUrl`                  | Timestamp authority URL.                           | Approved TSA endpoint, if required by the signing profile.                                                          |
+| `clientId`                | OAuth/client identifier for the wallet or broker.  | Production client ID issued by QTSP or authorization server.                                                        |
+| `clientSecret`            | OAuth client secret in current SDK config.         | Avoid embedding real confidential secrets in the app. Use a backend broker or public-client profile where possible. |
+| `authFlowRedirectionURI`  | Redirect URI for RQES authorization.               | Must match manifest placeholders and QTSP registration.                                                             |
+| `hashAlgorithm`           | Hash algorithm for signing.                        | Use approved algorithm, currently SHA-256 in the reference config.                                                  |
+| `documentRetrievalConfig` | Certificate/trust config for retrieving documents. | Replace demo certificates with production trusted certificates.                                                     |
+| `signingLogger`           | Records signing activity in transaction history.   | Keep the provided logger configured independently of diagnostic logging.                                            |
 
 Important:
 
@@ -1580,6 +1591,17 @@ The app has:
 * File logging through `LogControllerImpl`.
 * Transaction logging through `WalletCoreTransactionLogControllerImpl`.
 
+### Transaction history
+
+Wallet operations and RQES signing activity appear in the app's locally stored transaction history.
+Keep transaction logging configured for every flavor, including release builds. Later updates to a
+transaction refresh its existing record.
+
+Deleting a pending issuance log removes its current entry. When issuance later completes, a log
+can appear again. Log deletion does not cancel issuance.
+
+### Diagnostic logging
+
 Production logging rules:
 
 * Do not log PID attributes.
@@ -1604,7 +1626,7 @@ consider:
 Example production-safe pattern:
 
 ```kotlin
-if (configLogic.appBuildType == AppBuildType.DEBUG) {
+if (BuildConfig.DEBUG) {
     Timber.plant(Timber.DebugTree(), fileLoggerTree)
 } else {
     Timber.plant(ReleaseRedactingTree())
@@ -2266,6 +2288,17 @@ Before release candidate approval, test:
 * Malformed deep links.
 * Malicious credential offer.
 * App update from previous production version.
+
+### Verify transaction history in a minified release
+
+Exercise these cases in the release artifact that will be distributed, with R8 enabled:
+
+* Record issuance, reissuance, credential deletion, presentation, and signing activity; restart
+  the app and verify that the records remain available and display correctly.
+* Confirm that updates to the same transaction refresh its existing entry. Delete a pending
+  issuance log and verify that a later completion can create the log again, as intended.
+
+Verify these behaviors in the minified release; passing debug tests alone is insufficient.
 
 ## Production Test Matrix
 

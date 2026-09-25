@@ -99,12 +99,16 @@ enum class AppIconKey(
         contentDescriptionId = R.string.content_description_error_icon,
     ),
     ErrorFilled(
-        contentDescriptionId = R.string.content_description_error_icon,
+        contentDescriptionId = R.string.content_description_error_filled_icon,
         imageVector = Icons.Default.Info,
     ),
     Delete(
         resourceId = R.drawable.ic_delete,
         contentDescriptionId = R.string.content_description_delete_icon,
+    ),
+    DeleteFilled(
+        resourceId = R.drawable.ic_delete_filled,
+        contentDescriptionId = R.string.content_description_delete_filled_icon,
     ),
     TouchId(
         resourceId = R.drawable.ic_touch_id,
@@ -334,6 +338,7 @@ object AppIcons {
     val Error: IconDataUi = IconDataUi(AppIconKey.Error)
     val ErrorFilled: IconDataUi = IconDataUi(AppIconKey.ErrorFilled)
     val Delete: IconDataUi = IconDataUi(AppIconKey.Delete)
+    val DeleteFilled: IconDataUi = IconDataUi(AppIconKey.DeleteFilled)
     val TouchId: IconDataUi = IconDataUi(AppIconKey.TouchId)
     val QR: IconDataUi = IconDataUi(AppIconKey.QR)
     val NFC: IconDataUi = IconDataUi(AppIconKey.NFC)

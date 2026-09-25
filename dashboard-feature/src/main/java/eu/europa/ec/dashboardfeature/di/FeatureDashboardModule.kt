@@ -25,6 +25,7 @@ import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -105,11 +106,11 @@ fun provideDocumentsInteractor(
 fun provideTransactionInteractor(
     resourceProvider: ResourceProvider,
     filterValidator: FilterValidator,
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
 ): TransactionsInteractor = TransactionsInteractorImpl(
     resourceProvider,
     filterValidator,
-    walletCoreDocumentsController
+    walletCoreTransactionLogController
 )
 
 @Factory
@@ -139,12 +140,10 @@ fun provideDocumentDetailsInteractor(
 
 @Factory
 fun provideTransactionDetailsInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
     resourceProvider: ResourceProvider,
-    uuidProvider: UuidProvider
 ): TransactionDetailsInteractor =
     TransactionDetailsInteractorImpl(
-        walletCoreDocumentsController,
+        walletCoreTransactionLogController,
         resourceProvider,
-        uuidProvider
     )
