@@ -37,6 +37,7 @@ import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.WalletResetStatus
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
+import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
 import eu.europa.ec.uilogic.navigation.DashboardScreens
@@ -280,6 +281,11 @@ open class EudiComponentActivity : FragmentActivity() {
         } ?: hasIntentAction(intent)?.let {
             when (it.type) {
                 IntentType.DC_API -> {
+                    if (!viewModel.isDCAPIEnabled()) {
+                        setIntent(Intent())
+                        if (coldBoot) finish()
+                        return
+                    }
                     cacheIntent(it.intent)
                     if (routerHost.userIsLoggedInWithDocuments()) {
                         routerHost.popToDashboardScreen()
@@ -294,6 +300,7 @@ open class EudiComponentActivity : FragmentActivity() {
 @KoinViewModel
 internal class EudiComponentActivityViewModel(
     private val prefKeys: PrefKeys,
+    private val dcapiSettingProvider: DCAPISettingProvider,
     uuidProvider: UuidProvider
 ) : ViewModel() {
 
@@ -323,6 +330,14 @@ internal class EudiComponentActivityViewModel(
     }
 
     fun getCachedIntent(): Intent? = pendingIntent
+
+    /**
+     * Whether the user allows the Digital Credential API. A request that arrives while it is off is
+     * declined. When the request started the activity, the activity finishes without a result, as
+     * for a cancelled request; when the wallet was already open, the request is dropped and the
+     * wallet stays as it was.
+     */
+    fun isDCAPIEnabled(): Boolean = runBlocking(Dispatchers.IO) { dcapiSettingProvider.isEnabled() }
 
     fun hasFlowStarted(): Boolean = flowStarted
 

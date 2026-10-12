@@ -292,6 +292,22 @@ class TestSettingsViewModel {
         }
 
     @Test
+    fun `toggling the Digital Credential API applies the setting and refreshes the items`() =
+        coroutineRule.runTest {
+            val updatedItems = listOf(settingsItem)
+            whenever(interactor.getSettingsItemsUi(null)).thenReturn(updatedItems)
+
+            viewModel.handleEvents(
+                Event.ItemClicked(SettingsMenuItemType.DC_API, context)
+            )
+            coroutineRule.testScope.runCurrent()
+
+            verify(interactor).toggleDCAPI()
+            assertEquals(updatedItems, viewModel.viewState.value.settingsItems)
+            verify(interactor, never()).authenticateWithBiometrics(any(), any(), any())
+        }
+
+    @Test
     fun `toggling the registration check refreshes the items and asks for a restart`() =
         coroutineRule.runTest {
             val updatedItems = listOf(settingsItem)

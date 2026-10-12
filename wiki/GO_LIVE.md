@@ -774,6 +774,14 @@ Production guidance:
 * Enable only the protocols approved by your ecosystem profile. Do not enable
   `OPENID4VP_V1_UNSIGNED` unless unsigned (unauthenticated) OpenID4VP requests over the DC API are
   explicitly acceptable.
+* Users can turn the API off in Settings ("Offer documents to apps and websites"). It is on by
+  default. While it is off, the wallet removes its documents from the Android credential registry
+  and declines any request that still arrives through the API; turning it back on registers the
+  documents again. If the system registry cannot be cleared, for example on a device without
+  Google Play services, the entries may remain until a later update succeeds, but requests are
+  still declined. The switch is shown only when the build enables the API. HLR.48 and IA.30 ask
+  for this control in the user's hands, so keep it in production builds; the build setting alone
+  does not meet them.
 * Test with all supported Android versions and browsers.
 * Validate all inbound DC API intents.
 * Confirm policy implications for relying parties and browser mediation.

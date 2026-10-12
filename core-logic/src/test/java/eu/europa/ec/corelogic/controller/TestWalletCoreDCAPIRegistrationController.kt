@@ -46,6 +46,34 @@ class TestWalletCoreDCAPIRegistrationController {
     }
 
     @Test
+    fun `Given the user turned the Digital Credential API off, When Wallet Core updates the registration, Then the registry is cleared instead`() {
+        coroutineRule.runTest {
+            val controller = controller(enabled = false)
+            controller.attach { registration() }
+
+            controller.registerCredentials()
+
+            assertEquals(listOf("clear registry"), steps)
+        }
+    }
+
+    @Test
+    fun `Given the setting is off and the registry cannot be cleared, When Wallet Core updates the registration, Then the update does not fail`() {
+        coroutineRule.runTest {
+            val controller = WalletCoreDCAPIRegistrationControllerImpl(
+                clearRegistry = { throw IllegalStateException("registry unavailable") },
+                isEnabled = { false },
+            )
+            controller.attach { registration() }
+
+            controller.registerCredentials()
+            controller.unregisterCredentials()
+
+            assertEquals(emptyList<String>(), steps)
+        }
+    }
+
+    @Test
     fun `Given the reset holds the registration, When Wallet Core updates it meanwhile, Then the update runs after the registry is cleared`() {
         coroutineRule.runTest {
             val controller = controller()
@@ -91,6 +119,7 @@ class TestWalletCoreDCAPIRegistrationController {
         coroutineRule.runTest {
             val controller = WalletCoreDCAPIRegistrationControllerImpl(
                 clearRegistry = { throw IllegalStateException("registry unavailable") },
+                isEnabled = { true },
             )
 
             val result = controller.clearAround { true }
@@ -108,8 +137,9 @@ class TestWalletCoreDCAPIRegistrationController {
         }
     }
 
-    private fun controller() = WalletCoreDCAPIRegistrationControllerImpl(
+    private fun controller(enabled: Boolean = true) = WalletCoreDCAPIRegistrationControllerImpl(
         clearRegistry = { steps.add("clear registry") },
+        isEnabled = { enabled },
     )
 
     private fun registration(release: CompletableDeferred<Unit>? = null) = object : DCAPIRegistration {

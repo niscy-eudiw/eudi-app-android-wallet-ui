@@ -199,6 +199,10 @@ interface PrefKeys {
     suspend fun getRegistrationCheckEnabled(): Boolean
     suspend fun setRegistrationCheckEnabled(value: Boolean)
 
+    /** Whether the wallet offers its documents through the Digital Credential API; on by default. */
+    suspend fun getDCAPIEnabled(): Boolean
+    suspend fun setDCAPIEnabled(value: Boolean)
+
     suspend fun getCryptoAlias(): String
     suspend fun setCryptoAlias(value: String)
     suspend fun setSessionId(value: String)
@@ -244,6 +248,14 @@ class PrefKeysImpl(
 
     override suspend fun setRegistrationCheckEnabled(value: Boolean) {
         prefsController.setBool("RegistrationCheckEnabled", value)
+    }
+
+    override suspend fun getDCAPIEnabled(): Boolean {
+        return prefsController.getBool("DCAPIEnabled", true)
+    }
+
+    override suspend fun setDCAPIEnabled(value: Boolean) {
+        prefsController.setBool("DCAPIEnabled", value)
     }
 
     override suspend fun getCryptoAlias(): String {

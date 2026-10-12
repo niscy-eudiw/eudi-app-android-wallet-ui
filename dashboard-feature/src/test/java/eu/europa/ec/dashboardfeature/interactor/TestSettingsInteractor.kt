@@ -22,6 +22,8 @@ import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
+import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.dashboardfeature.util.mockedChangeLogUrl
@@ -43,6 +45,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -68,6 +71,12 @@ class TestSettingsInteractor {
     @Mock
     private lateinit var prefKeys: PrefKeys
 
+    @Mock
+    private lateinit var dcapiSettingProvider: DCAPISettingProvider
+
+    @Mock
+    private lateinit var walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController
+
     private lateinit var interactor: SettingsInteractor
 
     private lateinit var closeable: AutoCloseable
@@ -82,6 +91,8 @@ class TestSettingsInteractor {
             logController = logController,
             resourceProvider = resourceProvider,
             prefKeys = prefKeys,
+            dcapiSettingProvider = dcapiSettingProvider,
+            walletCoreDCAPIRegistrationController = walletCoreDCAPIRegistrationController,
         )
     }
 
@@ -447,6 +458,62 @@ class TestSettingsInteractor {
             // Then
             assertRegistrationCheckItem(settingsItems[1], isChecked = false)
         }
+
+    @Test
+    fun `Given the build enables the Digital Credential API, When getSettingsItemsUi is called, Then its switch follows the setting`() =
+        coroutineRule.runTest {
+            whenever(biometricInteractor.getBiometricsAvailability())
+                .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockRegistrationCheckPreference(response = mockedRegistrationCheckEnabled)
+            whenever(dcapiSettingProvider.isAvailable).thenReturn(true)
+            whenever(dcapiSettingProvider.isEnabled()).thenReturn(false)
+
+            mockStringsNeededForGetSettingsItemsUi(
+                resourcesProvider = resourceProvider,
+                changeLogUrlIsNull = true,
+            )
+            mockResourceProviderStrings(
+                resourceProvider,
+                listOf(R.string.settings_screen_option_dc_api to dcApiText)
+            )
+
+            val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
+
+            assertEquals(5, settingsItems.size)
+            val dcApiItem = settingsItems[2]
+            assertEquals(SettingsMenuItemType.DC_API, dcApiItem.type)
+            assertEquals(SettingsMenuItemType.DC_API.itemId, dcApiItem.data.itemId)
+            val mainContent = dcApiItem.data.mainContentData as ListItemMainContentDataUi.Text
+            assertEquals(dcApiText, mainContent.text)
+            val leadingIcon = dcApiItem.data.leadingContentData as ListItemLeadingContentDataUi.Icon
+            assertEquals(AppIcons.PresentDocumentOnline, leadingIcon.iconData)
+            val trailingSwitch =
+                dcApiItem.data.trailingContentData as ListItemTrailingContentDataUi.Switch
+            assertEquals(false, trailingSwitch.switchData.isChecked)
+            assertEquals(true, trailingSwitch.switchData.enabled)
+            assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, settingsItems[3].type)
+        }
+
+    @Test
+    fun `Given the build does not enable the Digital Credential API, When getSettingsItemsUi is called, Then no switch is offered`() =
+        coroutineRule.runTest {
+            whenever(biometricInteractor.getBiometricsAvailability())
+                .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockRegistrationCheckPreference(response = mockedRegistrationCheckEnabled)
+            whenever(dcapiSettingProvider.isAvailable).thenReturn(false)
+
+            mockStringsNeededForGetSettingsItemsUi(
+                resourcesProvider = resourceProvider,
+                changeLogUrlIsNull = true,
+            )
+
+            val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
+
+            assertEquals(false, settingsItems.any { it.type == SettingsMenuItemType.DC_API })
+            verify(dcapiSettingProvider, never()).isEnabled()
+        }
     //endregion
 
     //region toggleBiometricsAuthentication
@@ -532,6 +599,32 @@ class TestSettingsInteractor {
             verify(prefKeys).setRegistrationCheckEnabled(true)
         }
     //endregion
+
+    @Test
+    fun `Given the Digital Credential API is on, When toggleDCAPI is called, Then it is turned off and the registry is updated`() =
+        coroutineRule.runTest {
+            whenever(dcapiSettingProvider.isEnabled()).thenReturn(true)
+
+            interactor.toggleDCAPI()
+
+            inOrder(dcapiSettingProvider, walletCoreDCAPIRegistrationController) {
+                verify(dcapiSettingProvider).setEnabled(false)
+                verify(walletCoreDCAPIRegistrationController).registerCredentials()
+            }
+        }
+
+    @Test
+    fun `Given the Digital Credential API is off, When toggleDCAPI is called, Then it is turned on and the registry is updated`() =
+        coroutineRule.runTest {
+            whenever(dcapiSettingProvider.isEnabled()).thenReturn(false)
+
+            interactor.toggleDCAPI()
+
+            inOrder(dcapiSettingProvider, walletCoreDCAPIRegistrationController) {
+                verify(dcapiSettingProvider).setEnabled(true)
+                verify(walletCoreDCAPIRegistrationController).registerCredentials()
+            }
+        }
 
     //region Mock Calls
     private fun mockShowBatchIssuanceCounterPreference(response: Boolean) {
@@ -628,6 +721,7 @@ class TestSettingsInteractor {
     private val biometricsFailureText = "Biometrics unavailable"
     private val registrationCheckText = "Check Registration Certificates"
     private val resetWalletText = "Reset wallet"
+    private val dcApiText = "Offer documents to apps and websites"
 
     // the standing value for the cases that are about other rows
     private val mockedRegistrationCheckEnabled = true

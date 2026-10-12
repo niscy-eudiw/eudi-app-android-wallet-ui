@@ -26,7 +26,12 @@ import kotlinx.coroutines.sync.withLock
  * after every change to its documents, in a coroutine it does not wait for. The updates run here one
  * at a time, so each reads the documents as they are when it starts and a slow update cannot undo a
  * later one. The registry is kept by the system outside the app's data, so the factory reset clears
- * it through [clearAround].
+ * it through [clearAround]. While the user has turned the Digital Credential API off
+ * (`DCAPISettingProvider`), an update clears the registry instead of filling it, so the wallet
+ * advertises no documents; calling [registerCredentials] after the setting changes applies it.
+ * A registry that cannot be cleared, for example on a device without Google Play services, does
+ * not fail an update: Wallet Core runs updates in a coroutine with no handler, where an exception
+ * would end the process. Requests that still arrive are declined by the activity.
  */
 interface WalletCoreDCAPIRegistrationController : DCAPIRegistration {
 
@@ -43,6 +48,7 @@ interface WalletCoreDCAPIRegistrationController : DCAPIRegistration {
 
 class WalletCoreDCAPIRegistrationControllerImpl(
     private val clearRegistry: suspend () -> Unit,
+    private val isEnabled: suspend () -> Boolean,
 ) : WalletCoreDCAPIRegistrationController {
 
     private val mutex = Mutex()
@@ -60,23 +66,32 @@ class WalletCoreDCAPIRegistrationControllerImpl(
 
     override suspend fun registerCredentials() {
         mutex.withLock {
-            currentRegistration()?.registerCredentials()
+            if (isEnabled()) {
+                currentRegistration()?.registerCredentials()
+            } else {
+                clearRegistryIgnoringFailure()
+            }
         }
     }
 
     override suspend fun unregisterCredentials() {
-        mutex.withLock { clearRegistry() }
+        mutex.withLock { clearRegistryIgnoringFailure() }
     }
 
     override suspend fun <T> clearAround(block: suspend () -> T): T = mutex.withLock {
         val result = block()
+        clearRegistryIgnoringFailure()
+        result
+    }
+
+    /** Clears the registry; a failure of the system service is ignored, see the interface. */
+    private suspend fun clearRegistryIgnoringFailure() {
         try {
             clearRegistry()
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
         }
-        result
     }
 
     private fun currentRegistration(): DCAPIRegistration? {

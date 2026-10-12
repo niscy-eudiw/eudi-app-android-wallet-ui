@@ -43,6 +43,8 @@ import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkControllerImpl
 import eu.europa.ec.corelogic.controller.WalletResetController
 import eu.europa.ec.corelogic.controller.WalletResetControllerImpl
 import eu.europa.ec.corelogic.controller.WalletResetStatus
+import eu.europa.ec.corelogic.provider.DCAPISettingProvider
+import eu.europa.ec.corelogic.provider.DCAPISettingProviderImpl
 import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.corelogic.provider.RegistrationCheckProviderImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
@@ -114,12 +116,14 @@ fun provideEudiWallet(
 @Single
 fun provideWalletCoreDCAPIRegistrationController(
     context: Context,
+    dcapiSettingProvider: DCAPISettingProvider,
 ): WalletCoreDCAPIRegistrationController = WalletCoreDCAPIRegistrationControllerImpl(
     clearRegistry = {
         RegistryManager.create(context).clearCredentialRegistry(
             ClearCredentialRegistryRequest(isDeleteAll = true)
         )
     },
+    isEnabled = { dcapiSettingProvider.isEnabled() },
 )
 
 @Factory
@@ -190,6 +194,15 @@ fun provideRegistrationCheckProvider(
     prefKeys: PrefKeys
 ): RegistrationCheckProvider = RegistrationCheckProviderImpl(
     prefKeys = prefKeys
+)
+
+@Factory
+fun provideDCAPISettingProvider(
+    prefKeys: PrefKeys,
+    walletCoreConfig: WalletCoreConfig,
+): DCAPISettingProvider = DCAPISettingProviderImpl(
+    prefKeys = prefKeys,
+    walletCoreConfig = walletCoreConfig,
 )
 
 @Factory

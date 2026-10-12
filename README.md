@@ -230,6 +230,13 @@ opens the supplied document link.
 Recorded signing-request information is also available under **SIGNING REQUEST → Signature details**
 in the presentation's transaction details. This section is read-only.
 
+### Offering documents to apps and websites
+
+Through the Android Digital Credential API, apps and websites can ask the Wallet for a document
+with the system's own picker. The Wallet offers its documents there while **Offer documents to apps
+and websites** is on in Settings, which is the default. Turn it off and the Wallet removes its
+documents from the picker and declines such requests.
+
 ### Proximity flow
 
 1. Log in to the EUDI Wallet app.

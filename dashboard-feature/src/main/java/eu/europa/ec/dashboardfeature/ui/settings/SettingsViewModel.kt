@@ -232,6 +232,22 @@ class SettingsViewModel(
                 }
             }
 
+            SettingsMenuItemType.DC_API -> {
+                viewModelScope.launch {
+                    settingsInteractor.toggleDCAPI()
+
+                    val settingsItems = settingsInteractor.getSettingsItemsUi(
+                        changelogUrl = viewState.value.changelogUrl
+                    )
+
+                    setState {
+                        copy(
+                            settingsItems = settingsItems,
+                        )
+                    }
+                }
+            }
+
             SettingsMenuItemType.RETRIEVE_LOGS -> {
                 val logs = settingsInteractor.retrieveLogFileUris()
                 if (logs.isNotEmpty()) {
