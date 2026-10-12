@@ -685,6 +685,8 @@ module at `core-logic/src/demo/java/eu/europa/ec/corelogic/config/WalletCoreConf
 `core-logic/src/dev/java/eu/europa/ec/corelogic/config/WalletCoreConfigImpl.kt`.
 The *order* property determines the order the issuers appear into, in the *AddDocumentScreen*, if
 more than one exists.
+The wallet accepts credential offers only from the issuers listed in *issuersConfig*, and uses each
+issuer only with its own configuration; see [GO_LIVE.md](GO_LIVE.md#issuer-configuration-issuersconfig).
 If you want to add or adjust the displayed scoped documents, you must modify the issuer's metadata, and the wallet will automatically resolve your changes.
 
 ## How to work with self-signed certificates

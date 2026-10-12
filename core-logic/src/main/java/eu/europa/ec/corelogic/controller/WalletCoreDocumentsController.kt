@@ -17,7 +17,6 @@
 package eu.europa.ec.corelogic.controller
 
 import androidx.annotation.VisibleForTesting
-import androidx.core.net.toUri
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
@@ -40,6 +39,8 @@ import eu.europa.ec.corelogic.model.ScopedDocumentDomain
 import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.corelogic.model.isBlockedForIssuance
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
+import eu.europa.ec.corelogic.util.OfferIssuer
+import eu.europa.ec.corelogic.util.offerIssuerOf
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
@@ -90,8 +91,6 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.URLDecoder
 import java.util.Locale
 
 enum class IssuanceMethod {
@@ -322,6 +321,15 @@ class WalletCoreDocumentsControllerImpl(
     private val documentErrorMessage
         get() = resourceProvider.getString(R.string.issuance_generic_error)
 
+    private val unconfiguredIssuerMessage
+        get() = resourceProvider.getString(R.string.issuance_document_offer_error_issuer_not_configured)
+
+    private val unreadableOfferMessage
+        get() = resourceProvider.getString(R.string.issuance_document_offer_error_no_document)
+
+    private val configuredIssuerIds: List<String>
+        get() = openId4VciManagers.keys.map { it.issuerUrl }
+
     /**
      * A map of [OpenId4VciManager] instances, keyed by their [VciConfig].
      * This is initialized lazily, creating a manager for each configuration defined in
@@ -544,7 +552,6 @@ class WalletCoreDocumentsControllerImpl(
 
         val manager = getVciManager(
             issuerId = issuerId,
-            useDefault = true,
             errorMessage = documentErrorMessage
         ).getOrThrow()
 
@@ -595,7 +602,6 @@ class WalletCoreDocumentsControllerImpl(
 
             val manager = getVciManager(
                 issuerId = issuerId,
-                useDefault = true,
                 errorMessage = documentErrorMessage
             ).getOrThrow()
 
@@ -703,13 +709,17 @@ class WalletCoreDocumentsControllerImpl(
     override fun resolveDocumentOffer(offerUri: String): Flow<ResolveDocumentOfferPartialState> =
         callbackFlow {
 
-            val issuerId = extractCredentialIssuerFromOfferUri(offerUri)
-                .getOrDefault("unknown")
+            val issuerId = when (
+                val offerIssuer = offerIssuerOf(offerUri = offerUri, configuredIssuers = configuredIssuerIds)
+            ) {
+                is OfferIssuer.Configured -> offerIssuer.issuerId
+                is OfferIssuer.NotConfigured -> throw IllegalArgumentException(unconfiguredIssuerMessage)
+                is OfferIssuer.Unreadable -> throw IllegalArgumentException(unreadableOfferMessage)
+            }
 
             val manager = getVciManager(
                 issuerId = issuerId,
-                useDefault = true,
-                errorMessage = genericErrorMessage
+                errorMessage = unconfiguredIssuerMessage
             ).getOrThrow()
 
             manager.resolveDocumentOffer(offerUri) { result ->
@@ -727,6 +737,13 @@ class WalletCoreDocumentsControllerImpl(
                                     result.cause.localizedMessage ?: genericErrorMessage
                                 )
                             }
+                        )
+                    }
+
+                    is OfferResult.Success if result.offer.credentialOffer
+                        .credentialIssuerIdentifier.toString() !in configuredIssuerIds -> {
+                        trySendBlocking(
+                            ResolveDocumentOfferPartialState.Failure(unconfiguredIssuerMessage)
                         )
                     }
 
@@ -764,11 +781,10 @@ class WalletCoreDocumentsControllerImpl(
         callbackFlow {
             (getDocumentById(docId) as? DeferredDocument)?.let { deferredDoc ->
 
-                val manager = deferredDoc.issuerMetadata?.credentialIssuerIdentifier
-                    ?.let(openId4VciManagers::get)
-                    ?: openId4VciManagers.values.firstOrNull()
-
-                require(manager != null) { documentErrorMessage }
+                val manager = getVciManager(
+                    issuerId = deferredDoc.issuerMetadata?.credentialIssuerIdentifier.orEmpty(),
+                    errorMessage = documentErrorMessage
+                ).getOrThrow()
 
                 manager.issueDeferredDocument(
                     deferredDocument = deferredDoc,
@@ -853,7 +869,6 @@ class WalletCoreDocumentsControllerImpl(
         return runCatching {
             val manager = getVciManager(
                 issuerId = issuerId,
-                useDefault = true,
                 errorMessage = documentErrorMessage
             ).getOrThrow()
 
@@ -1024,7 +1039,6 @@ class WalletCoreDocumentsControllerImpl(
 
             val manager = getVciManager(
                 issuerId = issuerId,
-                useDefault = false,
                 errorMessage = documentErrorMessage
             ).getOrThrow()
 
@@ -1306,24 +1320,18 @@ class WalletCoreDocumentsControllerImpl(
         )
     }
 
-    private fun extractCredentialIssuerFromOfferUri(offerUri: String): Result<String> =
-        runCatching {
-            val credentialOffer = offerUri.toUri().getQueryParameter("credential_offer")
-            val decoded = URLDecoder.decode(credentialOffer, "UTF-8")
-            val json = JSONObject(decoded)
-            json.getString("credential_issuer")
-        }
-
+    /**
+     * The manager configured for the issuer [issuerId], or a failure with [errorMessage]. There is no
+     * fallback: another issuer's manager would send that issuer's client settings to this one.
+     */
     private fun getVciManager(
         issuerId: String,
-        useDefault: Boolean,
         errorMessage: String
     ): Result<OpenId4VciManager> {
 
         val manager = openId4VciManagers.entries
             .firstOrNull { (vciConfig, _) -> vciConfig.issuerUrl == issuerId }
             ?.value
-            ?: if (useDefault) openId4VciManagers.values.firstOrNull() else null
 
         return manager?.let(Result.Companion::success)
             ?: Result.failure(RuntimeException(errorMessage))

@@ -18,10 +18,15 @@ package eu.europa.ec.corelogic.controller
 
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.corelogic.config.WalletCoreConfig
+import eu.europa.ec.corelogic.config.VciConfig
 import eu.europa.ec.eudi.wallet.EudiWallet
+import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
@@ -35,7 +40,9 @@ import eu.europa.ec.storagelogic.model.IssuerTrustVerdict
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runCurrent
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -48,11 +55,14 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.doThrow
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
+import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
+import java.net.URLEncoder
 
 class TestWalletCoreDocumentsController {
 
@@ -90,6 +100,10 @@ class TestWalletCoreDocumentsController {
     private lateinit var eudiWallet: EudiWallet
 
     private lateinit var controller: WalletCoreDocumentsController
+
+    private val firstIssuerManager: OpenId4VciManager = mock()
+
+    private val configuredIssuerManager: OpenId4VciManager = mock()
 
     private lateinit var closeable: AutoCloseable
 
@@ -259,4 +273,110 @@ class TestWalletCoreDocumentsController {
                 walletCoreTransactionLogController,
             )
         }
+    @Test
+    fun `Given an offer from an issuer that is not configured, When it is resolved, Then it fails before any issuer is contacted`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+
+            val result = controller.resolveDocumentOffer(offerByValue("https://attacker.example")).first()
+
+            assertEquals(ResolveDocumentOfferPartialState.Failure(NOT_CONFIGURED), result)
+            verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
+        }
+
+    @Test
+    fun `Given a link that is not a usable offer, When it is resolved, Then it fails before any issuer is contacted`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+
+            val result = controller.resolveDocumentOffer("openid-credential-offer://?credential_offer=%7Bnot-json").first()
+
+            assertEquals(ResolveDocumentOfferPartialState.Failure(UNREADABLE), result)
+            verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
+        }
+
+    @Test
+    fun `Given an offer from a configured issuer, When it is resolved, Then that issuer's manager reads it`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+            val link = offerByValue(CONFIGURED_ISSUER)
+
+            val job = coroutineRule.testScope.launch { controller.resolveDocumentOffer(link).collect {} }
+            coroutineRule.testScope.runCurrent()
+
+            verify(configuredIssuerManager, timeout(5_000)).resolveDocumentOffer(eq(link), anyOrNull(), any())
+            verifyNoInteractions(firstIssuerManager)
+            job.cancel()
+        }
+
+    @Test
+    fun `Given a deferred document, When it is issued, Then the manager of its own issuer is used`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+            val metadata: IssuerMetadata = mock { on { credentialIssuerIdentifier } doReturn CONFIGURED_ISSUER }
+            val deferred: DeferredDocument = mock {
+                on { id } doReturn "deferred"
+                on { issuerMetadata } doReturn metadata
+            }
+            whenever(eudiWallet.getDocumentById("deferred")).thenReturn(deferred)
+
+            val job = coroutineRule.testScope.launch { controller.issueDeferredDocument("deferred").collect {} }
+            coroutineRule.testScope.runCurrent()
+
+            verify(configuredIssuerManager, timeout(5_000)).issueDeferredDocument(eq(deferred), anyOrNull(), any())
+            verifyNoInteractions(firstIssuerManager)
+            job.cancel()
+        }
+
+    @Test
+    fun `Given a document from an issuer that is not configured, When it is re-issued, Then it fails without using another issuer`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+
+            val result = controller.reIssueDocument(
+                documentId = "pid",
+                issuerId = "https://attacker.example",
+                allowAuthorizationFallback = false,
+            ).first()
+
+            assertEquals(IssueDocumentsPartialState.Failure(errorMessage = DOCUMENT_ERROR), result)
+            verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
+        }
+
+    /**
+     * Two configured issuers, the first of which the old fallback would have used for any unknown
+     * issuer, each with its own mocked manager.
+     */
+    private fun givenTwoIssuers() {
+        val firstConfig: OpenId4VciManager.Config = mock()
+        val configuredConfig: OpenId4VciManager.Config = mock()
+        whenever(walletCoreConfig.issuersConfig).thenReturn(
+            listOf(
+                VciConfig(issuerUrl = "https://first.example", config = firstConfig, order = 0),
+                VciConfig(issuerUrl = CONFIGURED_ISSUER, config = configuredConfig, order = 1),
+            )
+        )
+        whenever(eudiWallet.createOpenId4VciManager(eq(firstConfig), anyOrNull()))
+            .thenReturn(firstIssuerManager)
+        whenever(eudiWallet.createOpenId4VciManager(eq(configuredConfig), anyOrNull()))
+            .thenReturn(configuredIssuerManager)
+        whenever(resourceProvider.getString(R.string.issuance_document_offer_error_issuer_not_configured))
+            .thenReturn(NOT_CONFIGURED)
+        whenever(resourceProvider.getString(R.string.issuance_document_offer_error_no_document))
+            .thenReturn(UNREADABLE)
+        whenever(resourceProvider.getString(R.string.issuance_generic_error)).thenReturn(DOCUMENT_ERROR)
+        whenever(resourceProvider.genericErrorMessage()).thenReturn("error")
+    }
+
+    private fun offerByValue(issuer: String): String {
+        val offer = """{"credential_issuer":"$issuer","credential_configuration_ids":["pid"]}"""
+        return "openid-credential-offer://?credential_offer=${URLEncoder.encode(offer, "UTF-8")}"
+    }
+
+    private companion object {
+        const val CONFIGURED_ISSUER = "https://issuer.example"
+        const val NOT_CONFIGURED = "not configured"
+        const val UNREADABLE = "unreadable"
+        const val DOCUMENT_ERROR = "document error"
+    }
 }

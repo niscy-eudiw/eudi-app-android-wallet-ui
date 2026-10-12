@@ -571,6 +571,7 @@
     <string name="issuance_document_offer_error_missing_pid_text">Wallet needs to be activated first with a National ID</string>
     <string name="issuance_document_offer_error_invalid_txcode_format">Invalid transaction code format. Length should be between %1$d to %2$d digits and only numeric characters are allowed.</string>
     <string name="issuance_document_offer_error_no_document">Unable to fetch and process the credential offer</string>
+    <string name="issuance_document_offer_error_issuer_not_configured">This offer comes from an issuer that this wallet is not set up to use</string>
 
     <string name="issuance_document_offer_relying_party_default_name">@string/generic_default_issuer_name</string>
     <!--endregion-->

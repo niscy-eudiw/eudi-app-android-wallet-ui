@@ -157,6 +157,13 @@ start the issuance again. The timeouts are set in `AuthenticationConfig`; see
 6. After submission, a success screen will appear. Tap "Close".
 7. You will be redirected back to the "Documents" tab within the "Dashboard" screen. The flow is now complete.
 
+The offer must come from an issuer the build is configured for: `issuer.eudiw.dev` or
+`issuer-backend.eudiw.dev` in the demo flavor, `ec.dev.issuer.eudiw.dev` or
+`dev.issuer-backend.eudiw.dev` in the dev flavor. An offer from any other issuer stops with "This
+offer comes from an issuer that this wallet is not set up to use". An offer included in the link is
+refused before the Wallet contacts anyone; one that the link points to is fetched only from a
+configured issuer.
+
 Both flows end on a success screen that shows whether the issuer was verified: the issuer carries a
 verified badge only when its certificate chain was trusted, and each document from an issuer that was
 not verified is marked "Issuer not verified". In the reference configuration only the PID issuer is

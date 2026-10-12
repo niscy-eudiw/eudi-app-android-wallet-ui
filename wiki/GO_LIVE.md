@@ -1014,6 +1014,24 @@ override val issuersConfig: List<VciConfig>
 | `DPopConfig.Default` | Enables default DPoP behavior for proof-of-possession. | Keep enabled unless your issuer profile explicitly does not support it. |
 | `order` | Display order in the "Add document" list. | Use stable order. Put PID issuer first if PID activation is required. |
 
+The wallet uses an issuer only through its own `VciConfig`; there is no fallback to another issuer's
+settings, which would send that issuer's client identifier and attestation to a different host:
+
+* A credential offer is accepted only from a configured issuer (`offerIssuerOf`). The link is read
+  with the OpenID4VCI library's own parser, which Wallet Core uses next, and a link that gives the
+  offer more than once, in any spelling, is refused. An offer passed by value must name a configured
+  `issuerUrl` as its `credential_issuer`; this is decided before any request is made. An offer passed
+  by reference must be hosted, over `https`, on the origin of a configured issuer. Wallet Core then
+  fetches it, following redirects, and reads the metadata of the issuer it names before the wallet
+  can check that this issuer is configured too; an offer from any other issuer is refused at that
+  point. A refused offer fails with "This offer comes from an issuer that this wallet is not set up
+  to use", and a link that is not a usable offer with "Unable to fetch and process the credential
+  offer".
+* Re-issuance, deferred issuance and the authorization redirect use the configured issuer that
+  issued the document, and fail if there is none.
+* Issuer identifiers are compared exactly. Set `issuerUrl` to the issuer's `credential_issuer` value as
+  it appears in its metadata, including or omitting a trailing slash exactly as the issuer does.
+
 Issuer readiness checklist:
 
 * Issuer uses production TLS certificates.
@@ -1396,6 +1414,8 @@ What the app enforces:
   a document is retrieved is the certificate trust in `documentRetrievalConfig`
   (`RQESConfigImpl`). A document QR code scanned from **Sign** goes to the RQES SDK without the
   host check.
+* **Credential offers** are accepted only from configured issuers; see
+  [Issuer Configuration](#issuer-configuration-issuersconfig).
 
 Production concerns:
 
