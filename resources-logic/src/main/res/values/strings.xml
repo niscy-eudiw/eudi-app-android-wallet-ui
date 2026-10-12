@@ -508,6 +508,8 @@
     <string name="transaction_details_report_transaction_message">If you believe this Relying Party has unlawfully requested your personal data, you can report it to the relevant Member State’s data protection authority.</string>
     <string name="transaction_details_request_deletion_button">Initiate deletion request</string>
     <string name="transaction_details_report_transaction_button">Initiate transaction report</string>
+    <string name="transaction_details_registration_not_verified">The relying party\'s registration was not verified when the data was shared, so the contact details shown with it may not be its own.</string>
+    <string name="transaction_details_registration_not_bound">The registration shown here was issued to another party than the one that asked for the data, so its contact details are not that party\'s. A deletion request is not offered.</string>
     <string name="transaction_details_action_unavailable">This action is unavailable. No suitable contact or shared data was recorded for it.</string>
     <string name="transaction_details_action_open_failed">This contact could not be opened. No attempt was recorded. Retry to open it again, or cancel to return to the transaction.</string>
     <string name="transaction_details_action_save_failed">The external application opened, but this attempt could not be saved in your history. Retry to save it without opening the application again.</string>

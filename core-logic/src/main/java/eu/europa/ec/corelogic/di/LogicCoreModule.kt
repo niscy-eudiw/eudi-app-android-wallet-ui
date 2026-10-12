@@ -102,6 +102,7 @@ fun provideEudiWallet(
         withKtorHttpClientFactory { httpClient }
         withDCAPIRegistration(walletCoreDCAPIRegistrationController)
     }
+    eudiWallet.addTransferEventListener(walletCoreTransactionLogController)
     walletCoreDCAPIRegistrationController.attach {
         DefaultDCAPIRegistration(
             context = context,

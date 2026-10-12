@@ -48,7 +48,7 @@ import eu.europa.ec.storagelogic.model.TransactionLog
         IssuerTrustRecord::class,
         StatusRefreshFailure::class,
     ],
-    version = 4
+    version = 5
 )
 abstract class DatabaseService : RoomDatabase() {
 

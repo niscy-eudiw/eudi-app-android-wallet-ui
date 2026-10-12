@@ -188,6 +188,8 @@ class TransactionDetailsInteractorImpl(
                         is TransactionResultDomain.NotCompleted ->
                             result.reason?.takeIf { reason -> reason.isNotBlank() }
                     },
+                    registrationWarning = (transaction as? TransactionLogDomain.Presentation)
+                        ?.registrationWarning(),
                 ),
                 body = transaction.toDetailsBody(),
             )
@@ -229,6 +231,7 @@ class TransactionDetailsInteractorImpl(
                     relyingPartyName = presentation.party.name?.text
                         ?.takeIf { name -> name.isNotBlank() }
                         ?: resourceProvider.getString(R.string.data_deletion_relying_party_default_name),
+                    registrationWarning = presentation.registrationWarning(),
                 )
             )
         )
@@ -270,6 +273,7 @@ class TransactionDetailsInteractorImpl(
                     responsibility = resourceProvider.getString(R.string.dpa_report_responsibility),
                     followUp = resourceProvider.getString(R.string.dpa_report_follow_up),
                     contacts = contacts.map { contact -> contact.toDpaReportContactUi() },
+                    registrationWarning = presentation?.registrationWarning(),
                 )
             )
         )
@@ -279,8 +283,21 @@ class TransactionDetailsInteractorImpl(
         )
     }
 
+    /**
+     * What to tell the user when the registration behind this entry's contacts was not verified
+     * when the data was shared, or null when it was.
+     */
+    private fun TransactionLogDomain.Presentation.registrationWarning(): String? = when {
+        !hasUnverifiedRegistration -> null
+        registrationCheck.isNotBoundToRequester ->
+            resourceProvider.getString(R.string.transaction_details_registration_not_bound)
+
+        else -> resourceProvider.getString(R.string.transaction_details_registration_not_verified)
+    }
+
     private fun PrivacyContactDomain.toDataDeletionRequestUi(
         relyingPartyName: String,
+        registrationWarning: String?,
     ): DataDeletionRequestUi {
         val (descriptionRes, responsibilityRes, buttonRes) = when (method) {
             CommunicationMethodDomain.Website -> Triple(
@@ -310,6 +327,7 @@ class TransactionDetailsInteractorImpl(
             ),
             buttonText = resourceProvider.getString(buttonRes, relyingPartyName),
             contactUrl = url,
+            registrationWarning = registrationWarning,
         )
     }
 

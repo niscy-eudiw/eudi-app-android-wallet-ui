@@ -1905,7 +1905,33 @@ When a presentation includes recorded signing-request information, its details s
 Signing results appear in separate history entries.
 
 Available hashes and expected document checksums are displayed as supplied information. They do
-not represent a document-integrity verification result.
+not represent a document-integrity verification result. One-time passwords for document access
+are not shown again in history, although the log keeps them. What each entry stores is described
+under [SQLCipher Room Database](#sqlcipher-room-database).
+
+Wallet Core records a relying party's registration details in the entry even when the
+registration certificate failed its binding, validity or revocation checks, and does not record
+the outcome. The app records it
+beside the entry (`registrationCheck` in `transactionLogs`) when the request arrives, matching the
+request to the pending entry Wallet Core has just written: in Wallet Core 0.31.0 its transaction
+listener is registered first and writes that entry before the app's listener sees the request.
+The app checks that the relying party in the entry is the one in the request before recording
+anything. If a second entry is written before the first request reaches the app's listener, as
+can happen when two requests are dispatched from different threads, neither outcome is recorded.
+An entry for which no outcome was recorded counts as not verified.
+
+`TestWalletCoreTransactionLogController` runs Wallet Core's own `PresentationLogger` to check
+that it writes the entry while it handles the request. It does not check the registration order
+in `LogicCoreModule.provideEudiWallet` or how Wallet Core dispatches events to its listeners;
+re-check both after every Wallet Core upgrade. Do not call Wallet Core's
+`PresentationLogger.removeAllTransferEventListeners()`: it adds back only its own listener, and
+every later entry would then read as not verified.
+
+When an entry carries details from a registration certificate (contacts, an identifier, an
+intermediary or registration fields) and the registration was not verified, its details say so
+and the deletion-request and DPA-report screens repeat the warning. When the certificate was issued to another party than
+the one that asked (`NOT_BOUND_TO_REQUESTER`), its contacts are not that party's, and no deletion
+request is offered. A DPA report is still offered in every case.
 
 Data-deletion request and DPA-report attempts are associated with their originating presentation
 and communication method. They appear in that presentation's history rather than the main

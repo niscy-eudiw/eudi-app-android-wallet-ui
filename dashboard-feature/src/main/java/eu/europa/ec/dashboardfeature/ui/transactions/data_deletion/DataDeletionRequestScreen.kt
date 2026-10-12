@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +41,7 @@ import eu.europa.ec.dashboardfeature.ui.transactions.component.PrivacyActionInfo
 import eu.europa.ec.dashboardfeature.ui.transactions.data_deletion.model.DataDeletionRequestUi
 import eu.europa.ec.dashboardfeature.ui.transactions.openTransactionAction
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.uilogic.component.ThemeColorKey
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ContentTitle
@@ -47,6 +49,7 @@ import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.LargeTextPreviews
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.toColor
 import eu.europa.ec.uilogic.component.utils.OncePerViewModelEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
@@ -132,6 +135,15 @@ private fun Content(
                     label = null,
                     text = request.description,
                 )
+
+                request.registrationWarning?.let { warning ->
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = warning,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = ThemeColorKey.Warning.toColor(),
+                    )
+                }
 
                 // Wallet responsibility, data retention and follow-up.
                 PrivacyActionExplanation(

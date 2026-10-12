@@ -31,6 +31,8 @@ import eu.europa.ec.corelogic.model.DpaContactDomain
 import eu.europa.ec.corelogic.model.InteractingPartyDomain
 import eu.europa.ec.corelogic.model.LocalizedTextDomain
 import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
+import eu.europa.ec.corelogic.model.RecordedRegistrationCheckDomain
+import eu.europa.ec.corelogic.model.RegistrationFailureReasonDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.corelogic.model.TransactionResultDomain
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PendingTransactionActionUi
@@ -3078,6 +3080,76 @@ class TestTransactionDetailsInteractor {
     }
     //endregion
 
+    @Test
+    fun `Given an expired registration, When the deletion request is opened, Then it is offered with a warning`() =
+        coroutineRule.runTest {
+            mockRegistrationWarnings()
+            val presentation = mockedActionPresentation.copy(
+                registrationCheck = RecordedRegistrationCheckDomain.NotVerified(
+                    reason = RegistrationFailureReasonDomain.EXPIRED,
+                ),
+            )
+            mockGetTransactionLogCall(presentation)
+
+            interactor.getDataDeletionRequest(presentation.id).runFlowTest {
+                val request =
+                    (awaitItem() as TransactionDetailsInteractorDataDeletionPartialState.Success).request
+                assertEquals(mockedRegistrationNotVerified, request.registrationWarning)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `Given a registration issued to another party, When the deletion request is opened, Then it is not offered`() =
+        coroutineRule.runTest {
+            mockRegistrationWarnings()
+            val presentation = mockedActionPresentation.copy(registrationCheck = mockedNotBound)
+            mockGetTransactionLogCall(presentation)
+
+            interactor.getDataDeletionRequest(presentation.id).runFlowTest {
+                assertTrue(awaitItem() is TransactionDetailsInteractorDataDeletionPartialState.Failure)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `Given a registration issued to another party, When the DPA report is opened, Then it says so`() =
+        coroutineRule.runTest {
+            mockRegistrationWarnings()
+            val presentation = mockedActionPresentation.copy(registrationCheck = mockedNotBound)
+            mockGetTransactionLogCall(presentation)
+
+            interactor.getDpaReport(presentation.id).runFlowTest {
+                val report =
+                    (awaitItem() as TransactionDetailsInteractorDpaReportPartialState.Success).report
+                assertEquals(mockedRegistrationNotBound, report.registrationWarning)
+                awaitComplete()
+            }
+        }
+
+    @Test
+    fun `Given no recorded registration check, When the details are opened, Then the card warns and a verified one does not`() =
+        coroutineRule.runTest {
+            mockRegistrationWarnings()
+            val unknown = mockedActionPresentation.copy(registrationCheck = RecordedRegistrationCheckDomain.Unknown)
+            mockGetTransactionLogCall(unknown)
+
+            interactor.getTransactionDetails(unknown.id).runFlowTest {
+                val card = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                    .transactionDetailsUi.transactionDetailsCardUi
+                assertEquals(mockedRegistrationNotVerified, card.registrationWarning)
+                awaitComplete()
+            }
+
+            mockGetTransactionLogCall(mockedActionPresentation)
+            interactor.getTransactionDetails(mockedActionPresentation.id).runFlowTest {
+                val card = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                    .transactionDetailsUi.transactionDetailsCardUi
+                assertNull(card.registrationWarning)
+                awaitComplete()
+            }
+        }
+
     //region recorded transaction data
 
     // Case 1:
@@ -3246,6 +3318,13 @@ class TestTransactionDetailsInteractor {
             .thenThrow(exception)
     }
 
+    private fun mockRegistrationWarnings() {
+        whenever(resourceProvider.getString(R.string.transaction_details_registration_not_verified))
+            .thenReturn(mockedRegistrationNotVerified)
+        whenever(resourceProvider.getString(R.string.transaction_details_registration_not_bound))
+            .thenReturn(mockedRegistrationNotBound)
+    }
+
     private suspend fun mockGetTransactionLogCall(response: TransactionLogDomain) {
         whenever(walletCoreTransactionLogController.getTransactionLog(id = response.id)).thenReturn(
             response
@@ -3349,6 +3428,12 @@ class TestTransactionDetailsInteractor {
             ),
         ),
     )
+
+    private val mockedNotBound = RecordedRegistrationCheckDomain.NotVerified(
+        reason = RegistrationFailureReasonDomain.NOT_BOUND_TO_REQUESTER,
+    )
+    private val mockedRegistrationNotVerified = "Registration not verified"
+    private val mockedRegistrationNotBound = "Registration issued to another party"
 
     private val mockedAttemptId = "privacy-attempt"
     private val mockedLaunchTime = Instant.parse("2026-09-17T08:30:00Z")

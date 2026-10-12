@@ -226,13 +226,21 @@ successful presentation; a redirect with any other scheme is not opened, and the
 it as one of its own links.
 
 When a presentation request includes transaction data for signing, each applicable option shows a
-**Data to be signed** section below its requested data. Expand the initially collapsed
-**Signature details** row to view the supplied document and signature information. These details
-are informational; sharing still uses the existing **Share** flow. Where available, **Open document**
-opens the supplied document link.
+**Data to be signed** section below its requested data. Its **Signature details** are open and list
+every field of the transaction data; the signed attributes, which the relying party chooses
+freely, are marked as not checked by the Wallet, and a document carried in the request is shown
+as included, with its type and size. These
+details are informational; sharing still uses the existing **Share** flow. Where available,
+**Open document** opens the supplied document link.
 
 Recorded signing-request information is also available under **SIGNING REQUEST → Signature details**
-in the presentation's transaction details. This section is read-only.
+in the presentation's transaction details. This section is read-only and does not show one-time
+passwords again.
+
+If the relying party's registration could not be verified when you shared data with it, the
+transaction's details say so, and so do the screens for asking it to delete your data or reporting
+it to a data protection authority. If its registration certificate belonged to another party, the
+Wallet does not offer a deletion request.
 
 ### Offering documents to apps and websites
 
