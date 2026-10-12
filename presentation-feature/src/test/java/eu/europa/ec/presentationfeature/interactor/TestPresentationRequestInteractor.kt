@@ -854,7 +854,7 @@ class TestPresentationRequestInteractor {
     fun `Given Case 1, When setConfig is called, Then Case 1 expected result is returned`() {
         // Given
         val requestConfig = RequestUriConfig(
-            PresentationMode.Ble(initiatorRoute = mockedInitiatorRoute)
+            PresentationMode.Ble(initiatorRoute = mockedInitiatorRoute, sessionId = "session-1")
         )
         // When
         interactor.setConfig(config = requestConfig, intentAction = null)
@@ -863,7 +863,7 @@ class TestPresentationRequestInteractor {
         verify(walletCorePresentationController, times(1))
             .setConfig(config = requestConfig.toDomainConfig(intentAction = null))
 
-        assertEquals(interactor.presentationScopeId, "ble_presentation_scope_id")
+        assertEquals(interactor.presentationScopeId, "ble_presentation_scope_id_session-1")
     }
     //endregion
 

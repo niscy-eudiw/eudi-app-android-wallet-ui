@@ -303,7 +303,8 @@ inline fun <reified T : Any> getOrCreateKoinScope(scopeId: String): org.koin.cor
  * Retrieves an existing Koin scope by its identifier.
  *
  * @param scopeId The unique identifier of the scope to retrieve.
- * @return The [org.koin.core.scope.Scope] instance if it exists, or null if no scope with the given ID is found.
+ * @return The [org.koin.core.scope.Scope] instance if it exists, or null if no scope with the given ID is found
+ * or Koin has not been started.
  */
 fun getOrNullKoinScope(scopeId: String): org.koin.core.scope.Scope? =
-    KoinPlatform.getKoin().getScopeOrNull(scopeId)
+    KoinPlatform.getKoinOrNull()?.getScopeOrNull(scopeId)
