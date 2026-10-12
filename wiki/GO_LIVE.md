@@ -1628,11 +1628,32 @@ The project currently uses several local storage layers.
 * AES-256-GCM key template.
 * Android Keystore backed master key URI.
 
+When Tink cannot create the Keystore master key, or cannot use it right after creating it,
+`AndroidKeysetManager` does not fail: it writes the keyset in cleartext to the app's shared
+preferences and returns a working AEAD. (It does fail when an existing master key is unusable or an
+encrypted keyset cannot be decrypted.) A keyset written in cleartext stays so after the Keystore
+works again, and `isUsingKeystore` then reports true. The preferences hold the PIN hash and the
+database key, so they would be encrypted with a key stored beside them. `PrefsControllerImpl`
+therefore checks `isUsingKeystore` and the stored keyset before it opens the preferences. A keyset
+that is not protected and has encrypted nothing yet is discarded and created once more; if it is
+still not protected, or the preferences already exist, `KeystoreUnavailableException` is thrown and
+the wallet does not start.
+
+The master key does not require user authentication. The background workers that refresh document
+status and re-issue documents open the database while the wallet is locked, and the database key
+is in these preferences, so a master key bound to user authentication would stop them. The
+preferences are protected by the Keystore binding and the app sandbox; the PIN and biometric
+prompts protect the use of the wallet.
+
 Production guidance:
 
 * Keep encrypted DataStore for low-volume sensitive preferences.
 * Exclude DataStore files and Tink keysets from backup and device transfer.
-* Define behavior when the Android Keystore key is unavailable or invalidated.
+* Replace the failed start with your own handling when the Android Keystore key is unavailable or
+  invalidated, for example an error screen with a support route. Do not fall back to a keyset
+  outside the Keystore.
+* If your policy requires the preferences key to need user authentication, move the database key
+  and the background work out of these preferences first.
 * Avoid storing long-lived tokens unless strictly required.
 * Do not store PID attributes in preferences.
 

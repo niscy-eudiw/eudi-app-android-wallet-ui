@@ -31,10 +31,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.tink.AeadSerializer
 import com.google.crypto.tink.Aead
+import com.google.crypto.tink.InsecureSecretKeyAccess
 import com.google.crypto.tink.KeyTemplates
+import com.google.crypto.tink.KeysetReader
+import com.google.crypto.tink.LegacyKeysetSerialization
 import com.google.crypto.tink.RegistryConfiguration
 import com.google.crypto.tink.aead.AeadConfig
 import com.google.crypto.tink.integration.android.AndroidKeysetManager
+import com.google.crypto.tink.integration.android.SharedPrefKeysetReader
 import eu.europa.ec.businesslogic.extension.decodeFromBase64
 import eu.europa.ec.businesslogic.extension.encodeToBase64String
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -42,6 +46,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import java.io.IOException
+import java.security.GeneralSecurityException
 
 interface PrefsController {
     suspend fun contains(key: String): Boolean
@@ -175,19 +181,70 @@ class PrefsControllerImpl(
 
         AeadConfig.register()
 
-        val keysetHandle = AndroidKeysetManager.Builder()
-            .withSharedPref(context, KEYSET_PREFS_KEY, KEYSET_PREFS_FILE)
-            .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
-            .withMasterKeyUri(MASTER_KEY_URI)
-            .build()
-            .keysetHandle
+        val keysetHandle = keystoreBackedKeysetManager(context).keysetHandle
 
         return keysetHandle.getPrimitive(
             RegistryConfiguration.get(),
             Aead::class.java
         )
     }
+
+    /**
+     * The preferences keyset, refused unless the Android Keystore protects it. When Tink cannot use
+     * its Keystore master key, it writes the keyset in cleartext to the app's shared preferences and
+     * still returns a working AEAD, so the preferences, which hold the PIN hash and the database key,
+     * would be encrypted with a key stored beside them. A keyset written that way stays in cleartext
+     * after the Keystore works again, while `isUsingKeystore` then reports true, so the stored keyset
+     * is checked as well. A keyset that is not protected and has encrypted nothing yet, because the
+     * preferences file does not exist, is discarded and created again once; otherwise, or if the
+     * second one is not protected either, [KeystoreUnavailableException] is thrown and the
+     * preferences are not opened.
+     */
+    private fun keystoreBackedKeysetManager(context: Context): AndroidKeysetManager {
+        repeat(2) {
+            val manager = AndroidKeysetManager.Builder()
+                .withSharedPref(context, KEYSET_PREFS_KEY, KEYSET_PREFS_FILE)
+                .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
+                .withMasterKeyUri(MASTER_KEY_URI)
+                .build()
+            val storedKeyset = SharedPrefKeysetReader(context, KEYSET_PREFS_KEY, KEYSET_PREFS_FILE)
+            if (manager.isUsingKeystore && !isCleartextKeyset(storedKeyset)) return manager
+            if (!discardUnusedKeyset(context)) throw KeystoreUnavailableException()
+        }
+        throw KeystoreUnavailableException()
+    }
+
+    /** Removes the stored keyset unless the preferences file exists; returns whether it did. */
+    private fun discardUnusedKeyset(context: Context): Boolean {
+        if (context.preferencesDataStoreFile(DATASTORE_FILE).exists()) return false
+        context.getSharedPreferences(KEYSET_PREFS_FILE, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEYSET_PREFS_KEY)
+            .commit()
+        return true
+    }
 }
+
+/**
+ * Whether [keyset] holds a keyset in cleartext, the same test Tink applies: an encrypted keyset does
+ * not parse as a plain one.
+ */
+internal fun isCleartextKeyset(keyset: KeysetReader): Boolean = try {
+    LegacyKeysetSerialization.parseKeyset(keyset, InsecureSecretKeyAccess.get())
+    true
+} catch (_: IOException) {
+    false
+} catch (_: GeneralSecurityException) {
+    false
+}
+
+/**
+ * The preferences keyset is not protected by the Android Keystore, so the wallet does not open
+ * its preferences.
+ */
+class KeystoreUnavailableException : GeneralSecurityException(
+    "The preferences keyset is not protected by the Android Keystore"
+)
 
 interface PrefKeys {
     suspend fun getTrustMarkIntroductionCompleted(): Boolean
