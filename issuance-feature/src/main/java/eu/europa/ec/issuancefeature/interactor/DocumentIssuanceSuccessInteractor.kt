@@ -36,6 +36,7 @@ import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.ThemeColorKey
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.config.ConfigUILogic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -60,7 +61,8 @@ interface DocumentIssuanceSuccessInteractor {
 class DocumentIssuanceSuccessInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val resourceProvider: ResourceProvider,
-    private val uuidProvider: UuidProvider
+    private val uuidProvider: UuidProvider,
+    private val configUILogic: ConfigUILogic,
 ) : DocumentIssuanceSuccessInteractor {
 
     private val genericErrorMsg
@@ -110,6 +112,7 @@ class DocumentIssuanceSuccessInteractorImpl(
                         selectedDomainClaim.toExpandableListItems(
                             docId = documentId,
                             queryId = null,
+                            userImageClaimKeys = configUILogic.userImageClaimKeys,
                         )
                     }
 

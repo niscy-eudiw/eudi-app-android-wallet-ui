@@ -149,7 +149,7 @@ Keep these files under strict review:
 | `business-logic/src/main/res/xml/data_extraction_rules.xml`                                               | Cloud backup and device transfer policy for Android 12 and above.                                    |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinStorageProvider.kt`  | PIN hashing, salt, iteration count, constant-time comparison.                                        |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/config/AuthenticationConfig.kt`      | PIN lockout policy, and the session lock timeouts.                                                   |
-| `ui-logic/src/main/java/eu/europa/ec/uilogic/config/ConfigUILogicImpl.kt` | Login and protected-flow screen lists used by the session lock. |
+| `ui-logic/src/main/java/eu/europa/ec/uilogic/config/ConfigUILogicImpl.kt` | Login and protected-flow screen lists used by the session lock, and the claims that hold a picture of the holder. |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinThrottleProvider.kt` | Persisted PIN failure counter, lockout level, lockout window timestamps; clock-rollback detection.   |
 | `business-logic/src/main/java/eu/europa/ec/businesslogic/controller/storage/PrefsController.kt`           | Encrypted DataStore and database key storage.                                                        |
 | `storage-logic/src/main/java/eu/europa/ec/storagelogic/di/LogicStorageModule.kt`                          | SQLCipher database setup and migration behavior.                                                     |
@@ -725,6 +725,13 @@ Wallet and protocol-profile guidance:
 * Make the user consent screen clear about the verifier, the requested claims, and whether the flow
   is remote or proximity/in-person. Clear UX does not prevent relay by itself, but it reduces social
   engineering opportunities.
+* The consent screen marks a request for a picture of the holder. When the selected option includes
+  a claim listed in `ConfigUILogic.userImageClaimKeys` (`portrait` and `picture` in the reference
+  configuration), the screen shows a biometric-data notice, and **Share** asks for confirmation
+  whenever the picture would be disclosed. The picture is still selected like any other requested
+  claim. Add to that list any other claim in your credentials that holds a picture of the holder;
+  the same list decides which claims are displayed as images. Other biometric claims, such as the mDL's `biometric_template_*`
+  elements, are not covered; extend the check if your credentials carry them.
 
 Production decision record:
 

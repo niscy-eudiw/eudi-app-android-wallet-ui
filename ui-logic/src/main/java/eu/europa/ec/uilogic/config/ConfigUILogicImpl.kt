@@ -52,4 +52,7 @@ class ConfigUILogicImpl : ConfigUILogic {
             DashboardScreens.DocumentSign,
             CommonScreens.Biometric,
         )
+
+    override val userImageClaimKeys: Set<String>
+        get() = setOf("portrait", "picture")
 }

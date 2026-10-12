@@ -41,6 +41,7 @@ import eu.europa.ec.testfeature.util.mockedIssuerLogo
 import eu.europa.ec.testfeature.util.mockedIssuerName
 import eu.europa.ec.testfeature.util.mockedPidId
 import eu.europa.ec.testfeature.util.mockedSdJwtPidId
+import eu.europa.ec.testfeature.util.mockedUserImageClaimKeys
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
@@ -53,6 +54,7 @@ import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.ThemeColorKey
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.config.ConfigUILogic
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -77,6 +79,9 @@ class TestDocumentIssuanceSuccessInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
+    private lateinit var configUILogic: ConfigUILogic
+
+    @Mock
     private lateinit var uuidProvider: UuidProvider
 
     private lateinit var interactor: DocumentIssuanceSuccessInteractor
@@ -86,11 +91,13 @@ class TestDocumentIssuanceSuccessInteractor {
     @Before
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
+        whenever(configUILogic.userImageClaimKeys).thenReturn(mockedUserImageClaimKeys)
 
         interactor = DocumentIssuanceSuccessInteractorImpl(
             resourceProvider = resourceProvider,
             uuidProvider = uuidProvider,
-            walletCoreDocumentsController = walletCoreDocumentsController
+            walletCoreDocumentsController = walletCoreDocumentsController,
+            configUILogic = configUILogic,
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)

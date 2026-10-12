@@ -252,6 +252,11 @@
     <string name="request_blocked_bottom_sheet_title">Presentation blocked</string>
     <string name="request_blocked_bottom_sheet_message">This presentation request has been blocked because the relying party could not be verified by your Wallet.\n\nYour personal information or other data has not been shared with this relying party.</string>
     <string name="request_blocked_bottom_sheet_primary_button_text">@string/generic_close</string>
+    <string name="request_user_image_notice">This request includes your portrait, which can be used as biometric data to identify you by your face.</string>
+    <string name="request_bottom_sheet_user_image_title">Share your portrait?</string>
+    <string name="request_bottom_sheet_user_image_message">Your portrait will be sent to this relying party. Share it only if you trust the relying party and the request needs it.</string>
+    <string name="request_bottom_sheet_user_image_primary_button_text">@string/request_sticky_button_text</string>
+    <string name="request_bottom_sheet_user_image_secondary_button_text">@string/generic_cancel</string>
     <string name="request_gender_male">Male</string>
     <string name="request_gender_female">Female</string>
     <string name="request_gender_not_known">Not known</string>

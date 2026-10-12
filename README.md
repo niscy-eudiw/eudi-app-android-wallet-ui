@@ -195,6 +195,8 @@ checked, for example while offline, the document's details say so.
    setting off — the default — the name comes from the Verifier's access certificate alone.
    Whatever the setting, a Verifier whose access certificate cannot be verified is refused before
    this screen, on a "Request blocked" sheet.
+   If the request includes your portrait, a notice says that it can be used as biometric data, and
+   "Share" first asks you to confirm on a "Share your portrait?" sheet.
 8. Tap "Share".
 9. Enter the PIN you set up during the initial steps.
 10. Upon successful submission, tap "Close".
@@ -228,6 +230,9 @@ in the presentation's transaction details. This section is read-only.
    is missing or cannot be validated raises a warning that keeps "Share" disabled until you
    acknowledge it. A reader that sends no reader authentication, or one that cannot be verified,
    raises a warning in every configuration.
+   If the request includes your portrait, a notice says that it can be used as biometric data. The
+   portrait is selected like the other attributes; while it stays selected, "Share" first asks you
+   to confirm on a "Share your portrait?" sheet.
 8. Tap "Share".
 9. Enter the PIN you set up during the initial steps.
 10. Upon successful authentication, tap "Close".

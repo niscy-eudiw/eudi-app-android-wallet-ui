@@ -65,6 +65,14 @@ sealed interface RequestDataUi {
     val selectedDocuments: List<RequestDocumentItemUi>
         get() = selectedCombination?.documents.orEmpty()
 
+    /** True if the selected combination asks for a picture of the holder, such as the portrait. */
+    val requestsUserImage: Boolean
+        get() = selectedDocuments.any { document -> document.requestsUserImage }
+
+    /** True if Share would disclose a picture of the holder from the selected combination. */
+    val sharesUserImage: Boolean
+        get() = selectedDocuments.any { document -> document.sharesUserImage }
+
     /**
      * Returns a copy with the selected combination's items replaced by [documents] — the
      * single write-back point for the view-model's toggle / expand edits. A no-op for
