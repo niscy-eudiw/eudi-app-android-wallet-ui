@@ -22,8 +22,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
-import androidx.navigation.navDeepLink
-import eu.europa.ec.dashboardfeature.BuildConfig
 import eu.europa.ec.dashboardfeature.ui.dashboard.DashboardScreen
 import eu.europa.ec.dashboardfeature.ui.document_sign.DocumentSignScreen
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsScreen
@@ -43,13 +41,7 @@ fun NavGraphBuilder.featureDashboardGraph(navController: NavController) {
         route = ModuleRoute.DashboardModule.route
     ) {
         composable(
-            route = DashboardScreens.Dashboard.screenRoute,
-            deepLinks = listOf(
-                navDeepLink {
-                    uriPattern =
-                        BuildConfig.DEEPLINK + DashboardScreens.Dashboard.screenRoute
-                }
-            )
+            route = DashboardScreens.Dashboard.screenRoute
         ) {
             DashboardScreen(
                 hostNavController = navController,
@@ -61,13 +53,7 @@ fun NavGraphBuilder.featureDashboardGraph(navController: NavController) {
         }
 
         composable(
-            route = DashboardScreens.Settings.screenRoute,
-            deepLinks = listOf(
-                navDeepLink {
-                    uriPattern =
-                        BuildConfig.DEEPLINK + DashboardScreens.Settings.screenRoute
-                }
-            ),
+            route = DashboardScreens.Settings.screenRoute
         ) {
             SettingsScreen(
                 navController = navController,
@@ -83,12 +69,6 @@ fun NavGraphBuilder.featureDashboardGraph(navController: NavController) {
 
         composable(
             route = DashboardScreens.DocumentDetails.screenRoute,
-            deepLinks = listOf(
-                navDeepLink {
-                    uriPattern =
-                        BuildConfig.DEEPLINK + DashboardScreens.DocumentDetails.screenRoute
-                }
-            ),
             arguments = listOf(
                 navArgument("documentId") {
                     type = NavType.StringType
@@ -169,12 +149,6 @@ fun NavGraphBuilder.featureDashboardGraph(navController: NavController) {
 
         composable(
             route = DashboardScreens.TransactionDetails.screenRoute,
-            deepLinks = listOf(
-                navDeepLink {
-                    uriPattern =
-                        BuildConfig.DEEPLINK + DashboardScreens.TransactionDetails.screenRoute
-                }
-            ),
             arguments = listOf(
                 navArgument("transactionId") {
                     type = NavType.StringType

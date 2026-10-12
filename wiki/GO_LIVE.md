@@ -1327,7 +1327,7 @@ Current schemes include:
 
 | Purpose | Current scheme |
 | --- | --- |
-| Internal wallet navigation | `eudi-wallet` |
+| Internal wallet navigation | None. Screens are reached by route inside the app: no internal scheme is declared or exported, and no navigation-graph destination registers a deep link |
 | OpenID4VP | `openid4vp`, `eudi-openid4vp`, `mdoc-openid4vp`, `haip-vp` |
 | Credential offers | `openid-credential-offer`, `haip-vci` |
 | OpenID4VCI authorization redirect | `eu.europa.ec.euidi://authorization` |
@@ -1344,6 +1344,10 @@ Production concerns:
 Production rules:
 
 * Keep only schemes required by your supported protocols.
+* Do not export internal navigation. Screens are reached by route inside the app. An exported intent filter for an
+  internal scheme, or a `navDeepLink` on a navigation-graph destination, lets any app or web page open that screen
+  without passing the wallet's login. If screen deep links are needed for UI tests, keep them in a debug-only
+  manifest.
 * Prefer verified Android App Links (`https`) where protocol and ecosystem allow it.
 * If custom schemes are required by the specification, validate every parameter before use.
 * Validate issuer/verifier hostnames against allowlists or trust framework rules.
