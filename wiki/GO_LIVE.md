@@ -1217,6 +1217,17 @@ Recommended:
 * Monitor reissuance failures.
 * Do not silently delete or replace user credentials without clear UX and audit behavior.
 
+What the user sees:
+
+* When an issuer issues only part of a request, the success screen lists the documents that were
+  not added, including those refused because their issuer is not trusted. A request that also
+  leaves documents deferred ends on the deferred screen, which does not list them. Wallet Core
+  reports each failure as an exception, which is not shown to the user (see User-Facing
+  Production Behavior); map the causes you want to explain to messages of your own.
+* When a background re-issuance fails, the document's details open the issuer card and say that
+  the document could not be renewed automatically. The next background check clears the notice
+  unless the renewal fails again, and so does a successful **Reissue document** from the card.
+
 ## Document Categories
 
 `WalletCoreConfig.documentCategories` maps credential format identifiers into UI categories.

@@ -47,6 +47,7 @@ sealed class DocumentIssuanceSuccessInteractorGetUiItemsPartialState {
         val documentsUi: List<ExpandableListItemUi.NestedListItem>,
         val headerConfig: ContentHeaderConfig,
         val bannerText: String,
+        val warningText: String? = null,
     ) : DocumentIssuanceSuccessInteractorGetUiItemsPartialState()
 
     data class Failed(
@@ -55,7 +56,14 @@ sealed class DocumentIssuanceSuccessInteractorGetUiItemsPartialState {
 }
 
 interface DocumentIssuanceSuccessInteractor {
-    fun getUiItems(documentIds: List<DocumentId>): Flow<DocumentIssuanceSuccessInteractorGetUiItemsPartialState>
+    /**
+     * The success screen for the issued [documentIds]. When [notIssuedDocuments] is not empty, the
+     * screen also warns that those documents were not issued.
+     */
+    fun getUiItems(
+        documentIds: List<DocumentId>,
+        notIssuedDocuments: List<String> = emptyList(),
+    ): Flow<DocumentIssuanceSuccessInteractorGetUiItemsPartialState>
 }
 
 class DocumentIssuanceSuccessInteractorImpl(
@@ -68,7 +76,10 @@ class DocumentIssuanceSuccessInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    override fun getUiItems(documentIds: List<DocumentId>): Flow<DocumentIssuanceSuccessInteractorGetUiItemsPartialState> {
+    override fun getUiItems(
+        documentIds: List<DocumentId>,
+        notIssuedDocuments: List<String>,
+    ): Flow<DocumentIssuanceSuccessInteractorGetUiItemsPartialState> {
         return flow {
 
             val documentsUi = mutableListOf<ExpandableListItemUi.NestedListItem>()
@@ -167,6 +178,12 @@ class DocumentIssuanceSuccessInteractorImpl(
                     documentsUi = documentsUi,
                     headerConfig = headerConfig,
                     bannerText = resourceProvider.getString(R.string.issuance_success_banner_text),
+                    warningText = notIssuedDocuments.takeIf { it.isNotEmpty() }?.let { names ->
+                        resourceProvider.getString(
+                            R.string.issuance_success_not_issued_text,
+                            names.joinToString(separator = ", "),
+                        )
+                    },
                 )
             )
         }.safeAsync {

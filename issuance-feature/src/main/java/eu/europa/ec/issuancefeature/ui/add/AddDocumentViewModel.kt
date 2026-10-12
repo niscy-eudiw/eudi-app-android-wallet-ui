@@ -409,7 +409,8 @@ class AddDocumentViewModel(
                             )
                         }
                         navigateToDocumentIssuanceSuccessScreen(
-                            documentIds = response.documentIds
+                            documentIds = response.documentIds,
+                            notIssuedDocuments = response.notIssuedDocuments,
                         )
                     }
 
@@ -447,7 +448,10 @@ class AddDocumentViewModel(
         }
     }
 
-    private fun navigateToDocumentIssuanceSuccessScreen(documentIds: List<String>) {
+    private fun navigateToDocumentIssuanceSuccessScreen(
+        documentIds: List<String>,
+        notIssuedDocuments: List<String>,
+    ) {
         val onSuccessNavigation = when (viewState.value.issuanceConfig.flowType) {
             is IssuanceFlowType.NoDocument -> ConfigNavigation(
                 navigationType = NavigationType.PushScreen(
@@ -472,6 +476,7 @@ class AddDocumentViewModel(
                             IssuanceSuccessUiConfig.serializedKeyName to uiSerializer.toBase64(
                                 model = IssuanceSuccessUiConfig(
                                     documentIds = documentIds,
+                                    notIssuedDocuments = notIssuedDocuments,
                                     onSuccessNavigation = onSuccessNavigation,
                                 ),
                                 parser = IssuanceSuccessUiConfig.Parser

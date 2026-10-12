@@ -170,6 +170,10 @@ not verified is marked "Issuer not verified". In the reference configuration onl
 checked against the trusted list, so other documents are marked. The document's details show the
 same.
 
+If the issuer adds only some of the requested documents, the success screen lists the ones that were
+not added. If the Wallet cannot renew a document in the background, the document's details say so,
+and you can renew it there with **Reissue document**.
+
 With **Check Registration Certificates** enabled in Settings, both issuance flows require the
 provider to be registered for what it offers: if its registration certificate is missing, cannot be
 validated, or does not cover the offered document, the flow stops on an "Issuance blocked" sheet and

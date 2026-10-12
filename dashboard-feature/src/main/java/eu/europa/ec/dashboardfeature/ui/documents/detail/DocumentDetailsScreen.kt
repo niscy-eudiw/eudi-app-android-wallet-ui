@@ -549,6 +549,7 @@ private fun DocumentDetailsScreenPreview() {
                 isExpanded = true,
                 issuerIsVerified = true,
                 statusRefreshFailed = false,
+                reIssuanceFailed = false,
             ),
             documentCredentialsInfoUi = DocumentCredentialsInfoUi(
                 availableCredentials = availableCredentials,

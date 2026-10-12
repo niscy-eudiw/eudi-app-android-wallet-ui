@@ -145,6 +145,7 @@ class TestDocumentDetailsInteractor {
         runBlocking {
             mockIsIssuerTrusted(isTrusted = false)
             mockHasStatusRefreshFailed(hasFailed = false)
+            mockHasReIssuanceFailed(hasFailed = false)
         }
     }
 
@@ -229,6 +230,36 @@ class TestDocumentDetailsInteractor {
 
                 assertEquals(
                     getMockedIssuerDetailsCardDataUi(isExpanded = true, statusRefreshFailed = true),
+                    success.issuerDetails
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `Given the last automatic re-issuance failed, When getDocumentDetails is called, Then the issuer card opens and says so`() {
+        coroutineRule.runTest {
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentDetailsStrings(
+                resourceProvider = resourceProvider,
+            )
+
+            val mockedPidWithBasicFields = getMockedPidWithBasicFields()
+            mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
+            mockIsDocumentLowOnCredentialsCall(response = false)
+            mockRetrieveBookmarkCall(response = false)
+            mockIsDocumentRevoked(isRevoked = false)
+            mockHasStatusRefreshFailed(hasFailed = false)
+            mockHasReIssuanceFailed(hasFailed = true)
+
+            interactor.getDocumentDetails(
+                documentId = mockedPidId,
+                wasIssuerDetailsExpanded = false,
+            ).runFlowTest {
+                val success = awaitItem() as DocumentDetailsInteractorPartialState.Success
+
+                assertEquals(
+                    getMockedIssuerDetailsCardDataUi(isExpanded = true, reIssuanceFailed = true),
                     success.issuerDetails
                 )
             }
@@ -1469,6 +1500,7 @@ class TestDocumentDetailsInteractor {
                 IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
                     issuedDocumentIds = listOf(mockedPidId),
                     untrustedDocuments = emptyMap(),
+                    nonIssuedDocuments = emptyMap(),
                 ).toFlow()
             )
 
@@ -1765,6 +1797,10 @@ class TestDocumentDetailsInteractor {
         whenever(walletCoreDocumentsController.hasStatusRefreshFailed(any())).thenReturn(hasFailed)
     }
 
+    private suspend fun mockHasReIssuanceFailed(hasFailed: Boolean) {
+        whenever(walletCoreDocumentsController.hasReIssuanceFailed(any())).thenReturn(hasFailed)
+    }
+
     private suspend fun mockIsDocumentLowOnCredentialsCall(response: Boolean) {
         whenever(walletCoreDocumentsController.isDocumentLowOnCredentials(any()))
             .thenReturn(response)
@@ -1800,6 +1836,7 @@ class TestDocumentDetailsInteractor {
         isExpanded: Boolean = false,
         issuerIsVerified: Boolean = false,
         statusRefreshFailed: Boolean = false,
+        reIssuanceFailed: Boolean = false,
     ): IssuerDetailsCardDataUi {
         return IssuerDetailsCardDataUi(
             issuerName = issuerName,
@@ -1808,6 +1845,7 @@ class TestDocumentDetailsInteractor {
             isExpanded = isExpanded,
             issuerIsVerified = issuerIsVerified,
             statusRefreshFailed = statusRefreshFailed,
+            reIssuanceFailed = reIssuanceFailed,
         )
     }
 

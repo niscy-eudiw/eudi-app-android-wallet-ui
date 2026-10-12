@@ -22,10 +22,15 @@ import eu.europa.ec.uilogic.serializer.UiSerializable
 import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.Serializable
 
+/**
+ * The issuance success screen: the documents in [documentIds] were issued, and those named in
+ * [notIssuedDocuments] were requested but not issued.
+ */
 @Serializable
 data class IssuanceSuccessUiConfig(
     val documentIds: List<DocumentId>,
     val onSuccessNavigation: ConfigNavigation,
+    val notIssuedDocuments: List<String> = emptyList(),
 ) : UiSerializable {
 
     companion object Parser : UiSerializableParser {

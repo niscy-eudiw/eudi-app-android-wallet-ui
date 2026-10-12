@@ -77,12 +77,22 @@ sealed class ResolveDocumentOfferInteractorPartialState {
 }
 
 sealed class IssueDocumentsInteractorPartialState {
+    /**
+     * The documents in [documentIds] were issued. [notIssuedDocuments] names those of the offer that
+     * the issuer did not issue, when there are any.
+     */
     data class Success(
         val documentIds: List<DocumentId>,
+        val notIssuedDocuments: List<String> = emptyList(),
     ) : IssueDocumentsInteractorPartialState()
 
+    /**
+     * The documents in [issuedDocumentIds] were issued; some came from an issuer that could not be
+     * trusted and were refused. [notIssuedDocuments] names every document of the offer not added.
+     */
     data class PartialSuccessWithUntrustedIssuer(
         val issuedDocumentIds: List<DocumentId>,
+        val notIssuedDocuments: List<String>,
     ) : IssueDocumentsInteractorPartialState()
 
     data class DeferredSuccess(
@@ -252,13 +262,16 @@ class DocumentOfferInteractorImpl(
 
                         is IssueDocumentsPartialState.PartialSuccess -> {
                             IssueDocumentsInteractorPartialState.Success(
-                                documentIds = response.documentIds
+                                documentIds = response.documentIds,
+                                notIssuedDocuments = response.nonIssuedDocuments.values.toList(),
                             )
                         }
 
                         is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> {
                             IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer(
-                                issuedDocumentIds = response.issuedDocumentIds
+                                issuedDocumentIds = response.issuedDocumentIds,
+                                notIssuedDocuments = response.untrustedDocuments.values +
+                                        response.nonIssuedDocuments.values,
                             )
                         }
 

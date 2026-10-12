@@ -56,6 +56,7 @@ import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.config.ConfigUILogic
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNull
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -681,6 +682,56 @@ class TestDocumentIssuanceSuccessInteractor {
         }
     }
 
+    @Test
+    fun `Given documents the issuer did not issue, When getUiItems is called, Then the success state names them in a warning`() {
+        coroutineRule.runTest {
+            mockHeaderConfigDescription(isErrorCase = true)
+            mockTransformToDocumentDetailsDomainStrings(resourceProvider)
+            mockGetUiItemsStrings(
+                resourceProvider = resourceProvider,
+                supportingText = mockedDocumentSuccessCollapsedSupportingText,
+            )
+            mockGetDocumentByIdCall(response = null)
+            whenever(
+                resourceProvider.getString(
+                    R.string.issuance_success_not_issued_text,
+                    "Photo ID, mDL",
+                )
+            ).thenReturn(mockedNotIssuedWarning)
+
+            interactor.getUiItems(
+                documentIds = listOf(),
+                notIssuedDocuments = listOf("Photo ID", "mDL"),
+            ).runFlowTest {
+                val success = awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
+
+                assertEquals(mockedNotIssuedWarning, success.warningText)
+            }
+        }
+    }
+
+    @Test
+    fun `Given every document was issued, When getUiItems is called, Then the success state has no warning`() {
+        coroutineRule.runTest {
+            mockHeaderConfigDescription(isErrorCase = true)
+            mockTransformToDocumentDetailsDomainStrings(resourceProvider)
+            mockGetUiItemsStrings(
+                resourceProvider = resourceProvider,
+                supportingText = mockedDocumentSuccessCollapsedSupportingText,
+            )
+            mockGetDocumentByIdCall(response = null)
+
+            interactor.getUiItems(
+                documentIds = listOf(),
+                notIssuedDocuments = listOf(),
+            ).runFlowTest {
+                val success = awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
+
+                assertNull(success.warningText)
+            }
+        }
+    }
+
     // endregion
 
     //region Mock Calls
@@ -736,6 +787,8 @@ class TestDocumentIssuanceSuccessInteractor {
         )
 
     private val mockedIssuerNotVerifiedText = "Issuer not verified"
+
+    private val mockedNotIssuedWarning = "These documents were not added to your wallet: Photo ID, mDL."
 
     private val mockedIssuerNotVerifiedSupportingContent =
         ListItemSupportingContentDataUi.Text(

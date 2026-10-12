@@ -66,6 +66,8 @@ import java.net.URI
  * was issued.
  * @property statusRefreshFailed True when the last attempt to refresh the document's status failed,
  * so the state shown is the one from the last successful check.
+ * @property reIssuanceFailed True when the wallet's last automatic re-issuance of the document
+ * failed, so the user may need to re-issue it by hand.
  */
 data class IssuerDetailsCardDataUi(
     val issuerName: String?,
@@ -74,6 +76,7 @@ data class IssuerDetailsCardDataUi(
     val isExpanded: Boolean,
     val issuerIsVerified: Boolean,
     val statusRefreshFailed: Boolean,
+    val reIssuanceFailed: Boolean,
 ) {
     sealed class DocumentState {
         data class Issued(
@@ -332,6 +335,15 @@ private fun IssuerDetailsCardExpanded(
             )
         }
 
+        if (data.reIssuanceFailed) {
+            Text(
+                text = stringResource(R.string.document_details_issuer_card_reissuance_failed_text),
+                modifier = Modifier.fillMaxWidth(),
+                color = ThemeColorKey.Warning.toColor(),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         when (val docState = data.documentState) {
             is IssuerDetailsCardDataUi.DocumentState.Issued -> {
                 IssuedOnText(
@@ -432,6 +444,7 @@ private fun IssuerDetailsCardPreview() {
                 isExpanded = false,
                 issuerIsVerified = true,
                 statusRefreshFailed = false,
+                reIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -440,6 +453,7 @@ private fun IssuerDetailsCardPreview() {
                 isExpanded = true,
                 issuerIsVerified = true,
                 statusRefreshFailed = true,
+                reIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -448,6 +462,7 @@ private fun IssuerDetailsCardPreview() {
                 isExpanded = false,
                 issuerIsVerified = false,
                 statusRefreshFailed = false,
+                reIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -456,6 +471,7 @@ private fun IssuerDetailsCardPreview() {
                 isExpanded = true,
                 issuerIsVerified = false,
                 statusRefreshFailed = false,
+                reIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -464,6 +480,7 @@ private fun IssuerDetailsCardPreview() {
                 isExpanded = false,
                 issuerIsVerified = true,
                 statusRefreshFailed = false,
+                reIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -472,6 +489,7 @@ private fun IssuerDetailsCardPreview() {
                 isExpanded = true,
                 issuerIsVerified = true,
                 statusRefreshFailed = false,
+                reIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = null,
@@ -480,6 +498,7 @@ private fun IssuerDetailsCardPreview() {
                 isExpanded = false,
                 issuerIsVerified = false,
                 statusRefreshFailed = false,
+                reIssuanceFailed = false,
             )
         )
 

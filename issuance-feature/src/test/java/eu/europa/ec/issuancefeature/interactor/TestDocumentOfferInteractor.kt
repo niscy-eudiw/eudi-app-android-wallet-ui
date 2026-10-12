@@ -993,7 +993,8 @@ class TestDocumentOfferInteractor {
                 txCode = securePin(mockedTxCode)
             ).runFlowTest {
                 val expectedResult = IssueDocumentsInteractorPartialState.Success(
-                    documentIds = listOf(mockSuccessfullyIssuedDocId)
+                    documentIds = listOf(mockSuccessfullyIssuedDocId),
+                    notIssuedDocuments = nonIssuedDeferredDocuments.values.toList(),
                 )
 
                 // Then
@@ -1043,6 +1044,7 @@ class TestDocumentOfferInteractor {
             ).runFlowTest {
                 val expectedResult = IssueDocumentsInteractorPartialState.Success(
                     documentIds = listOf(mockSuccessfullyIssuedDocId),
+                    notIssuedDocuments = nonIssuedDeferredDocuments.values.toList(),
                 )
 
                 // Then
@@ -1196,7 +1198,8 @@ class TestDocumentOfferInteractor {
                 offerUri = mockedUriPath1,
                 event = IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
                     issuedDocumentIds = listOf(mockedMdlId),
-                    untrustedDocuments = mapOf(mockedMdocPidDocType to mockedOfferedDocumentName)
+                    untrustedDocuments = mapOf(mockedMdocPidDocType to mockedOfferedDocumentName),
+                    nonIssuedDocuments = mapOf("org.iso.18013.5.1.mDL" to "mDL"),
                 )
             )
 
@@ -1210,7 +1213,8 @@ class TestDocumentOfferInteractor {
                 // Then
                 assertEquals(
                     IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer(
-                        issuedDocumentIds = listOf(mockedMdlId)
+                        issuedDocumentIds = listOf(mockedMdlId),
+                        notIssuedDocuments = listOf(mockedOfferedDocumentName, "mDL"),
                     ),
                     awaitItem()
                 )

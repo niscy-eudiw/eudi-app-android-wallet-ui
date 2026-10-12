@@ -23,8 +23,10 @@ import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.Outcome
+import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
+import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -45,6 +47,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runCurrent
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -53,6 +56,7 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.eq
@@ -343,6 +347,51 @@ class TestWalletCoreDocumentsController {
             verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
         }
 
+    @Test
+    fun `Given the issuer issues only part of a request, When issueDocuments is called, Then the documents not issued are passed on`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+            val notIssued: UnsignedDocument = mock {
+                on { name } doReturn "mDL"
+                on { format } doReturn MsoMdocFormat(MDL_TYPE)
+            }
+            doAnswer { invocation ->
+                val onIssueEvent = invocation.getArgument<OpenId4VciManager.OnIssueEvent>(4)
+                onIssueEvent(IssueEvent.Started(total = 2))
+                onIssueEvent(IssueEvent.DocumentFailed(notIssued, IllegalStateException("not issued")))
+                onIssueEvent(IssueEvent.Finished(issuedDocuments = listOf("pid")))
+            }.whenever(configuredIssuerManager).issueDocumentByConfigurationIdentifiers(
+                eq(CONFIGURED_ISSUER),
+                any(),
+                anyOrNull(),
+                anyOrNull(),
+                any(),
+            )
+
+            val result = controller.issueDocuments(
+                issuanceMethod = IssuanceMethod.OPENID4VCI,
+                configIds = listOf("pid", "mdl"),
+                issuerId = CONFIGURED_ISSUER,
+            ).first()
+
+            assertEquals(
+                IssueDocumentsPartialState.PartialSuccess(
+                    documentIds = listOf("pid"),
+                    nonIssuedDocuments = mapOf(MDL_TYPE to "mDL"),
+                ),
+                result
+            )
+        }
+
+    @Test
+    fun `Given a failed re-issuance record, When hasReIssuanceFailed is called, Then it is reported for that document only`() =
+        coroutineRule.runTest {
+            whenever(failedReIssuedDocumentDao.retrieve("pid")).thenReturn(FailedReIssuedDocument("pid"))
+
+            assertTrue(controller.hasReIssuanceFailed("pid"))
+            assertFalse(controller.hasReIssuanceFailed("otherPid"))
+        }
+
     /**
      * Two configured issuers, the first of which the old fallback would have used for any unknown
      * issuer, each with its own mocked manager.
@@ -378,5 +427,6 @@ class TestWalletCoreDocumentsController {
         const val NOT_CONFIGURED = "not configured"
         const val UNREADABLE = "unreadable"
         const val DOCUMENT_ERROR = "document error"
+        const val MDL_TYPE = "org.iso.18013.5.1.mDL"
     }
 }

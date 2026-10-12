@@ -42,6 +42,9 @@ data class State(
 
     val bannerText: String = "",
 
+    /** A warning shown under the header, for example about documents that were not issued. */
+    val warningText: String? = null,
+
     val items: List<ExpandableListItemUi.NestedListItem> = emptyList(),
 ) : ViewState
 

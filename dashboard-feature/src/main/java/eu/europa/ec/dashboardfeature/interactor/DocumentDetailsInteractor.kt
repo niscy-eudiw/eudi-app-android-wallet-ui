@@ -180,6 +180,7 @@ class DocumentDetailsInteractorImpl(
                 val documentIsRevoked = walletCoreDocumentsController.isDocumentRevoked(documentId)
                 val statusRefreshFailed =
                     walletCoreDocumentsController.hasStatusRefreshFailed(documentId)
+                val reIssuanceFailed = walletCoreDocumentsController.hasReIssuanceFailed(documentId)
                 val issuerDetails = IssuerDetailsCardDataUi(
                     issuerName = issuerName,
                     issuerLogo = issuerLogo,
@@ -196,9 +197,10 @@ class DocumentDetailsInteractorImpl(
                             expirationDate = documentDetailsDomain.documentExpirationDate
                         )
                     },
-                    isExpanded = wasIssuerDetailsExpanded == true || statusRefreshFailed,
+                    isExpanded = wasIssuerDetailsExpanded == true || statusRefreshFailed || reIssuanceFailed,
                     issuerIsVerified = walletCoreDocumentsController.isIssuerTrusted(documentId),
                     statusRefreshFailed = statusRefreshFailed,
+                    reIssuanceFailed = reIssuanceFailed,
                 )
 
                 emit(

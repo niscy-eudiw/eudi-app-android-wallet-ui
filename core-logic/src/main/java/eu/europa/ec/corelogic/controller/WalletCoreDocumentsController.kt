@@ -115,9 +115,14 @@ sealed class IssueDocumentsPartialState {
         val nonIssuedDocuments: Map<String, String>,
     ) : IssueDocumentsPartialState()
 
+    /**
+     * The documents in [issuedDocumentIds] were issued. [untrustedDocuments] were refused because their
+     * issuer could not be trusted, and [nonIssuedDocuments] were not issued for another reason.
+     */
     data class PartialSuccessWithUntrustedIssuer(
         val issuedDocumentIds: List<DocumentId>,
         val untrustedDocuments: Map<FormatType, String>,
+        val nonIssuedDocuments: Map<FormatType, String>,
     ) : IssueDocumentsPartialState()
 
     data class Failure(val errorMessage: String) : IssueDocumentsPartialState()
@@ -279,6 +284,9 @@ interface WalletCoreDocumentsController {
 
     /** Whether the last attempt to refresh the status of [documentId] failed. */
     suspend fun hasStatusRefreshFailed(documentId: DocumentId): Boolean
+
+    /** Whether the last automatic re-issuance of [documentId] failed. */
+    suspend fun hasReIssuanceFailed(documentId: DocumentId): Boolean
 
     suspend fun isDocumentBookmarked(documentId: DocumentId): Boolean
 
@@ -552,15 +560,17 @@ class WalletCoreDocumentsControllerImpl(
                         )
 
                         is IssueDocumentsPartialState.PartialSuccess -> emit(
-                            IssueDocumentsPartialState.Success(
-                                documentIds = response.documentIds
+                            IssueDocumentsPartialState.PartialSuccess(
+                                documentIds = response.documentIds,
+                                nonIssuedDocuments = response.nonIssuedDocuments,
                             )
                         )
 
                         is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> emit(
                             IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
                                 issuedDocumentIds = response.issuedDocumentIds,
-                                untrustedDocuments = response.untrustedDocuments
+                                untrustedDocuments = response.untrustedDocuments,
+                                nonIssuedDocuments = response.nonIssuedDocuments,
                             )
                         )
 
@@ -1064,6 +1074,9 @@ class WalletCoreDocumentsControllerImpl(
     override suspend fun hasStatusRefreshFailed(documentId: DocumentId): Boolean =
         statusRefreshFailureDao.retrieve(documentId) != null
 
+    override suspend fun hasReIssuanceFailed(documentId: DocumentId): Boolean =
+        failedReIssuedDocumentDao.retrieve(documentId) != null
+
     private fun issueDocumentsWithOpenId4VCI(
         configIds: List<String>,
         issuerId: String,
@@ -1243,7 +1256,8 @@ class WalletCoreDocumentsControllerImpl(
                             trySendBlocking(
                                 IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
                                     issuedDocumentIds = issuedDocuments.keys.toList(),
-                                    untrustedDocuments = untrustedDocuments
+                                    untrustedDocuments = untrustedDocuments,
+                                    nonIssuedDocuments = nonIssuedDocuments,
                                 )
                             )
                             return@launch
