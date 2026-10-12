@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
+import eu.europa.ec.corelogic.controller.WalletResetController
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -38,6 +39,8 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.ResetWalletInteractor
+import eu.europa.ec.dashboardfeature.interactor.ResetWalletInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
@@ -77,6 +80,15 @@ fun provideSettingsInteractor(
     logController,
     resourceProvider,
     prefKeys,
+)
+
+@Factory
+fun provideResetWalletInteractor(
+    walletResetController: WalletResetController,
+    sessionController: SessionController,
+): ResetWalletInteractor = ResetWalletInteractorImpl(
+    walletResetController,
+    sessionController,
 )
 
 @Factory

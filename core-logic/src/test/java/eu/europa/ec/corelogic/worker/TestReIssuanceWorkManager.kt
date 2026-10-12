@@ -21,12 +21,20 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
+import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -85,6 +93,32 @@ class TestReIssuanceWorkManager {
                 any(),
                 anyOrNull(),
             )
+        }
+    }
+
+    @Test
+    fun `Given a re-issuance in progress, When the worker is cancelled, Then it holds its lock until the outcome arrives`() {
+        coroutineRule.runTest {
+            val dueDocument: IssuedDocument = mock {
+                on { id } doReturn "due-document"
+                on { credentialPolicy } doReturn CredentialPolicy.OnceOnly()
+                onBlocking { getCredentials() } doReturn emptyList()
+            }
+            val outcome = CompletableDeferred<IssueDocumentsPartialState>()
+            whenever(walletCoreDocumentsController.getAllIssuedDocuments()).thenReturn(listOf(dueDocument))
+            whenever(walletCoreDocumentsController.isDocumentRevoked(dueDocument.id)).thenReturn(false)
+            whenever(walletCoreDocumentsController.reIssueDocument(any(), any(), any(), any()))
+                .thenReturn(flow { emit(outcome.await()) })
+
+            val work = coroutineRule.testScope.launch { runWorker() }
+            coroutineRule.testScope.runCurrent()
+            work.cancel()
+            coroutineRule.testScope.runCurrent()
+
+            assertTrue(ReIssuanceWorkManager.runLock.isLocked)
+            outcome.complete(IssueDocumentsPartialState.Failure(errorMessage = "error"))
+            work.join()
+            assertFalse(ReIssuanceWorkManager.runLock.isLocked)
         }
     }
 

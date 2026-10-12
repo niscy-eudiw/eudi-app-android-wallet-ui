@@ -170,8 +170,6 @@ nothing is added to the Wallet. The same applies to re-issuance, where the docum
 is left untouched. With the setting off — the default — no registration is checked and none of this
 applies.
 
-To delete a document, navigate to the 'Documents' tab within the 'Dashboard' screen, tap on the document you wish to remove, and then tap the 'Delete Document' button in the 'Document Details' screen.
-
 The Wallet checks each document's status list in the background, every 15 minutes and each time the
 app starts. A revoked document can no longer be presented, and stays blocked even if its status later
 reads valid; a suspended document is blocked until the issuer reinstates it. If the status could not be
@@ -235,6 +233,23 @@ in the presentation's transaction details. This section is read-only.
 10. Upon successful authentication, tap "Close".
 11. The Verifier will receive the data you chose to share.
 12. You will return to the "Home" tab of the "Dashboard" screen. The flow is now complete.
+
+### Removing a document and resetting the Wallet
+
+To remove one document, open it from the "Documents" tab and tap "Remove from wallet". Its stored
+details go with it, and so does the transaction history of its document type once no other document
+of that type is left.
+
+To erase everything:
+
+1. Open "Settings" from the menu on the "Home" tab.
+2. Tap "Reset wallet". A confirmation lists what will be deleted: your documents and their keys,
+   your transaction history, and your PIN, settings and logs.
+3. Tap "Reset", then enter your PIN or use your biometric.
+4. The Wallet deletes the data and starts again as on first use: the welcome screen appears and you
+   create a new PIN.
+
+See [wiki/GO_LIVE.md](wiki/GO_LIVE.md#data-deletion-and-factory-reset) for what each step removes.
 
 ## How to build - Quick start guide
 

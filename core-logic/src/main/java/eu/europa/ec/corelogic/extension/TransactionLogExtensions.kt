@@ -23,3 +23,20 @@ import eu.europa.ec.storagelogic.model.TransactionLog as StorageTransaction
 // Returns null if the stored transaction cannot be read.
 internal fun StorageTransaction.toCoreTransactionLog(): TransactionEntry? =
     this.value.toTransactionEntryOrNull()
+
+/**
+ * Whether this entry concerns attestations of [attestationType] (a docType or vct): a presentation
+ * that requested or disclosed claims of that type, or an issuance or re-issuance of it. Wallet Core
+ * records the attestation type, not the document, so an entry cannot be tied to one document. An
+ * entry that covers several types matches each of them. No other entry is matched, which keeps
+ * deletion records, signing entries, presentation actions, and issuances that record no type.
+ */
+internal fun TransactionEntry.referencesAttestationType(attestationType: String): Boolean =
+    when (this) {
+        is TransactionEntry.Presentation ->
+            (listOfClaimsRequested + listOfClaimsPresented).any { it.credentialIdentifier == attestationType }
+
+        is TransactionEntry.CredentialIssuance -> attestationType in details.credentialIdentifier
+        is TransactionEntry.CredentialReissuance -> attestationType in details.credentialIdentifier
+        else -> false
+    }

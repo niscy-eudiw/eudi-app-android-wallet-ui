@@ -82,6 +82,7 @@ Use this checklist before the first production release.
 | Secrets                 | No production secret is hardcoded in Kotlin, Gradle, resources, or `BuildConfig`.                                                                                                                                                                                             |
 | Network                 | Cleartext traffic is disabled; trust-all certificate logic is absent; TLS policy and certificate pinning strategy are agreed.                                                                                                                                                 |
 | Storage                 | Wallet data, database keys, PIN material, and logs are protected, excluded from backup, and migration-safe.                                                                                                                                                                   |
+| Data deletion           | Removing a document deletes the app's records about it under the rules in [Data Deletion And Factory Reset](#data-deletion-and-factory-reset), and **Reset wallet** deletes the user's data and starts the app again at onboarding. Every local store added by the implementer is covered by both. |
 | Authentication          | PIN, biometrics, device credential fallback, key authentication, lockout, and recovery policies are approved.                                                                                                                                                                 |
 | Deep links              | All inbound URI schemes, hosts, and parameters are validated and threat-modeled.                                                                                                                                                                                              |
 | Presentation relay risk | Relay attack risk is documented, verifier compensating controls are defined, and residual risk is accepted for each presentation scenario.                                                                                                                                    |
@@ -1655,12 +1656,93 @@ Example:
 Room.databaseBuilder(
     context,
     DatabaseService::class.java,
-    "eudi.app.wallet.storage"
+    DatabaseService.DATABASE_NAME
 )
     .openHelperFactory(SupportOpenHelperFactory(key))
     .addMigrations(MIGRATION_2_3)
     .build()
 ```
+
+### Data Deletion And Factory Reset
+
+Removing a document deletes, besides the credential and its keys in Wallet Core:
+
+* its revocation record, issuer-trust verdict and last failed status refresh;
+* its bookmark and its failed re-issuance record;
+* the transaction history of its attestation type, once no other document of that type is left.
+
+Wallet Core records the attestation type (the mdoc `docType` or the SD-JWT VC `vct`) in each
+history entry, not the document. While another document of the same type remains, the history may
+be that document's and is kept. An entry that covers several types, such as an issuance of the PID
+in both formats or a presentation of a PID and an mDL, is deleted when the last document of any of
+them goes, and with a presentation go the data-deletion request and DPA-report attempts linked to
+it. Wallet Core's own record of the deletion is kept. These deletions are best effort: a storage
+error leaves records behind rather than reporting a completed removal as failed, and the factory
+reset removes what is left.
+
+A re-issuance replaces the original document. Wallet Core deletes the original once a new
+credential has been issued, and for a deferred re-issuance only when the deferred credential
+arrives. The app copies the original's bookmark to the new documents and deletes the original's
+other records once Wallet Core has deleted it; after a deferred credential arrives, it deletes the
+records of every document Wallet Core no longer holds.
+
+**Settings → Reset wallet** is the factory reset. It asks for confirmation, lists what will be
+deleted, and requires the PIN or a biometric. `WalletResetController` then, while the app keeps
+running:
+
+1. stops the revocation and re-issuance workers and waits, for 30 seconds at most, until neither is
+   still working (`WalletWorkScheduler`). Wallet Core finishes a re-issuance it has started even when
+   its worker is cancelled, so the worker follows it to its outcome first. If a worker is still
+   working when the wait ends, the reset fails before anything is deleted;
+2. deletes every document Wallet Core stores, the main PID last, so that their keys are removed as
+   Wallet Core intends. Meanwhile it holds the Digital Credential API registration, and then clears
+   the registry, which the system keeps outside the app's data
+   (`WalletCoreDCAPIRegistrationController`);
+3. empties every table of the app's database, and its write-ahead log;
+4. clears the preferences in a single edit, which hold the PIN, the biometric choice and the other
+   settings, keeping only the current session id and the database key, which the running app needs;
+5. deletes the log files and the app's cached files, which include documents signed with RQES and
+   the logos of issuers and relying parties;
+6. locks the session and schedules the workers again.
+
+The wallet then starts again at the splash screen, which leads to onboarding, as after a first
+install. The app does not close. Once started, the reset runs to the end even if its screen is
+closed. A link or Digital Credential API request that arrives while it runs is dropped, and a link
+the app kept for after login is forgotten. If a document cannot be deleted or a step fails, the
+user can retry, or close the screen, which also starts the wallet again at the splash screen. A
+reset screen restored after the process ended finds the wallet locked and does not start; the lock
+routes to the login screen. When the database key is missing at start-up, any existing database
+file is deleted, since it could not be opened, and a new database is created.
+
+The reset keeps the following, none of which holds the user's personal data:
+
+* the keys Wallet Core keeps per issuer for wallet attestation and DPoP (`no_backup/wallet-attest.bin`
+  and `no_backup/dpop_metadata`), which Wallet Core offers no way to delete. An issuer can therefore
+  recognise the installation after a reset;
+* Wallet Core's storage files in `no_backup` (the document store and `issuance_metadata.db`). Wallet
+  Core deletes the documents and their issuance details from them, but SQLite can keep the freed
+  pages in the file until they are reused;
+* the app's database file and its key, with every table and the write-ahead log empty, and the key
+  that encrypts the preferences;
+* Android Keystore keys the app created, such as the key behind biometric login, which are no longer
+  used.
+
+Clearing the app's data from the system settings, or reinstalling, removes these as well.
+
+Production rules:
+
+* Any local store you add must be covered by both paths. Records scoped to a document must be
+  deleted in `deleteDocumentRecords` in `WalletCoreDocumentsControllerImpl`.
+* Data kept outside the app's data directory, for example in shared storage or another app, is not
+  cleared by the reset and must be given its own deletion step, as the Digital Credential API
+  registry is.
+* A PIN, biometry or throttle storage provider that keeps its data outside `PrefsController` (see
+  [CONFIGURATION.md](CONFIGURATION.md#pin-storage-configuration)) must be cleared by the reset too.
+* Keep the confirmation and the authentication check in front of the reset.
+* If an issuer must not recognise the installation after a reset, tell users to clear the app's
+  data from the system settings instead, or delete the Wallet Core key stores as part of the reset.
+* The reset does not reach data held by the Wallet Provider, issuers or verifiers. State in the
+  privacy notice how users can ask for that data to be deleted.
 
 ## Logging And Audit
 
@@ -1691,6 +1773,9 @@ a request was sent, received, or fulfilled. Deleting a presentation also deletes
 
 Deleting a pending issuance log removes its current entry. When issuance later completes, a log
 can appear again. Log deletion does not cancel issuance.
+
+Removing the last document of an attestation type also removes that type's history; see
+[Data Deletion And Factory Reset](#data-deletion-and-factory-reset).
 
 ### Diagnostic logging
 

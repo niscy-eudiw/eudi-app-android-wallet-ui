@@ -17,31 +17,21 @@
 package eu.europa.ec.assemblylogic
 
 import android.app.Application
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.ListenableWorker
-import androidx.work.OneTimeWorkRequest
-import androidx.work.PeriodicWorkRequest
-import androidx.work.WorkManager
 import eu.europa.ec.analyticslogic.controller.AnalyticsController
 import eu.europa.ec.assemblylogic.di.setupKoin
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.config.ConfigLogic
-import eu.europa.ec.corelogic.config.WalletCoreConfig
-import eu.europa.ec.corelogic.worker.ReIssuanceWorkManager
-import eu.europa.ec.corelogic.worker.RevocationWorkManager
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
 import eu.europa.ec.uilogic.container.registerSessionBackgroundObserver
 import org.koin.android.ext.android.inject
 import org.koin.core.KoinApplication
-import kotlin.time.Duration
-import kotlin.time.toJavaDuration
 
 class Application : Application() {
 
     private val analyticsController: AnalyticsController by inject()
     private val configLogic: ConfigLogic by inject()
-    private val walletCoreConfig: WalletCoreConfig by inject()
+    private val walletWorkScheduler: WalletWorkScheduler by inject()
     private val sessionController: SessionController by inject()
 
     override fun onCreate() {
@@ -49,7 +39,7 @@ class Application : Application() {
         initializeKoin().initializeRqes()
         registerSessionBackgroundObserver(sessionController)
         initializeReporting()
-        initializeWorkManagers()
+        walletWorkScheduler.schedule()
     }
 
     private fun KoinApplication.initializeRqes() {
@@ -66,45 +56,5 @@ class Application : Application() {
 
     private fun initializeReporting() {
         analyticsController.initialize(this)
-    }
-
-    /**
-     * Schedules the background workers. The revocation check also runs once at every app start,
-     * so that a status change, or revocation records lost when the database is recreated after a
-     * schema change, is picked up without waiting for the periodic interval.
-     */
-    private fun initializeWorkManagers() {
-        WorkManager.getInstance(this).enqueueUniqueWork(
-            RevocationWorkManager.REVOCATION_ON_START_WORK_NAME,
-            ExistingWorkPolicy.KEEP,
-            OneTimeWorkRequest.from(RevocationWorkManager::class.java)
-        )
-        enqueuePeriodicWorker(
-            RevocationWorkManager.REVOCATION_WORK_NAME,
-            walletCoreConfig.revocationInterval,
-            RevocationWorkManager::class.java
-        )
-        enqueuePeriodicWorker(
-            ReIssuanceWorkManager.RE_ISSUANCE_WORK_NAME,
-            walletCoreConfig.documentIssuanceConfig.reissuanceRule.backgroundInterval,
-            ReIssuanceWorkManager::class.java
-        )
-    }
-
-    private fun enqueuePeriodicWorker(
-        uniqueName: String,
-        duration: Duration,
-        workerClass: Class<out ListenableWorker>
-    ) {
-        val periodicWorkRequest = PeriodicWorkRequest.Builder(
-            workerClass,
-            duration.toJavaDuration()
-        ).build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            uniqueName,
-            ExistingPeriodicWorkPolicy.KEEP,
-            periodicWorkRequest
-        )
     }
 }

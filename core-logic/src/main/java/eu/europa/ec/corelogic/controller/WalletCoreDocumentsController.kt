@@ -16,6 +16,7 @@
 
 package eu.europa.ec.corelogic.controller
 
+import androidx.annotation.VisibleForTesting
 import androidx.core.net.toUri
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -84,6 +85,7 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -199,6 +201,9 @@ interface WalletCoreDocumentsController {
      * */
     fun getAllDocuments(): List<Document>
 
+    /** Every document Wallet Core stores, including those whose issuance has not finished. */
+    fun getAllStoredDocuments(): List<Document>
+
     fun getAllIssuedDocuments(): List<IssuedDocument>
 
     fun getAllDocumentsByType(documentIdentifiers: List<DocumentIdentifier>): List<IssuedDocument>
@@ -284,6 +289,7 @@ class WalletCoreDocumentsControllerImpl(
     private val failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     private val issuerTrustDao: IssuerTrustDao,
     private val statusRefreshFailureDao: StatusRefreshFailureDao,
+    private val walletCoreTransactionLogController: WalletCoreTransactionLogController,
     private val prefKeys: PrefKeys,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     walletCore: EudiWallet? = null,
@@ -330,6 +336,8 @@ class WalletCoreDocumentsControllerImpl(
 
     override fun getAllDocuments(): List<Document> =
         eudiWallet.getDocuments { it is IssuedDocument || it is DeferredDocument }
+
+    override fun getAllStoredDocuments(): List<Document> = eudiWallet.getDocuments()
 
     override fun getAllIssuedDocuments(): List<IssuedDocument> =
         eudiWallet.getDocuments().filterIsInstance<IssuedDocument>()
@@ -565,6 +573,8 @@ class WalletCoreDocumentsControllerImpl(
 
         awaitClose()
 
+    }.onEach { state ->
+        cleanUpAfterReIssuance(originalId = documentId, state = state)
     }.safeAsync {
         IssueDocumentsPartialState.Failure(
             errorMessage = documentErrorMessage
@@ -604,12 +614,14 @@ class WalletCoreDocumentsControllerImpl(
         }
 
     override fun deleteDocument(documentId: String): Flow<DeleteDocumentPartialState> = flow {
+        val attestationType = getDocumentById(documentId)?.attestationType()
         eudiWallet.deleteDocumentById(documentId = documentId)
             .kotlinResult
             .onSuccess {
-                revokedDocumentDao.delete(documentId)
-                issuerTrustDao.delete(documentId)
-                statusRefreshFailureDao.delete(documentId)
+                cleanUpRecords {
+                    deleteDocumentRecords(documentId)
+                    attestationType?.let { deleteHistoryIfNoneLeft(it) }
+                }
                 emit(DeleteDocumentPartialState.Success)
             }
             .onFailure {
@@ -785,6 +797,7 @@ class WalletCoreDocumentsControllerImpl(
                                         documentId = deferredIssuanceResult.documentId,
                                         verdict = deferredIssuanceResult.issuerTrustResult.toIssuerTrustVerdict(),
                                     )
+                                    cleanUpRecords { deleteRecordsOfMissingDocuments() }
                                     trySendBlocking(
                                         IssueDeferredDocumentPartialState.Issued(
                                             DeferredDocumentDataDomain(
@@ -875,6 +888,99 @@ class WalletCoreDocumentsControllerImpl(
 
         return document.credentialPolicy is CreateDocumentSettings.CredentialPolicy.OnceOnly
                 && documentRemainingCredentials <= 1
+    }
+
+    /**
+     * Deletes what the app stores about [documentId] beside Wallet Core: its revocation record,
+     * issuer-trust verdict, failed status refresh, bookmark and failed re-issuance record.
+     */
+    private suspend fun deleteDocumentRecords(documentId: DocumentId) {
+        revokedDocumentDao.delete(documentId)
+        issuerTrustDao.delete(documentId)
+        statusRefreshFailureDao.delete(documentId)
+        bookmarkDao.delete(documentId)
+        failedReIssuedDocumentDao.delete(documentId)
+    }
+
+    /**
+     * Deletes the transaction history of [attestationType] once no document of that type is left.
+     * Wallet Core logs the attestation type, not the document, so while another document of the same
+     * type remains, the history may be its own and is kept. An entry that also covers another type
+     * goes as well, and with a presentation go the data-deletion request and DPA-report attempts
+     * linked to it.
+     */
+    private suspend fun deleteHistoryIfNoneLeft(attestationType: String) {
+        if (getAllDocuments().none { it.attestationType() == attestationType }) {
+            walletCoreTransactionLogController.deleteTransactionLogsForAttestationType(attestationType)
+        }
+    }
+
+    /**
+     * Wallet Core deletes the original document once a re-issuance has issued a new credential; when
+     * the new credential is deferred, only once it arrives (see [deleteRecordsOfMissingDocuments]).
+     * Copies the original's bookmark to the new documents, which keep their ids when a deferred
+     * credential arrives, and deletes the rest of what the app stored about the original once Wallet
+     * Core has deleted it. The history stays, since the new documents are of the same type.
+     */
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal suspend fun cleanUpAfterReIssuance(originalId: DocumentId, state: IssueDocumentsPartialState) {
+        val newIds = when (state) {
+            is IssueDocumentsPartialState.Success -> state.documentIds
+            is IssueDocumentsPartialState.PartialSuccess -> state.documentIds
+            is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> state.issuedDocumentIds
+            is IssueDocumentsPartialState.DeferredSuccess -> state.deferredDocuments.keys.toList()
+            else -> return
+        }
+        if (newIds.isEmpty() || originalId in newIds) return
+
+        cleanUpRecords {
+            if (bookmarkDao.retrieve(originalId) != null) {
+                newIds.forEach { newId -> bookmarkDao.store(Bookmark(newId)) }
+            }
+            if (getDocumentById(originalId) == null) {
+                deleteDocumentRecords(originalId)
+            }
+        }
+    }
+
+    /**
+     * Deletes the records of documents Wallet Core no longer holds. Wallet Core deletes the original
+     * of a deferred re-issuance when the new credential arrives, without saying which document that
+     * was. Records are read before the documents, so a record written for a document issued in the
+     * meantime is kept.
+     */
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    internal suspend fun deleteRecordsOfMissingDocuments() {
+        val recordIds = buildSet {
+            revokedDocumentDao.retrieveAll().mapTo(this) { it.identifier }
+            issuerTrustDao.retrieveAll().mapTo(this) { it.identifier }
+            statusRefreshFailureDao.retrieveAll().mapTo(this) { it.identifier }
+            bookmarkDao.retrieveAll().mapTo(this) { it.identifier }
+            failedReIssuedDocumentDao.retrieveAll().mapTo(this) { it.identifier }
+        }
+        val documentIds = getAllDocuments().map { it.id }.toSet()
+        (recordIds - documentIds).forEach { documentId -> deleteDocumentRecords(documentId) }
+    }
+
+    /**
+     * Runs a clean-up of the app's records after Wallet Core has changed its documents. It completes
+     * even if the flow is no longer collected, and a storage error leaves records behind rather than
+     * turning a completed operation into a reported failure; the factory reset removes what is left.
+     */
+    private suspend fun cleanUpRecords(cleanUp: suspend () -> Unit) {
+        withContext(NonCancellable) {
+            try {
+                cleanUp()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun Document.attestationType(): String = when (val documentFormat = format) {
+        is MsoMdocFormat -> documentFormat.docType
+        is SdJwtVcFormat -> documentFormat.vct
     }
 
     override suspend fun isDocumentRevoked(id: String): Boolean =

@@ -167,6 +167,24 @@ class SettingsInteractorImpl(
                     )
                 )
             }
+
+            add(
+                SettingsItemUi(
+                    type = SettingsMenuItemType.RESET_WALLET,
+                    data = ListItemDataUi(
+                        itemId = SettingsMenuItemType.RESET_WALLET.itemId,
+                        mainContentData = ListItemMainContentDataUi.Text(
+                            text = resourceProvider.getString(R.string.settings_screen_option_reset_wallet)
+                        ),
+                        leadingContentData = ListItemLeadingContentDataUi.Icon(
+                            iconData = AppIcons.Delete
+                        ),
+                        trailingContentData = ListItemTrailingContentDataUi.Icon(
+                            iconData = AppIcons.KeyboardArrowRight
+                        )
+                    )
+                )
+            )
         }
     }
 

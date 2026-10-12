@@ -764,6 +764,10 @@ encrypted preferences use Jetpack DataStore with Google Tink AEAD and an Android
 key. For production, confirm the iteration count, lockout behavior, device binding, migration,
 backup exclusion, and recovery policy against your security requirements.
 
+The factory reset clears the PIN through `PrefsController.clear()`. A provider that keeps its data
+anywhere else must be cleared by `WalletResetController` as well; see
+[GO_LIVE.md](GO_LIVE.md#data-deletion-and-factory-reset).
+
 ```kotlin
 interface StorageConfig {
     val pinStorageProvider: PinStorageProvider

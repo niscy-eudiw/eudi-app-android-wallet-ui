@@ -35,6 +35,7 @@ import androidx.navigation.NavGraphBuilder
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.corelogic.controller.WalletResetStatus
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
@@ -69,6 +70,7 @@ open class EudiComponentActivity : FragmentActivity() {
 
     private val routerHost: RouterHost by inject()
     private val sessionController: SessionController by inject()
+    private val walletResetStatus: WalletResetStatus by inject()
     private val viewModel: EudiComponentActivityViewModel by viewModel()
 
     private var idleLockJob: Job? = null
@@ -83,6 +85,16 @@ open class EudiComponentActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         viewModel.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
+        forgetKeptLinkOnReset()
+    }
+
+    /** A factory reset forgets the link kept for later, so that it does not open after onboarding. */
+    private fun forgetKeptLinkOnReset() {
+        lifecycleScope.launch {
+            walletResetStatus.isResetting.collect { resetting ->
+                if (resetting) viewModel.cacheIntent(null)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -222,7 +234,16 @@ open class EudiComponentActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * Opens or keeps the link or Digital Credential API request in [intent]. One that arrives during
+     * a factory reset is dropped: the documents it would use are being deleted, and opening it would
+     * take the user away from the reset screen.
+     */
     private fun handleDeepLink(intent: Intent?, coldBoot: Boolean = false) {
+        if (walletResetStatus.isResetting.value) {
+            setIntent(Intent())
+            return
+        }
         hasDeepLink(intent?.data)?.let {
             if (it.type == DeepLinkType.ISSUANCE && !coldBoot) {
                 val link = it.link

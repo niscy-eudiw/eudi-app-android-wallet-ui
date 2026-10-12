@@ -84,7 +84,9 @@ class RevocationWorkManager(
         const val REVOCATION_WORK_NAME = "revocationWorker"
         const val REVOCATION_ON_START_WORK_NAME = "revocationOnStartWorker"
         private const val MAX_FAILURE_REASON_LENGTH = 300
-        private val runLock = Mutex()
+
+        /** Held while the worker runs, so that the factory reset can wait until it has finished. */
+        internal val runLock = Mutex()
     }
 
     override suspend fun doWork(): Result = runLock.withLock { checkStatuses() }

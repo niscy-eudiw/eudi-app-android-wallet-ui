@@ -305,6 +305,18 @@
     <string name="settings_screen_option_registration_check">Check Registration Certificates</string>
     <string name="settings_screen_option_registration_check_restart">Restart the app to apply this change</string>
     <string name="settings_intent_chooser_logs_share_title">Share logs</string>
+    <string name="settings_screen_option_reset_wallet">Reset wallet</string>
+    <string name="settings_bottom_sheet_reset_wallet_title">Reset the wallet?</string>
+    <string name="settings_bottom_sheet_reset_wallet_message">This permanently deletes from this device:\n• your documents and their keys\n• your transaction history\n• your PIN, settings and logs\n\nThe wallet then starts again as on first use.</string>
+    <string name="settings_bottom_sheet_reset_wallet_primary_button_text">Reset</string>
+    <string name="settings_bottom_sheet_reset_wallet_secondary_button_text">@string/generic_cancel</string>
+    <string name="settings_reset_wallet_biometrics_enabled_description">Use your biometrics to reset the wallet.</string>
+    <string name="settings_reset_wallet_biometrics_not_enabled_description">To reset the wallet you need to verify your identity.</string>
+    <!--endregion-->
+
+    <!-- region Reset Wallet Screen -->
+    <string name="reset_wallet_screen_title">Resetting the wallet</string>
+    <string name="reset_wallet_screen_subtitle">Your documents and data are being deleted. The wallet then starts again as on first use.</string>
     <!--endregion-->
 
     <!-- region Home Screen -->
@@ -416,7 +428,7 @@
     <string name="document_details_boolean_item_false_readable_value">no</string>
 
     <string name="document_details_bottom_sheet_delete_title">@string/generic_bottom_sheet_delete_title</string>
-    <string name="document_details_bottom_sheet_delete_subtitle">@string/generic_bottom_sheet_delete_subtitle</string>
+    <string name="document_details_bottom_sheet_delete_subtitle">This document will be removed from your wallet and may affect access to services. If no other document of the same type is left, its transaction history is deleted too.</string>
     <string name="document_details_bottom_sheet_delete_primary_button_text">@string/generic_bottom_sheet_delete_primary_button_text</string>
     <string name="document_details_bottom_sheet_delete_secondary_button_text">@string/generic_bottom_sheet_delete_secondary_button_text</string>
 

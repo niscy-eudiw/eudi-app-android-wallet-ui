@@ -17,12 +17,17 @@
 package eu.europa.ec.corelogic.di
 
 import android.content.Context
+import androidx.credentials.registry.provider.ClearCredentialRegistryRequest
+import androidx.credentials.registry.provider.RegistryManager
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.di.LogicBusinessModule
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.config.WalletCoreConfigImpl
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreLogController
@@ -35,12 +40,18 @@ import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingControlle
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
 import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkControllerImpl
+import eu.europa.ec.corelogic.controller.WalletResetController
+import eu.europa.ec.corelogic.controller.WalletResetControllerImpl
+import eu.europa.ec.corelogic.controller.WalletResetStatus
 import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.corelogic.provider.RegistrationCheckProviderImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
+import eu.europa.ec.corelogic.worker.WalletWorkSchedulerImpl
 import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
 import eu.europa.ec.eudi.wallet.EudiWallet
+import eu.europa.ec.eudi.wallet.dcapi.registration.DefaultDCAPIRegistration
 import eu.europa.ec.eudi.wallet.transactionLogging.DefaultTransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.networklogic.repository.WalletAttestationRepository
@@ -51,6 +62,7 @@ import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
 import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
+import eu.europa.ec.storagelogic.service.DatabaseEraser
 import io.ktor.client.HttpClient
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
@@ -74,17 +86,41 @@ fun provideEudiWallet(
     walletCoreLogController: WalletCoreLogController,
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
     walletCoreAttestationProvider: WalletCoreAttestationProvider,
-    httpClient: HttpClient
-): EudiWallet = EudiWallet(
-    context = context,
-    config = walletCoreConfig.config,
-    walletProvider = walletCoreAttestationProvider,
-    trustMarkSource = walletCoreConfig.trustMarkSource,
-) {
-    withLogger(walletCoreLogController)
-    withTransactionLogger(walletCoreTransactionLogController)
-    withKtorHttpClientFactory { httpClient }
+    httpClient: HttpClient,
+    walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
+): EudiWallet {
+    val eudiWallet = EudiWallet(
+        context = context,
+        config = walletCoreConfig.config,
+        walletProvider = walletCoreAttestationProvider,
+        trustMarkSource = walletCoreConfig.trustMarkSource,
+    ) {
+        withLogger(walletCoreLogController)
+        withTransactionLogger(walletCoreTransactionLogController)
+        withKtorHttpClientFactory { httpClient }
+        withDCAPIRegistration(walletCoreDCAPIRegistrationController)
+    }
+    walletCoreDCAPIRegistrationController.attach {
+        DefaultDCAPIRegistration(
+            context = context,
+            documentManager = eudiWallet,
+            supportedProtocols = walletCoreConfig.config.dcapiConfig?.supportedProtocols?.toList().orEmpty(),
+            logger = walletCoreLogController,
+        )
+    }
+    return eudiWallet
 }
+
+@Single
+fun provideWalletCoreDCAPIRegistrationController(
+    context: Context,
+): WalletCoreDCAPIRegistrationController = WalletCoreDCAPIRegistrationControllerImpl(
+    clearRegistry = {
+        RegistryManager.create(context).clearCredentialRegistry(
+            ClearCredentialRegistryRequest(isDeleteAll = true)
+        )
+    },
+)
 
 @Factory
 fun provideWalletCoreTrustMarkController(
@@ -165,6 +201,7 @@ fun provideWalletCoreDocumentsController(
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     issuerTrustDao: IssuerTrustDao,
     statusRefreshFailureDao: StatusRefreshFailureDao,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
     prefKeys: PrefKeys
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
@@ -175,8 +212,47 @@ fun provideWalletCoreDocumentsController(
         failedReIssuedDocumentDao,
         issuerTrustDao,
         statusRefreshFailureDao,
+        walletCoreTransactionLogController,
         prefKeys
     )
+
+@Factory
+fun provideWalletResetController(
+    context: Context,
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
+    prefKeys: PrefKeys,
+    sessionController: SessionController,
+    resourceProvider: ResourceProvider,
+    walletResetStatus: WalletResetStatus,
+    walletWorkScheduler: WalletWorkScheduler,
+    databaseEraser: DatabaseEraser,
+    logController: LogController,
+): WalletResetController = WalletResetControllerImpl(
+    walletCoreDocumentsController = walletCoreDocumentsController,
+    walletCoreDCAPIRegistrationController = walletCoreDCAPIRegistrationController,
+    prefKeys = prefKeys,
+    sessionController = sessionController,
+    resourceProvider = resourceProvider,
+    resetStatus = walletResetStatus,
+    stopBackgroundWork = { walletWorkScheduler.stop() },
+    scheduleBackgroundWork = { walletWorkScheduler.schedule() },
+    clearDatabase = { databaseEraser.clearAllTables() },
+    deleteLogFiles = { logController.deleteLogFiles() },
+    deleteCacheFiles = { context.cacheDir.listFiles()?.forEach { it.deleteRecursively() } },
+)
+
+@Single
+fun provideWalletResetStatus(): WalletResetStatus = WalletResetStatus()
+
+@Single
+fun provideWalletWorkScheduler(
+    context: Context,
+    walletCoreConfig: WalletCoreConfig,
+): WalletWorkScheduler = WalletWorkSchedulerImpl(
+    context = context,
+    walletCoreConfig = walletCoreConfig,
+)
 
 @Scope(WalletPresentationScope::class)
 @Scoped

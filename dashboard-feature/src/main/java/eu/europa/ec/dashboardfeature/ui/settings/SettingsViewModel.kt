@@ -23,15 +23,25 @@ import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.businesslogic.extension.toUri
+import eu.europa.ec.commonfeature.config.BiometricMode
+import eu.europa.ec.commonfeature.config.BiometricUiConfig
+import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.uilogic.config.ConfigNavigation
+import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
+import eu.europa.ec.uilogic.navigation.CommonScreens
+import eu.europa.ec.uilogic.navigation.DashboardScreens
+import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
+import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
+import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
@@ -43,6 +53,9 @@ data class State(
 
     val appVersion: String = "",
     val changelogUrl: String?,
+
+    val isBottomSheetOpen: Boolean = false,
+    val resetAfterSheetCloses: Boolean = false,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -53,6 +66,16 @@ sealed class Event : ViewEvent {
         val itemType: SettingsMenuItemType,
         val context: Context
     ) : Event()
+
+    sealed class BottomSheet : Event() {
+        data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
+
+        sealed class ResetWallet : BottomSheet() {
+            data object PrimaryButtonPressed : ResetWallet()
+            data object SecondaryButtonPressed : ResetWallet()
+        }
+    }
 }
 
 sealed class Effect : ViewSideEffect {
@@ -61,7 +84,12 @@ sealed class Effect : ViewSideEffect {
         data object LaunchBiometricsSystemScreen : Navigation()
 
         data class OpenUrlExternally(val url: Uri) : Navigation()
+
+        data class SwitchScreen(val screenRoute: String) : Navigation()
     }
+
+    data object ShowBottomSheet : Effect()
+    data object CloseBottomSheet : Effect()
 
     data class ShareLogFile(val intent: Intent, val chooserTitle: String) : Effect()
     data class ShowSnackbar(val message: String) : Effect()
@@ -71,6 +99,7 @@ sealed class Effect : ViewSideEffect {
 class SettingsViewModel(
     private val settingsInteractor: SettingsInteractor,
     private val resourceProvider: ResourceProvider,
+    private val uiSerializer: UiSerializer,
 ) : MviViewModel<Event, State, Effect>() {
 
     private var isBiometricAuthenticating: Boolean = false
@@ -99,6 +128,27 @@ class SettingsViewModel(
                 itemType = event.itemType,
                 context = event.context
             )
+
+            is Event.BottomSheet.UpdateBottomSheetState -> setState {
+                copy(isBottomSheetOpen = event.isOpen)
+            }
+
+            is Event.BottomSheet.FinishedClosing -> {
+                if (viewState.value.resetAfterSheetCloses) {
+                    setState { copy(resetAfterSheetCloses = false) }
+                    setEffect { Effect.Navigation.SwitchScreen(screenRoute = getResetWalletAuthenticationRoute()) }
+                }
+            }
+
+            is Event.BottomSheet.ResetWallet.PrimaryButtonPressed -> {
+                setState { copy(resetAfterSheetCloses = true) }
+                setEffect { Effect.CloseBottomSheet }
+            }
+
+            is Event.BottomSheet.ResetWallet.SecondaryButtonPressed -> {
+                setState { copy(resetAfterSheetCloses = false) }
+                setEffect { Effect.CloseBottomSheet }
+            }
         }
     }
 
@@ -208,8 +258,45 @@ class SettingsViewModel(
                     }
                 }
             }
+
+            SettingsMenuItemType.RESET_WALLET -> setEffect { Effect.ShowBottomSheet }
         }
     }
+
+    /**
+     * The PIN or biometric check that must succeed before the factory reset runs. On success it
+     * replaces itself with the reset screen; going back returns to Settings.
+     */
+    private fun getResetWalletAuthenticationRoute(): String = generateComposableNavigationLink(
+        screen = CommonScreens.Biometric,
+        arguments = generateComposableArguments(
+            mapOf(
+                BiometricUiConfig.serializedKeyName to uiSerializer.toBase64(
+                    BiometricUiConfig(
+                        mode = BiometricMode.Default(
+                            descriptionWhenBiometricsEnabled = resourceProvider.getString(R.string.settings_reset_wallet_biometrics_enabled_description),
+                            descriptionWhenBiometricsNotEnabled = resourceProvider.getString(R.string.settings_reset_wallet_biometrics_not_enabled_description),
+                            textAbovePin = resourceProvider.getString(R.string.biometric_default_mode_text_above_pin_field),
+                        ),
+                        isPreAuthorization = false,
+                        shouldInitializeBiometricAuthOnCreate = true,
+                        onSuccessNavigation = ConfigNavigation(
+                            navigationType = NavigationType.PushScreen(
+                                screen = DashboardScreens.ResetWallet,
+                            ),
+                        ),
+                        onBackNavigationConfig = OnBackNavigationConfig(
+                            onBackNavigation = ConfigNavigation(
+                                navigationType = NavigationType.PopTo(DashboardScreens.Settings),
+                            ),
+                            hasToolbarBackIcon = true
+                        )
+                    ),
+                    BiometricUiConfig.Parser
+                ).orEmpty()
+            )
+        )
+    )
 
     private fun authenticate(context: Context) {
 

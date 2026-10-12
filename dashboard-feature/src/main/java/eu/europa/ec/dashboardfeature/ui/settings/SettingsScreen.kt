@@ -25,17 +25,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -60,15 +64,20 @@ import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.OncePerViewModelEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
+import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
+import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
+import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.extension.openIntentChooser
 import eu.europa.ec.uilogic.extension.openUrl
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
@@ -77,6 +86,10 @@ fun SettingsScreen(
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val bottomSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
 
     ContentScreen(
         navigatableAction = ScreenNavigateAction.BACKABLE,
@@ -108,7 +121,24 @@ fun SettingsScreen(
             snackbarHostState = snackbarHostState,
             context = context,
             paddingValues = paddingValues,
+            coroutineScope = scope,
+            modalBottomSheetState = bottomSheetState,
         )
+
+        if (state.isBottomSheetOpen) {
+            WrapModalBottomSheet(
+                onDismissRequest = {
+                    viewModel.setEvent(
+                        Event.BottomSheet.UpdateBottomSheetState(isOpen = false)
+                    )
+                },
+                sheetState = bottomSheetState
+            ) {
+                ResetWalletSheetContent(
+                    onEventSent = { viewModel.setEvent(it) }
+                )
+            }
+        }
     }
 
     OncePerViewModelEffect(viewModel) {
@@ -128,9 +158,12 @@ private fun handleNavigationEffect(
         is Effect.Navigation.LaunchBiometricsSystemScreen -> onLaunchBiometricSystemScreen()
 
         is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url)
+
+        is Effect.Navigation.SwitchScreen -> navController.navigate(navigationEffect.screenRoute)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
     state: State,
@@ -140,6 +173,8 @@ private fun Content(
     snackbarHostState: SnackbarHostState,
     context: Context,
     paddingValues: PaddingValues,
+    coroutineScope: CoroutineScope,
+    modalBottomSheetState: SheetState,
 ) {
     Column(
         modifier = Modifier
@@ -193,8 +228,51 @@ private fun Content(
                         )
                     }
                 }
+
+                is Effect.ShowBottomSheet -> {
+                    onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+                }
+
+                is Effect.CloseBottomSheet -> {
+                    coroutineScope.launch {
+                        modalBottomSheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!modalBottomSheetState.isVisible) {
+                            onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                            onEventSend(Event.BottomSheet.FinishedClosing)
+                        }
+                    }
+                }
             }
         }.collect()
+    }
+}
+
+/** Asks the user to confirm the factory reset, and lists what it deletes. */
+@Composable
+private fun ResetWalletSheetContent(
+    onEventSent: (Event) -> Unit,
+) {
+    DialogBottomSheet(
+        textData = BottomSheetTextDataUi(
+            title = stringResource(id = R.string.settings_bottom_sheet_reset_wallet_title),
+            message = stringResource(id = R.string.settings_bottom_sheet_reset_wallet_message),
+            positiveButtonText = stringResource(id = R.string.settings_bottom_sheet_reset_wallet_primary_button_text),
+            negativeButtonText = stringResource(id = R.string.settings_bottom_sheet_reset_wallet_secondary_button_text),
+            isPositiveButtonWarning = true,
+        ),
+        leadingIcon = AppIcons.DeleteFilled,
+        leadingIconTint = MaterialTheme.colorScheme.error,
+        onPositiveClick = { onEventSent(Event.BottomSheet.ResetWallet.PrimaryButtonPressed) },
+        onNegativeClick = { onEventSent(Event.BottomSheet.ResetWallet.SecondaryButtonPressed) },
+    )
+}
+
+@ThemeModePreviews
+@Composable
+private fun ResetWalletSheetContentPreview() {
+    PreviewTheme {
+        ResetWalletSheetContent(onEventSent = {})
     }
 }
 
@@ -237,6 +315,7 @@ private fun SettingsItems(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @ThemeModePreviews
 @Composable
 private fun SettingsScreenPreview() {
@@ -273,7 +352,9 @@ private fun SettingsScreenPreview() {
             onNavigationRequested = {},
             snackbarHostState = remember { SnackbarHostState() },
             context = context,
-            paddingValues = PaddingValues(SPACING_MEDIUM.dp)
+            paddingValues = PaddingValues(SPACING_MEDIUM.dp),
+            coroutineScope = rememberCoroutineScope(),
+            modalBottomSheetState = rememberModalBottomSheetState(),
         )
     }
 }

@@ -51,6 +51,11 @@ import eu.europa.ec.storagelogic.model.TransactionLog
     version = 4
 )
 abstract class DatabaseService : RoomDatabase() {
+
+    companion object {
+        const val DATABASE_NAME = "eudi.app.wallet.storage"
+    }
+
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun revokedDocumentDao(): RevokedDocumentDao
     abstract fun transactionLogDao(): TransactionLogDao

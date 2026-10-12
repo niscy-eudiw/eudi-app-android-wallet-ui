@@ -36,6 +36,9 @@ interface LogController {
     fun i(tag: String, message: () -> String)
     fun i(message: () -> String)
     fun retrieveLogFileUris(): List<Uri>
+
+    /** Deletes the log files, for the factory reset. Logging goes on into new files. */
+    fun deleteLogFiles()
 }
 
 class LogControllerImpl(
@@ -51,17 +54,12 @@ class LogControllerImpl(
 
     private val logsDir = File(context.filesDir.absolutePath + "/logs")
 
-    private val fileLoggerTree: FileLoggerTree = FileLoggerTree.Builder()
-        .withFileName(LOG_FILE_NAME)
-        .withDir(logsDir)
-        .withSizeLimit(FILE_SIZE_LIMIT)
-        .withFileLimit(FILE_LIMIT)
-        .withMinPriority(Log.DEBUG)
-        .appendToFile(true)
-        .build()
+    @Volatile
+    private var fileLoggerTree: FileLoggerTree? = buildFileLoggerTree()
 
     init {
-        Timber.plant(Timber.DebugTree(), fileLoggerTree)
+        Timber.plant(Timber.DebugTree())
+        fileLoggerTree?.let { Timber.plant(it) }
     }
 
     override fun d(tag: String, message: () -> String) {
@@ -105,8 +103,32 @@ class LogControllerImpl(
     }
 
     override fun retrieveLogFileUris(): List<Uri> {
-        return fileLoggerTree.files.map {
+        return fileLoggerTree?.files.orEmpty().map {
             FileProvider.getUriForFile(context, "${context.packageName}.provider", it)
         }
     }
+
+    /**
+     * The current tree is forgotten before it is removed, so that a failure while building the new
+     * one leaves no closed tree behind, and a later call starts cleanly.
+     */
+    @Synchronized
+    override fun deleteLogFiles() {
+        fileLoggerTree?.let { previousTree ->
+            fileLoggerTree = null
+            Timber.uproot(previousTree)
+            previousTree.close()
+        }
+        logsDir.listFiles()?.forEach { it.delete() }
+        fileLoggerTree = buildFileLoggerTree().also { Timber.plant(it) }
+    }
+
+    private fun buildFileLoggerTree(): FileLoggerTree = FileLoggerTree.Builder()
+        .withFileName(LOG_FILE_NAME)
+        .withDir(logsDir)
+        .withSizeLimit(FILE_SIZE_LIMIT)
+        .withFileLimit(FILE_LIMIT)
+        .withMinPriority(Log.DEBUG)
+        .appendToFile(true)
+        .build()
 }

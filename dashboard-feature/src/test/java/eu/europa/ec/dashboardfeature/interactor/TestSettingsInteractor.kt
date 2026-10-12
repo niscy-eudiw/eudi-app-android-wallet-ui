@@ -162,7 +162,7 @@ class TestSettingsInteractor {
 
     //region getSettingsItemsUi
     @Test
-    fun `Given no Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then three SettingsItemUi entries are returned`() =
+    fun `Given no Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then four SettingsItemUi entries are returned`() =
         coroutineRule.runTest {
             // Given
             whenever(biometricInteractor.getBiometricsAvailability())
@@ -179,8 +179,8 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            // 1. Size = 3 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS)
-            assertEquals(3, settingsItems.size)
+            // 1. Size = 4 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS + RESET_WALLET)
+            assertEquals(4, settingsItems.size)
 
             // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
             val firstItem = settingsItems[0]
@@ -206,11 +206,13 @@ class TestSettingsInteractor {
                 thirdItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
             assertEquals(AppIcons.KeyboardArrowRight, trailingIcon3.iconData)
 
+            assertResetWalletItem(settingsItems[3])
+
             verify(biometricInteractor, never()).getBiometricUserSelection()
         }
 
     @Test
-    fun `Given a Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then four SettingsItemUi entries are returned`() =
+    fun `Given a Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then five SettingsItemUi entries are returned`() =
         coroutineRule.runTest {
             // Given
             whenever(biometricInteractor.getBiometricsAvailability())
@@ -229,9 +231,9 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
             // Then
-            // 1. Size = 4 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS +
-            // CHANGELOG)
-            assertEquals(4, settingsItems.size)
+            // 1. Size = 5 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS +
+            // CHANGELOG + RESET_WALLET)
+            assertEquals(5, settingsItems.size)
 
             // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
             val firstItem = settingsItems[0]
@@ -271,6 +273,8 @@ class TestSettingsInteractor {
                 fourthItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
             assertEquals(AppIcons.KeyboardArrowRight, trailingIcon4.iconData)
 
+            assertResetWalletItem(settingsItems[4])
+
             verify(biometricInteractor, never()).getBiometricUserSelection()
         }
 
@@ -295,7 +299,7 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            assertEquals(4, settingsItems.size)
+            assertEquals(5, settingsItems.size)
 
             val firstItem = settingsItems[0]
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, firstItem.type)
@@ -334,6 +338,8 @@ class TestSettingsInteractor {
             val trailingIcon4 =
                 fourthItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
             assertEquals(AppIcons.KeyboardArrowRight, trailingIcon4.iconData)
+
+            assertResetWalletItem(settingsItems[4])
         }
 
     @Test
@@ -357,7 +363,7 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            assertEquals(4, settingsItems.size)
+            assertEquals(5, settingsItems.size)
 
             val biometricsItem = settingsItems[0]
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, biometricsItem.type)
@@ -368,7 +374,7 @@ class TestSettingsInteractor {
         }
 
     @Test
-    fun `Given device supports Biometrics with a Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then five SettingsItemUi entries are returned`() =
+    fun `Given device supports Biometrics with a Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then six SettingsItemUi entries are returned`() =
         coroutineRule.runTest {
             // Given
             whenever(biometricInteractor.getBiometricsAvailability())
@@ -390,12 +396,13 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
             // Then
-            assertEquals(5, settingsItems.size)
+            assertEquals(6, settingsItems.size)
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, settingsItems[0].type)
             assertEquals(SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER, settingsItems[1].type)
             assertEquals(SettingsMenuItemType.REGISTRATION_CHECK, settingsItems[2].type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, settingsItems[3].type)
             assertEquals(SettingsMenuItemType.CHANGELOG, settingsItems[4].type)
+            assertEquals(SettingsMenuItemType.RESET_WALLET, settingsItems[5].type)
         }
 
     @Test
@@ -546,6 +553,7 @@ class TestSettingsInteractor {
                 R.string.settings_screen_option_retrieve_logs to retrieveLogsText,
                 R.string.settings_screen_option_show_batch_issuance_counter to showBatchIssuanceCounterText,
                 R.string.settings_screen_option_registration_check to registrationCheckText,
+                R.string.settings_screen_option_reset_wallet to resetWalletText,
             )
         )
 
@@ -599,6 +607,17 @@ class TestSettingsInteractor {
         assertEquals(isChecked, trailingSwitch.switchData.isChecked)
         assertEquals(true, trailingSwitch.switchData.enabled)
     }
+
+    private fun assertResetWalletItem(item: SettingsItemUi) {
+        assertEquals(SettingsMenuItemType.RESET_WALLET, item.type)
+        assertEquals(SettingsMenuItemType.RESET_WALLET.itemId, item.data.itemId)
+        val mainContent = item.data.mainContentData as ListItemMainContentDataUi.Text
+        assertEquals(resetWalletText, mainContent.text)
+        val leadingIcon = item.data.leadingContentData as ListItemLeadingContentDataUi.Icon
+        assertEquals(AppIcons.Delete, leadingIcon.iconData)
+        val trailingIcon = item.data.trailingContentData as ListItemTrailingContentDataUi.Icon
+        assertEquals(AppIcons.KeyboardArrowRight, trailingIcon.iconData)
+    }
     //endregion
 
     //region Mocked objects needed for tests.
@@ -608,6 +627,7 @@ class TestSettingsInteractor {
     private val changelogText = "Changelog"
     private val biometricsFailureText = "Biometrics unavailable"
     private val registrationCheckText = "Check Registration Certificates"
+    private val resetWalletText = "Reset wallet"
 
     // the standing value for the cases that are about other rows
     private val mockedRegistrationCheckEnabled = true

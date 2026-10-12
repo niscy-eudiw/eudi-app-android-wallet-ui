@@ -29,4 +29,5 @@ enum class SettingsMenuItemType(val itemId: String) {
     REGISTRATION_CHECK("registrationCheckId"),
     RETRIEVE_LOGS("retrieveLogsId"),
     CHANGELOG("changelogId"),
+    RESET_WALLET("resetWalletId"),
 }

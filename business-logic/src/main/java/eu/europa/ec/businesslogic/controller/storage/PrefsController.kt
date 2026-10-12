@@ -47,6 +47,9 @@ interface PrefsController {
     suspend fun contains(key: String): Boolean
     suspend fun clear(key: String)
     suspend fun clear()
+
+    /** Removes every preference except those named in [keys], in a single edit. */
+    suspend fun clearExcept(keys: Set<String>)
     suspend fun setString(key: String, value: String)
     suspend fun setLong(key: String, value: Long)
     suspend fun setBool(key: String, value: Boolean)
@@ -110,6 +113,14 @@ class PrefsControllerImpl(
 
     override suspend fun clear() {
         edit { it.clear() }
+    }
+
+    override suspend fun clearExcept(keys: Set<String>) {
+        edit { prefs ->
+            prefs.asMap().keys
+                .filter { it.name !in keys }
+                .forEach { prefs.remove(it) }
+        }
     }
 
     override suspend fun setString(key: String, value: String) {
@@ -194,11 +205,22 @@ interface PrefKeys {
     suspend fun getSessionId(): String
     suspend fun setDbKey(value: ByteArray)
     suspend fun getDbKey(): ByteArray?
+
+    /**
+     * Clears every preference except the session id and the database key, in a single edit, for the
+     * factory reset: the running app still needs both, and a reader never sees them missing.
+     */
+    suspend fun clearAllExceptSessionIdAndDbKey()
 }
 
 class PrefKeysImpl(
     private val prefsController: PrefsController
 ) : PrefKeys {
+
+    private companion object {
+        const val SESSION_ID = "SessionId"
+        const val DB_KEY = "dbKey"
+    }
 
     override suspend fun getTrustMarkIntroductionCompleted(): Boolean {
         return prefsController.getBool("TrustMarkIntroductionCompleted", false)
@@ -233,20 +255,24 @@ class PrefKeysImpl(
     }
 
     override suspend fun setSessionId(value: String) {
-        prefsController.setString("SessionId", value)
+        prefsController.setString(SESSION_ID, value)
     }
 
     override suspend fun getSessionId(): String {
-        return prefsController.getString("SessionId", "")
+        return prefsController.getString(SESSION_ID, "")
     }
 
     override suspend fun setDbKey(value: ByteArray) {
         val encoded = value.encodeToBase64String(flags = Base64.NO_WRAP)
-        prefsController.setString("dbKey", encoded)
+        prefsController.setString(DB_KEY, encoded)
     }
 
     override suspend fun getDbKey(): ByteArray? {
-        val encoded = prefsController.getString("dbKey", "").ifBlank { return null }
+        val encoded = prefsController.getString(DB_KEY, "").ifBlank { return null }
         return encoded.decodeFromBase64(flags = Base64.NO_WRAP)
+    }
+
+    override suspend fun clearAllExceptSessionIdAndDbKey() {
+        prefsController.clearExcept(keys = setOf(SESSION_ID, DB_KEY))
     }
 }

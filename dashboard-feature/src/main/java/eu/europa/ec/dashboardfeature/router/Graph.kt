@@ -25,6 +25,7 @@ import androidx.navigation.navArgument
 import eu.europa.ec.dashboardfeature.ui.dashboard.DashboardScreen
 import eu.europa.ec.dashboardfeature.ui.document_sign.DocumentSignScreen
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsScreen
+import eu.europa.ec.dashboardfeature.ui.reset_wallet.ResetWalletScreen
 import eu.europa.ec.dashboardfeature.ui.settings.SettingsScreen
 import eu.europa.ec.dashboardfeature.ui.transactions.data_deletion.DataDeletionRequestScreen
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.TransactionDetailsScreen
@@ -56,6 +57,15 @@ fun NavGraphBuilder.featureDashboardGraph(navController: NavController) {
             route = DashboardScreens.Settings.screenRoute
         ) {
             SettingsScreen(
+                navController = navController,
+                viewModel = koinViewModel()
+            )
+        }
+
+        composable(
+            route = DashboardScreens.ResetWallet.screenRoute
+        ) {
+            ResetWalletScreen(
                 navController = navController,
                 viewModel = koinViewModel()
             )
