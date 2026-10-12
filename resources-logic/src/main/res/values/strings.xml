@@ -200,6 +200,7 @@
     <string name="request_intended_use_section_title">Intended use</string>
     <string name="request_requested_data_section_title">Requested data</string>
     <string name="request_cancel_button_text">@string/generic_cancel</string>
+    <string name="request_access_certificate_not_trusted_warning_text">Warning: The identity of this relying party could not be verified. Review carefully before sharing your data.</string>
     <string name="request_registration_not_verified_warning_text">Warning: The information registered about the entity could not be obtained. Review carefully before sharing your data.</string>
     <string name="request_registration_overasked_warning_text">Warning: Some of the requested data are not registered with this interacting party. Review carefully before sharing your data.</string>
     <string name="request_registration_acknowledge_text">I understand the risks and agree to share my data</string>

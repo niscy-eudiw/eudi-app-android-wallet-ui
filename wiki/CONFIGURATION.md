@@ -197,8 +197,8 @@ overridden by a flavor when needed.
 
    **Two trust layers.** An access certificate answers *who is this party*, a registration
    certificate answers *what is it registered to do*. They are checked independently. Access-
-   certificate trust is always enforced; the registration layer is governed by a single runtime
-   setting described below.
+   certificate trust is enforced where the protocol and trust policy allow it, and otherwise the
+   user is warned; the registration layer is governed by a single runtime setting described below.
 
    With the registration check **on**, both layers are needed on the issuance path: a document is
    only stored when the issuer authenticates **and** its registration is verified and covers the
@@ -214,9 +214,9 @@ overridden by a flavor when needed.
    preference, and it **ships off**. Changes take effect after an app restart, as indicated in
    Settings.
 
-   With the setting off nothing is evaluated: no registered identity, intended use or warning
-   appears on any screen, no issuance is refused over a registration, and the verified badge falls
-   back to the access certificate alone. **Turn the setting on for production** — see
+   With the setting off nothing is evaluated: no registered identity, intended use or registration
+   warning appears on any screen, no issuance is refused over a registration, and the verified badge
+   falls back to the access certificate alone. **Turn the setting on for production** — see
    [GO_LIVE.md](GO_LIVE.md#registration-certificates-the-second-trust-layer).
 
    **Static trust anchors (alternative).** The Wallet Core SDK also supports a reader trust store

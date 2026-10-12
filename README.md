@@ -99,7 +99,8 @@ If you're planning to use this application in production, we recommend reviewing
     - [OWASP MASVS](https://mas.owasp.org/MASVS/)
 - Issuers and verifiers are trusted on two independent layers: an access certificate proves who
   they are, and a registration certificate establishes what they are registered to do. The first is
-  always enforced. The second is governed by **Check Registration Certificates** in the app's
+  enforced where the protocol and trust policy allow it, and otherwise raises a warning or a "not
+  verified" mark. The second is governed by **Check Registration Certificates** in the app's
   Settings, which ships **off** — turn it on and issuance then requires both layers (a provider that
   cannot be authenticated, or that is not registered for the document it offers, is refused and
   nothing is stored), while on presentation the registration is shown to the user and a request
@@ -189,6 +190,8 @@ To delete a document, navigate to the 'Documents' tab within the 'Dashboard' scr
    certificate is missing or cannot be validated, or if the request reaches beyond what the Verifier
    registered for, a warning appears and "Share" stays disabled until you acknowledge it. With the
    setting off — the default — the name comes from the Verifier's access certificate alone.
+   Whatever the setting, a Verifier whose access certificate cannot be verified is refused before
+   this screen, on a "Request blocked" sheet.
 8. Tap "Share".
 9. Enter the PIN you set up during the initial steps.
 10. Upon successful submission, tap "Close".
@@ -220,7 +223,8 @@ in the presentation's transaction details. This section is read-only.
    with the Verifier. You must select at least one attribute to proceed. As in the remote flow, and
    only while registration-certificate checking is enabled, a reader whose registration certificate
    is missing or cannot be validated raises a warning that keeps "Share" disabled until you
-   acknowledge it.
+   acknowledge it. A reader that sends no reader authentication, or one that cannot be verified,
+   raises a warning in every configuration.
 8. Tap "Share".
 9. Enter the PIN you set up during the initial steps.
 10. Upon successful authentication, tap "Close".

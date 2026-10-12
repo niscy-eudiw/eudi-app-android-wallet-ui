@@ -165,6 +165,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             }
 
             is Event.StickyButtonPressed -> {
+                if (viewState.value.isLoading || !viewState.value.allowShare) return
                 doNavigation(NavigationType.PushRoute(getNextScreen()))
             }
 

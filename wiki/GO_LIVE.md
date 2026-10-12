@@ -903,17 +903,18 @@ Trust is evaluated on two independent layers, and passing one says nothing about
 The two layers are not interchangeable: an authenticated issuer that is not registered for what it
 offers is refused, and a registered issuer that fails authentication is refused too.
 
-**This layer is off by default and must be switched on.** Access-certificate trust is always
-enforced, but registration-certificate checking is governed by the *Check Registration Certificates*
+**This layer is off by default and must be switched on.** Access-certificate trust is enforced
+where the protocol and trust policy allow it (where it does not, the user is warned; see below),
+but registration-certificate checking is governed by the *Check Registration Certificates*
 setting, which the reference build ships **off**. One setting drives both the issuer policy
 (`configureIssuerRegistrationPolicy`) and the verifier policy (`configureWrpRegistrationPolicy`).
-While it is off, none of the behavior described below happens: nothing is evaluated, nothing is
-refused or warned about, and the verified indicator falls back to the access certificate alone.
+While it is off, nothing is evaluated on registration grounds: nothing is refused or warned about
+over a registration, and the verified indicator falls back to the access certificate alone.
 **A production deployment must turn it on** — and should decide whether to keep the switch
 reachable by users at all, since it turns a trust check off.
 
-Everything below describes behavior with the setting on. The app treats the two directions
-differently, and the asymmetry is intentional:
+Everything below describes behavior with the setting on, except where noted. The app treats the
+two directions differently, and the asymmetry is intentional:
 
 * **Issuance is strict.** A document is stored only when the issuer's registration is verified and
   covers the credential being issued. Anything short of that — no registration, one that does not
@@ -927,7 +928,11 @@ differently, and the asymmetry is intentional:
   must acknowledge before sharing. A request whose registration *is* verified but that reaches
   beyond the registered scope keeps the indicator, marks each requested item outside that scope,
   and gates sharing behind the same acknowledgement. Access-certificate failures continue to block
-  outright where the protocol allows it.
+  outright where the protocol allows it. Where they do not (an mdoc reader, in proximity or over the
+  DC-API, that sends no reader authentication or one that does not verify), the request reaches the
+  consent screen behind its own warning that the requester's identity could not be verified, with
+  the same acknowledgement before sharing. This warning does not depend on the registration
+  setting.
 
 The verified indicator needs both layers: a trusted access certificate and a registration that did
 not fail validation.

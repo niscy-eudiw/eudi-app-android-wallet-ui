@@ -125,6 +125,7 @@ fun RequestScreen(
                 buttonsTestTag = TestTag.RequestScreen.BUTTON,
                 warningSection = ConsentWarningSection(
                     registrationWarning = state.registrationWarning,
+                    accessCertificateNotTrustedWarningText = stringResource(R.string.request_access_certificate_not_trusted_warning_text),
                     notVerifiedWarningText = stringResource(R.string.request_registration_not_verified_warning_text),
                     overaskedWarningText = stringResource(R.string.request_registration_overasked_warning_text),
                     acknowledgeText = stringResource(R.string.request_registration_acknowledge_text),
