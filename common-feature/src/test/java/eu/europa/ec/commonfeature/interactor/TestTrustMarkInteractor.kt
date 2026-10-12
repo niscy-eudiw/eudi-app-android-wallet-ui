@@ -478,6 +478,7 @@ class TestTrustMarkInteractor {
     )
     private val mockedInvalidImageUrls = listOf(
         "", " ", "file:///logo.svg", "data:image/svg+xml,logo", "https://example.com/bad url.svg",
+        "http://example.com/assets/logo.svg",
     )
     private val mockedInvalidLinkUrls = listOf(
         "/wallets", "javascript:alert(1)", "https://", "https://user@example.com/wallets",

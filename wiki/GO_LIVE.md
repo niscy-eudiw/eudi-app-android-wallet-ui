@@ -1013,6 +1013,7 @@ override val issuersConfig: List<VciConfig>
 | `withParUsage` | Pushed Authorization Request use. | Prefer `REQUIRED` if issuer mandates PAR. `IF_SUPPORTED` is acceptable for interoperability where issuer policy allows it. |
 | `DPopConfig.Default` | Enables default DPoP behavior for proof-of-possession. | Keep enabled unless your issuer profile explicitly does not support it. |
 | `order` | Display order in the "Add document" list. | Use stable order. Put PID issuer first if PID activation is required. |
+| `logoOrigins` | Origins, besides the issuer's own, from which the wallet loads the issuer's logo. | Leave empty when the issuer serves its logo from its own origin; otherwise list the `https` origin it uses, such as its CDN. |
 
 The wallet uses an issuer only through its own `VciConfig`; there is no fallback to another issuer's
 settings, which would send that issuer's client identifier and attestation to a different host:
@@ -1561,6 +1562,19 @@ Current release behavior:
 
 Keep `LogLevel.NONE` for production. Add tests or release checks to ensure release network logging
 is disabled.
+
+Images from metadata:
+
+* An issuer's logo is loaded only from an `https` URL on the issuer's own origin, or on an origin
+  listed in that issuer's `VciConfig.logoOrigins` (`issuerLogoOrNull` in `core-logic`); otherwise
+  the app shows its placeholder. The reference configuration lists `https://eudiw.dev` for the
+  `issuer-backend` issuers, which serve their logo there.
+* Every remote image, including the Trust Mark image, is loaded only from an `https` URL; local
+  schemes such as `content://`, `file://` and `android.resource://` are refused
+  (`remoteImageSourceOrNull` in `ui-logic`). A redirect is followed only within the origin of the
+  image asked for and over `https`. A download stops after `MAX_REMOTE_IMAGE_BYTES` (2 MiB), and
+  Coil decodes to the size shown, at most 4096 pixels a side. An SVG within that size is still
+  parsed and drawn, so a hostile but allowed source can slow the screen down.
 
 ## Local Development With Self-Signed Certificates
 

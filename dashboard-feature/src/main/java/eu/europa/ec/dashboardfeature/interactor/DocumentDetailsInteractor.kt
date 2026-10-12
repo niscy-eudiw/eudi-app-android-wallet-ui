@@ -172,7 +172,7 @@ class DocumentDetailsInteractorImpl(
 
                 val userLocale = resourceProvider.getLocale()
                 val issuerName = safeIssuedDocument.localizedIssuerMetadata(userLocale)?.name
-                val issuerLogo = safeIssuedDocument.localizedIssuerMetadata(userLocale)?.logo
+                val issuerLogo = walletCoreDocumentsController.issuerLogo(safeIssuedDocument, userLocale)
 
                 val documentIsBookmarked =
                     walletCoreDocumentsController.isDocumentBookmarked(documentId)
@@ -182,7 +182,7 @@ class DocumentDetailsInteractorImpl(
                     walletCoreDocumentsController.hasStatusRefreshFailed(documentId)
                 val issuerDetails = IssuerDetailsCardDataUi(
                     issuerName = issuerName,
-                    issuerLogo = issuerLogo?.uri,
+                    issuerLogo = issuerLogo,
                     documentState = when {
                         documentIsRevoked -> IssuerDetailsCardDataUi.DocumentState.Revoked
 

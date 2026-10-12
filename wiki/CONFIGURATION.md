@@ -430,7 +430,8 @@ To change the Trust Mark settings for a build flavor, override `trustMarkSource`
 `TrustMarkSource.Dynamic` with a `TrustMarkProvider` that supplies the information at runtime.
 
 The SDK fetches JSON from `trustMarkResourceURL`. The Trust Mark screen displays the image from
-`image.url` above the localized text from the resource.
+`image.url` above the localized text from the resource. The image must be an `https` URL; any
+other address is not loaded.
 
 "EUDI Wallet Provider Trusted List" opens `listOfCertifiedWalletsURL` in the browser.
 "Certification information page" opens `walletSolutionInfoPageURL` in the browser.
@@ -687,6 +688,8 @@ The *order* property determines the order the issuers appear into, in the *AddDo
 more than one exists.
 The wallet accepts credential offers only from the issuers listed in *issuersConfig*, and uses each
 issuer only with its own configuration; see [GO_LIVE.md](GO_LIVE.md#issuer-configuration-issuersconfig).
+An issuer's logo is loaded from the issuer's own origin, or from an origin listed in its
+*logoOrigins*.
 If you want to add or adjust the displayed scoped documents, you must modify the issuer's metadata, and the wallet will automatically resolve your changes.
 
 ## How to work with self-signed certificates

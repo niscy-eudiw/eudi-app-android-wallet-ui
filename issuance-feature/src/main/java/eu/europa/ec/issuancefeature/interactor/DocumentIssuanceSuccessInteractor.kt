@@ -93,7 +93,7 @@ class DocumentIssuanceSuccessInteractorImpl(
                         issuerName = safeIssuerName
                     }
 
-                    localizedIssuerMetadata?.logo?.uri?.let { safeIssuerLogo ->
+                    walletCoreDocumentsController.issuerLogo(document, userLocale)?.let { safeIssuerLogo ->
                         issuerLogo = safeIssuerLogo
                     }
 

@@ -30,7 +30,6 @@ import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.extension.documentIdentifier
-import eu.europa.ec.corelogic.extension.getIssuerLogo
 import eu.europa.ec.corelogic.extension.getIssuerName
 import eu.europa.ec.corelogic.extension.getName
 import eu.europa.ec.corelogic.model.DocumentIdentifier
@@ -163,7 +162,7 @@ class DocumentOfferInteractorImpl(
                         if (offerHasNoDocuments) {
                             ResolveDocumentOfferInteractorPartialState.NoDocument(
                                 issuerName = response.offer.getIssuerName(userLocale),
-                                issuerLogo = response.offer.getIssuerLogo(userLocale),
+                                issuerLogo = walletCoreDocumentsController.issuerLogo(response.offer, userLocale),
                                 issuerRegistration = response.issuerRegistration,
                             )
                         } else {
@@ -205,7 +204,7 @@ class DocumentOfferInteractorImpl(
                                         )
                                     },
                                     issuerName = response.offer.getIssuerName(userLocale),
-                                    issuerLogo = response.offer.getIssuerLogo(userLocale),
+                                    issuerLogo = walletCoreDocumentsController.issuerLogo(response.offer, userLocale),
                                     txCodeLength = response.offer.txCodeSpec?.length,
                                     issuerRegistration = response.issuerRegistration,
                                 )

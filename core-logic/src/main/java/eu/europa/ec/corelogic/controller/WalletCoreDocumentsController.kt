@@ -26,7 +26,9 @@ import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.di.WalletCoreScope
 import eu.europa.ec.corelogic.di.getOrCreateKoinScope
 import eu.europa.ec.corelogic.extension.documentIdentifier
+import eu.europa.ec.corelogic.extension.getIssuerLogo
 import eu.europa.ec.corelogic.extension.getLocalizedDisplayName
+import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
 import eu.europa.ec.corelogic.extension.toIssuerRegistrationDomain
 import eu.europa.ec.corelogic.extension.toIssuerTrustVerdict
 import eu.europa.ec.corelogic.extension.toUntrustedIssuerReasonOrNull
@@ -40,6 +42,7 @@ import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.corelogic.model.isBlockedForIssuance
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.corelogic.util.OfferIssuer
+import eu.europa.ec.corelogic.util.issuerLogoOrNull
 import eu.europa.ec.corelogic.util.offerIssuerOf
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
@@ -91,6 +94,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import java.net.URI
 import java.util.Locale
 
 enum class IssuanceMethod {
@@ -208,6 +212,15 @@ interface WalletCoreDocumentsController {
     fun getAllDocumentsByType(documentIdentifiers: List<DocumentIdentifier>): List<IssuedDocument>
 
     fun getDocumentById(documentId: DocumentId): Document?
+
+    /**
+     * The logo of [document]'s issuer for [locale], when the wallet may load it: see
+     * [issuerLogoOrNull] and `VciConfig.logoOrigins`.
+     */
+    fun issuerLogo(document: Document, locale: Locale): URI?
+
+    /** The logo of [offer]'s issuer for [locale], under the same rule as for a document. */
+    fun issuerLogo(offer: Offer, locale: Locale): URI?
 
     fun getMainPidDocument(): IssuedDocument?
 
@@ -469,6 +482,27 @@ class WalletCoreDocumentsControllerImpl(
     override fun getDocumentById(documentId: DocumentId): Document? {
         return eudiWallet.getDocumentById(documentId = documentId)
     }
+
+    override fun issuerLogo(document: Document, locale: Locale): URI? {
+        val issuerId = document.issuerMetadata?.credentialIssuerIdentifier
+        return issuerLogoOrNull(
+            logo = document.localizedIssuerMetadata(locale)?.logo?.uri,
+            issuerId = issuerId,
+            additionalOrigins = logoOriginsOf(issuerId),
+        )
+    }
+
+    override fun issuerLogo(offer: Offer, locale: Locale): URI? {
+        val issuerId = offer.credentialOffer.credentialIssuerIdentifier.toString()
+        return issuerLogoOrNull(
+            logo = offer.getIssuerLogo(locale),
+            issuerId = issuerId,
+            additionalOrigins = logoOriginsOf(issuerId),
+        )
+    }
+
+    private fun logoOriginsOf(issuerId: String?): List<String> =
+        walletCoreConfig.issuersConfig.firstOrNull { it.issuerUrl == issuerId }?.logoOrigins.orEmpty()
 
     override fun getMainPidDocument(): IssuedDocument? =
         getAllDocumentsByType(

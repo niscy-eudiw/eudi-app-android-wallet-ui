@@ -553,6 +553,8 @@ class TestDocumentIssuanceSuccessInteractor {
 
             val mockedPidWithBasicFieldsAndMetadata = getMockedPidWithBasicFieldsAndMetadata()
             mockGetDocumentByIdCall(response = mockedPidWithBasicFieldsAndMetadata)
+            whenever(walletCoreDocumentsController.issuerLogo(mockedPidWithBasicFieldsAndMetadata, mockedDefaultLocale))
+                .thenReturn(URI.create(mockedIssuerLogo))
 
             // When
             interactor.getUiItems(

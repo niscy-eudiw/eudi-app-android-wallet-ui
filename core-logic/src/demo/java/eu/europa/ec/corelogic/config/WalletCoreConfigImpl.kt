@@ -189,6 +189,7 @@ internal class WalletCoreConfigImpl(
             ),
             VciConfig(
                 issuerUrl = "https://issuer-backend.eudiw.dev",
+                logoOrigins = listOf("https://eudiw.dev"),
                 config = OpenId4VciManager.Config.Builder()
                     .withClientAuthenticationType(
                         OpenId4VciManager.ClientAuthenticationType.AttestationBased(
