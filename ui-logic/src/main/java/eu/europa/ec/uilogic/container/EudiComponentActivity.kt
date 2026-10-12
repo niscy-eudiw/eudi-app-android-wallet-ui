@@ -199,13 +199,39 @@ open class EudiComponentActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * Runs [block] once the navigation controller exists. An activity recreated while the app was
+     * in the background, for example after a configuration change, gets it only at its first
+     * composition, which can come after the intent that resumes an issuance. Gives up after about
+     * five seconds.
+     */
+    private fun runWhenNavigationReady(block: () -> Unit) {
+        if (routerHost.isNavigationReady()) {
+            block()
+            return
+        }
+        lifecycleScope.launch {
+            var attempts = 0
+            while (!routerHost.isNavigationReady() && attempts < 50) {
+                attempts++
+                delay(100.milliseconds)
+            }
+            if (routerHost.isNavigationReady()) {
+                block()
+            }
+        }
+    }
+
     private fun handleDeepLink(intent: Intent?, coldBoot: Boolean = false) {
         hasDeepLink(intent?.data)?.let {
             if (it.type == DeepLinkType.ISSUANCE && !coldBoot) {
-                handleDeepLinkAction(
-                    routerHost.getNavController(),
-                    it.link
-                )
+                val link = it.link
+                runWhenNavigationReady {
+                    handleDeepLinkAction(
+                        routerHost.getNavController(),
+                        link
+                    )
+                }
             } else if (
                 it.type == DeepLinkType.CREDENTIAL_OFFER
                 && !routerHost.userIsLoggedInWithDocuments()

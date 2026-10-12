@@ -1345,6 +1345,9 @@ Production concerns:
 Production rules:
 
 * Keep only schemes required by your supported protocols.
+* Expect any link to arrive out of turn: a scheme exported to browsers can be opened by any web page. The
+  app ignores an RQES callback or document link that the RQES SDK refuses (for example a callback with no
+  signing session in progress) rather than letting the SDK's exception end the process.
 * Check the merged manifest for components that libraries export. The RQES SDK declares its container activity
   exported; `assembly-logic` overrides it to `exported="false"`, because the app starts it explicitly.
 * Do not export internal navigation. Screens are reached by route inside the app. An exported intent filter for an
