@@ -19,6 +19,7 @@ package eu.europa.ec.dashboardfeature.interactor
 import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
@@ -79,6 +80,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
+import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -112,6 +114,9 @@ class TestDocumentDetailsInteractor {
     @Mock
     private lateinit var mockContext: Context
 
+    @Mock
+    private lateinit var sessionController: SessionController
+
     private lateinit var interactor: DocumentDetailsInteractor
 
     private val mockedReIssueIssuerId = "mockedReIssueIssuerId"
@@ -130,6 +135,7 @@ class TestDocumentDetailsInteractor {
             uuidProvider = uuidProvider,
             configLogic = configLogic,
             prefKeys = prefKeys,
+            sessionController = sessionController,
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
@@ -1268,6 +1274,60 @@ class TestDocumentDetailsInteractor {
         }
     }
 
+    @Test
+    fun `Given a re-issuance that succeeds, When reIssueDocument is called, Then it runs as an external flow that ends with the outcome`() {
+        coroutineRule.runTest {
+            whenever(
+                walletCoreDocumentsController.reIssueDocument(
+                    documentId = mockedPidId,
+                    issuerId = mockedReIssueIssuerId,
+                    allowAuthorizationFallback = true,
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.Success(
+                    documentIds = listOf(mockedPidId),
+                ).toFlow()
+            )
+
+            interactor.reIssueDocument(
+                documentId = mockedPidId,
+                issuerId = mockedReIssueIssuerId,
+            ).runFlowTest {
+                awaitItem()
+            }
+
+            val order = inOrder(sessionController)
+            order.verify(sessionController).beginExternalFlow()
+            order.verify(sessionController, atLeastOnce()).endExternalFlow()
+        }
+    }
+    @Test
+    fun `Given a re-issuance that fails, When reIssueDocument is called, Then the external flow ends with the failure`() {
+        coroutineRule.runTest {
+            whenever(
+                walletCoreDocumentsController.reIssueDocument(
+                    documentId = mockedPidId,
+                    issuerId = mockedReIssueIssuerId,
+                    allowAuthorizationFallback = true,
+                )
+            ).thenReturn(
+                IssueDocumentsPartialState.Failure(
+                    errorMessage = mockedGenericErrorMessage,
+                ).toFlow()
+            )
+
+            interactor.reIssueDocument(
+                documentId = mockedPidId,
+                issuerId = mockedReIssueIssuerId,
+            ).runFlowTest {
+                awaitItem()
+            }
+
+            val order = inOrder(sessionController)
+            order.verify(sessionController).beginExternalFlow()
+            order.verify(sessionController, atLeastOnce()).endExternalFlow()
+        }
+    }
     @Test
     fun `Given controller emits PartialSuccess, When reIssueDocument is called, Then Success is emitted`() {
         coroutineRule.runTest {

@@ -24,6 +24,8 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthe
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthenticationControllerImpl
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationController
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationControllerImpl
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
+import eu.europa.ec.authenticationlogic.controller.session.SessionControllerImpl
 import eu.europa.ec.authenticationlogic.controller.storage.BiometryStorageController
 import eu.europa.ec.authenticationlogic.controller.storage.BiometryStorageControllerImpl
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
@@ -49,6 +51,11 @@ class LogicAuthenticationModule
 
 @Single
 fun provideAuthenticationConfig(): AuthenticationConfig = AuthenticationConfigImpl()
+
+@Single
+fun provideSessionController(
+    authenticationConfig: AuthenticationConfig
+): SessionController = SessionControllerImpl(authenticationConfig)
 
 @Single
 fun provideStorageConfig(

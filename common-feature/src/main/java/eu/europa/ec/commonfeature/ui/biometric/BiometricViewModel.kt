@@ -322,6 +322,9 @@ class BiometricViewModel(
     }
 
     private fun authenticationSuccess() {
+        if (biometricUiConfig.isPreAuthorization) {
+            biometricInteractor.unlockSession()
+        }
         doNavigation(
             navigation = biometricUiConfig.onSuccessNavigation,
             flowSucceeded = true

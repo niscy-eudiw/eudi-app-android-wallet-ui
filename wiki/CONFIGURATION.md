@@ -475,6 +475,7 @@ complete production process, see [GO_LIVE.md](GO_LIVE.md).
 | RQES document retrieval trust              | `DocumentRetrievalConfig`                                                                                                                 | Production certificates or trust material required for retrieving signing documents.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | RQES transaction logging                   | `signingLogger` in `RQESConfigImpl`, supplied through `ConfigLogicImpl`                                                                   | Keep the provided logger configured so signing activity appears in transaction history, including with `printLogs = false`.                                                                                                                                                                                                                                                                                                                                                                                                          |
 | PIN storage                                | `authentication-logic` and `StorageConfig`                                                                                                | Confirm PBKDF2 parameters, encrypted preferences, and migration behavior meet policy.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Session lock                               | `AuthenticationConfig` and `ConfigUILogic` | Confirm `backgroundLockTimeout`, `idleLockTimeout` and `protectedFlowLockTimeout` for the assurance level, and keep `loginScreens` and `protectedFlowScreens` in step with the app's screens. |
 | PIN throttle policy                        | `authentication-logic` and `AuthenticationConfig`                                                                                         | Confirm `maxFailedPinAttempts` and `pinLockoutDurations` meet policy. Define what happens once the final lockout tier is reached (e.g. wipe, support flow, step-up).                                                                                                                                                                                                                                                                                                                                                                 |
 | Database key/storage                       | `storage-logic` and encrypted `PrefsController`                                                                                           | Ensure database keys are generated securely, encrypted at rest, excluded from backup, and migrated safely.                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Network logging                            | `network-logic/.../NetworkModule.kt`                                                                                                      | `LogLevel.NONE` for release. Never log tokens, credentials, signatures, or document data.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -858,6 +859,18 @@ interface AuthenticationConfig {
      * the last entry is reused for every subsequent lockout.
      */
     val pinLockoutDurations: List<Duration>
+
+    /** How long the app may stay in the background before the wallet locks. */
+    val backgroundLockTimeout: Duration
+
+    /** How long the app may stay in the foreground without interaction before the wallet locks. */
+    val idleLockTimeout: Duration
+
+    /**
+     * The background limit while an issuance, presentation or signing is in progress.
+     * Duration.INFINITE never locks during such a flow.
+     */
+    val protectedFlowLockTimeout: Duration
 }
 ```
 
@@ -871,8 +884,16 @@ class AuthenticationConfigImpl : AuthenticationConfig {
         90.seconds,
         5.minutes
     )
+    override val backgroundLockTimeout: Duration = 60.seconds
+    override val idleLockTimeout: Duration = 5.minutes
+    override val protectedFlowLockTimeout: Duration = 10.minutes
 }
 ```
+
+The three timeouts drive the session lock (*SessionController*). The screens it treats as login
+screens and as protected-flow screens are listed in *ConfigUILogic* (`loginScreens`,
+`protectedFlowScreens`, in `ui-logic`); keep both lists in step with the screens you add. See
+[GO_LIVE.md](GO_LIVE.md) for the behaviour.
 
 Resulting behavior with the defaults:
 

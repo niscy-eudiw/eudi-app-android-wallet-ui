@@ -19,6 +19,7 @@ package eu.europa.ec.dashboardfeature.interactor
 import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
@@ -45,6 +46,7 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
@@ -135,6 +137,7 @@ class DocumentDetailsInteractorImpl(
     private val uuidProvider: UuidProvider,
     private val configLogic: ConfigLogic,
     private val prefKeys: PrefKeys,
+    private val sessionController: SessionController,
 ) : DocumentDetailsInteractor {
 
     private val genericErrorMsg
@@ -289,6 +292,28 @@ class DocumentDetailsInteractorImpl(
         issuerId: String,
     ): Flow<DocumentDetailsInteractorIssuancePartialState> = flow {
 
+        sessionController.beginExternalFlow()
+        try {
+            emitReIssuanceStates(documentId = documentId, issuerId = issuerId)
+        } finally {
+            sessionController.endExternalFlow()
+        }
+    }.safeAsync {
+        DocumentDetailsInteractorIssuancePartialState.Failure(
+            errorMessage = it.localizedMessage ?: genericErrorMsg
+        )
+    }
+
+    /**
+     * Re-issuance can continue at the issuer's website, so it runs as an external flow for the
+     * session lock: from document details, which is not a protected-flow screen, the background
+     * timeout would otherwise end the session before the user returns. The flow ends with the
+     * first final outcome.
+     */
+    private suspend fun FlowCollector<DocumentDetailsInteractorIssuancePartialState>.emitReIssuanceStates(
+        documentId: String,
+        issuerId: String,
+    ) {
         walletCoreDocumentsController.reIssueDocument(
             documentId = documentId,
             issuerId = issuerId,
@@ -348,12 +373,11 @@ class DocumentDetailsInteractorImpl(
                 DocumentDetailsInteractorIssuancePartialState.Failure(genericErrorMsg)
             }
 
+            if (state !is DocumentDetailsInteractorIssuancePartialState.UserAuthRequired) {
+                sessionController.endExternalFlow()
+            }
             emit(state)
         }
-    }.safeAsync {
-        DocumentDetailsInteractorIssuancePartialState.Failure(
-            errorMessage = it.localizedMessage ?: genericErrorMsg
-        )
     }
 
     override fun handleUserAuth(

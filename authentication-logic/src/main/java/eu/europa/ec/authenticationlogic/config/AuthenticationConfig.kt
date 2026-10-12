@@ -33,6 +33,28 @@ interface AuthenticationConfig {
      * size of the list, the last entry is reused for every subsequent lockout.
      */
     val pinLockoutDurations: List<Duration>
+
+    /**
+     * How long the app may stay in the background before the wallet locks. Returning after
+     * longer than this requires the PIN or a biometric again.
+     */
+    val backgroundLockTimeout: Duration
+
+    /**
+     * How long the app may stay in the foreground without user interaction before the wallet locks.
+     * It applies on every screen, including those of an issuance or presentation.
+     */
+    val idleLockTimeout: Duration
+
+    /**
+     * How long the app may stay in the background while an issuance, presentation or signing is
+     * in progress, in place of [backgroundLockTimeout]. Issuance and signing send the user to a
+     * website and back. A flow is in progress while the screen in front is one of
+     * `ConfigUILogic.protectedFlowScreens`, or while a flow started elsewhere, such as a
+     * re-issuance from document details, is marked with `SessionController.beginExternalFlow`.
+     * [Duration.INFINITE] never locks during such a flow.
+     */
+    val protectedFlowLockTimeout: Duration
 }
 
 class AuthenticationConfigImpl : AuthenticationConfig {
@@ -42,4 +64,7 @@ class AuthenticationConfigImpl : AuthenticationConfig {
         90.seconds,
         5.minutes
     )
+    override val backgroundLockTimeout: Duration = 60.seconds
+    override val idleLockTimeout: Duration = 5.minutes
+    override val protectedFlowLockTimeout: Duration = 10.minutes
 }

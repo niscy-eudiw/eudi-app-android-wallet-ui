@@ -17,6 +17,7 @@
 package eu.europa.ec.commonfeature.interactor
 
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
@@ -61,6 +62,9 @@ class TestQuickPinInteractor {
     @Mock
     private lateinit var authenticationConfig: AuthenticationConfig
 
+    @Mock
+    private lateinit var sessionController: SessionController
+
     private lateinit var interactor: QuickPinInteractor
 
     private lateinit var closeable: AutoCloseable
@@ -73,7 +77,8 @@ class TestQuickPinInteractor {
             pinStorageController = pinStorageController,
             resourceProvider = resourceProvider,
             pinThrottleController = pinThrottleController,
-            authenticationConfig = authenticationConfig
+            authenticationConfig = authenticationConfig,
+            sessionController = sessionController
         )
 
         whenever(resourceProvider.genericErrorMessage())
@@ -156,6 +161,7 @@ class TestQuickPinInteractor {
 
             verify(pinStorageController, times(1))
                 .setPin(any<SecurePin>())
+            verify(sessionController, times(1)).unlock()
         }
     }
 
@@ -187,6 +193,7 @@ class TestQuickPinInteractor {
                 verify(resourceProvider, times(1))
                     .getString(R.string.quick_pin_non_match)
             }
+            verify(sessionController, never()).unlock()
         }
     }
 
@@ -215,6 +222,7 @@ class TestQuickPinInteractor {
                     awaitItem()
                 )
             }
+            verify(sessionController, never()).unlock()
         }
     }
 

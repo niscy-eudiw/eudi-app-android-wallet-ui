@@ -147,7 +147,8 @@ Keep these files under strict review:
 | `business-logic/src/main/res/xml/backup_rules.xml`                                                        | Auto Backup policy for Android 11 and below.                                                         |
 | `business-logic/src/main/res/xml/data_extraction_rules.xml`                                               | Cloud backup and device transfer policy for Android 12 and above.                                    |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinStorageProvider.kt`  | PIN hashing, salt, iteration count, constant-time comparison.                                        |
-| `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/config/AuthenticationConfig.kt`      | PIN lockout policy (max failed attempts, escalating lockout durations).                              |
+| `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/config/AuthenticationConfig.kt`      | PIN lockout policy, and the session lock timeouts.                                                   |
+| `ui-logic/src/main/java/eu/europa/ec/uilogic/config/ConfigUILogicImpl.kt` | Login and protected-flow screen lists used by the session lock. |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinThrottleProvider.kt` | Persisted PIN failure counter, lockout level, lockout window timestamps; clock-rollback detection.   |
 | `business-logic/src/main/java/eu/europa/ec/businesslogic/controller/storage/PrefsController.kt`           | Encrypted DataStore and database key storage.                                                        |
 | `storage-logic/src/main/java/eu/europa/ec/storagelogic/di/LogicStorageModule.kt`                          | SQLCipher database setup and migration behavior.                                                     |
@@ -1729,10 +1730,40 @@ Production decisions:
 | Biometric strength | Prefer `BIOMETRIC_STRONG` for sensitive operations. |
 | Device credential fallback | Decide whether fallback is allowed for each operation. For highest assurance, do not silently weaken biometric-only requirements. |
 | Key invalidation | Keep invalidation on new biometric enrollment. |
-| Session duration | Keep short. Reauthenticate for disclosure and signing. |
+| Session duration | The wallet locks after `AuthenticationConfig.backgroundLockTimeout` in the background (default 60 seconds) and after `idleLockTimeout` without interaction on any screen (default 5 minutes). While an issuance, presentation or signing is in progress, the background limit is `protectedFlowLockTimeout` instead (default 10 minutes), because issuance and signing send the user to a website and back. Tune all three for your assurance level; production wallets usually lock sooner. Every credential release already asks for the PIN or a biometric. |
 | PIN length | Current UI defaults to 6 digits. Confirm policy. |
 | PIN lockout policy | Defaults to 3 attempts then escalating lockouts of 30s, 90s, 5m (then 5m repeats). Tune via `AuthenticationConfig.maxFailedPinAttempts` and `pinLockoutDurations`. Decide whether the final tier should escalate further (wipe, support flow, device credential step-up). |
 | Recovery | Define what happens if user forgets PIN or changes biometrics. |
+
+Session lock:
+
+* `SessionController` (`authentication-logic`) records whether the wallet is unlocked. Login and PIN creation
+  unlock it (so does changing the PIN, after the current PIN has been checked); the timeouts above lock it,
+  and the app then returns to the login screen.
+* The app counts as in the background only when its whole process is (`ProcessLifecycleOwner`, observed
+  once from `Application`). Another activity of the app, such as the RQES screens, does not count.
+* Whether the screen was a protected-flow screen is recorded when the app leaves, so nothing opened or
+  restored on return can extend the limit.
+* A link that arrives while the wallet is locked is kept and opened after login. Screens restored before
+  login, such as the dashboard after the activity is recreated, do not receive it. The issuance redirect
+  is the exception: it belongs to the issuance that was in progress, so a lock during that issuance means
+  starting it again.
+* A new process always starts locked. Whenever the wallet is locked, which includes when Android restores
+  the app's screens after ending its process, the app returns to login if any screen on the back stack is
+  not a login screen. The whole back stack is checked because the login screens are also used after
+  login, for example the PIN screen that confirms a presentation.
+* `ConfigUILogic` lists the screens involved: `loginScreens`, which a locked wallet may show, and
+  `protectedFlowScreens`, on which the background limit is `protectedFlowLockTimeout`. Add any screen you
+  introduce to the right list; a protected-flow screen left off the list locks after the normal
+  background timeout, and a login screen left off it sends the user back to login.
+* A flow that leaves the app from a screen that is not on the protected list, such as a re-issuance from
+  document details, is marked with `SessionController.beginExternalFlow()` and `endExternalFlow()` so
+  that the same limit applies. Mark any such flow you add.
+* The prompt before each credential release is a screen in the app. With
+  `userAuthenticationRequired = false` the keys themselves do not require user authentication, so a route to
+  the send step that skipped that screen would be unprotected. Keep internal screens unexported (see Deep
+  Links And Redirect URIs), and use `userAuthenticationRequired = true` where the assurance level requires
+  key-level protection.
 
 Critical point:
 

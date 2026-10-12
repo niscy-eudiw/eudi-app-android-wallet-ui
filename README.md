@@ -92,6 +92,8 @@ The main purpose of the reference implementation is to showcase the ecosystem an
 If you're planning to use this application in production, we recommend reviewing the following steps:
 - Configure the application properly by following the guide [here](wiki/CONFIGURATION.md)
 - Follow the production go-live guide [here](wiki/GO_LIVE.md) before creating a release candidate.
+- The session lock suits your assurance level: the timeouts in `AuthenticationConfig`, and the screens it
+  treats as login and protected-flow screens in `ConfigUILogic`. See [wiki/GO_LIVE.md](wiki/GO_LIVE.md).
 - The Pin storage configuration matches your security requirements, or provide your own by following this guide [Pin Storage Configuration](wiki/CONFIGURATION.md#pin-storage-configuration)
 - The application meets the OWASP MASVS industry standard. Please refer to the following links for further information on the controls you must implement to ensure maximum compliance:
     - [OWASP MASVS](https://mas.owasp.org/MASVS/)
@@ -126,6 +128,14 @@ You will also need to download the EUDI Verifier app. More information can be fo
 
 1. Launch the application
 2. You will be presented with a welcome screen where you will be asked to create a PIN for future logins.
+
+Once unlocked, the Wallet locks again after 60 seconds in the background or 5 minutes without
+interaction, and asks for the PIN or a biometric. While an issuance, presentation or signing is in
+progress it waits up to 10 minutes in the background, so that a visit to the issuer's website does
+not end the session. A link that arrives while the Wallet is locked, such as a presentation request
+or a credential offer, opens after you log in; if the Wallet locked in the middle of an issuance,
+start the issuance again. The timeouts are set in `AuthenticationConfig`; see
+[wiki/CONFIGURATION.md](wiki/CONFIGURATION.md).
 
 ### Issuance flow (Scoped - Wallet initiated)
 

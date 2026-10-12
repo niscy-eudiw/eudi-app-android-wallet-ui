@@ -17,6 +17,7 @@
 package eu.europa.ec.commonfeature.interactor
 
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
@@ -30,6 +31,10 @@ import kotlinx.coroutines.flow.flow
 interface QuickPinInteractor {
     val maxFailedPinAttempts: Int
 
+    /**
+     * Stores [newPin] once it matches [initialPin]. Creating the PIN unlocks the session, as a
+     * login does.
+     */
     fun setPin(newPin: SecurePin, initialPin: SecurePin): Flow<QuickPinInteractorSetPinPartialState>
 
     fun changePin(
@@ -49,6 +54,7 @@ class QuickPinInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val pinThrottleController: PinThrottleController,
     private val authenticationConfig: AuthenticationConfig,
+    private val sessionController: SessionController,
 ) : QuickPinInteractor {
 
     override val maxFailedPinAttempts: Int
@@ -88,6 +94,7 @@ class QuickPinInteractorImpl(
                 pinStorageController.setPin(newPin)
                 shouldClearNewPin = false
                 shouldClearInitialPin = true
+                sessionController.unlock()
                 emit(QuickPinInteractorSetPinPartialState.Success)
             } finally {
                 if (shouldClearInitialPin) {

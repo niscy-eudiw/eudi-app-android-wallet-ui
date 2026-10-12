@@ -23,11 +23,13 @@ import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import eu.europa.ec.analyticslogic.controller.AnalyticsController
 import eu.europa.ec.assemblylogic.di.setupKoin
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.worker.ReIssuanceWorkManager
 import eu.europa.ec.corelogic.worker.RevocationWorkManager
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
+import eu.europa.ec.uilogic.container.registerSessionBackgroundObserver
 import org.koin.android.ext.android.inject
 import org.koin.core.KoinApplication
 import kotlin.time.Duration
@@ -38,10 +40,12 @@ class Application : Application() {
     private val analyticsController: AnalyticsController by inject()
     private val configLogic: ConfigLogic by inject()
     private val walletCoreConfig: WalletCoreConfig by inject()
+    private val sessionController: SessionController by inject()
 
     override fun onCreate() {
         super.onCreate()
         initializeKoin().initializeRqes()
+        registerSessionBackgroundObserver(sessionController)
         initializeReporting()
         initializeWorkManagers()
     }

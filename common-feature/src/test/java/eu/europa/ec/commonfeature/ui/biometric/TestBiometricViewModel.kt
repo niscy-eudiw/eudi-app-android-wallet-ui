@@ -694,6 +694,34 @@ class TestBiometricViewModel {
             }
         }
 
+    @Test
+    fun `a successful login unlocks the session`() = coroutineRule.runTest {
+        val vm = newViewModel("login", config(isPreAuthorization = true))
+
+        vm.effect.runFlowTest {
+            vm.handleEvents(Event.OnBiometricsClicked(context, true))
+            callbacks.last().invoke(BiometricsAuthenticate.Success)
+            coroutineRule.testScope.runCurrent()
+
+            assertEquals(Effect.Navigation.Pop, awaitItem())
+            verify(interactor).unlockSession()
+        }
+    }
+
+    @Test
+    fun `a confirmation before release does not unlock the session`() = coroutineRule.runTest {
+        val vm = newViewModel("confirmation", config(isPreAuthorization = false))
+
+        vm.effect.runFlowTest {
+            vm.handleEvents(Event.OnBiometricsClicked(context, true))
+            callbacks.last().invoke(BiometricsAuthenticate.Success)
+            coroutineRule.testScope.runCurrent()
+
+            assertEquals(Effect.Navigation.Pop, awaitItem())
+            verify(interactor, never()).unlockSession()
+        }
+    }
+
     private fun completeAuthentication(result: BiometricsAuthenticate) {
         callbacks.single().invoke(result)
     }

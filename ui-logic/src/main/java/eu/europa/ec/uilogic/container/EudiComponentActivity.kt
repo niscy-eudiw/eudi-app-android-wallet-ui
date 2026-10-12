@@ -25,10 +25,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
@@ -44,6 +48,7 @@ import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -51,22 +56,55 @@ import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
+/**
+ * The wallet's host activity. Besides hosting the navigation graph, it drives the session lock:
+ * when the app returns to the foreground an expired session is sent to login, and an idle check
+ * runs while the activity is visible. The app counts as in the background only when the whole
+ * process is (another in-app activity, such as the RQES screens, does not count); the background
+ * itself is recorded by [registerSessionBackgroundObserver], registered once for the process.
+ */
 open class EudiComponentActivity : FragmentActivity() {
 
     private val routerHost: RouterHost by inject()
+    private val sessionController: SessionController by inject()
     private val viewModel: EudiComponentActivityViewModel by viewModel()
+
+    private var idleLockJob: Job? = null
+
+    private val processLifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onStart(owner: LifecycleOwner) {
+            checkSessionOnForeground()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel.onCreate()
+        ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
     }
 
+    override fun onDestroy() {
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(processLifecycleObserver)
+        super.onDestroy()
+    }
+
+    /**
+     * Keeps [intent] until a screen opens it after login. While the wallet is locked a kept link
+     * is not cleared, so that it survives until the user has logged in.
+     */
     internal fun cacheIntent(intent: Intent?) {
+        if (intent == null && !sessionController.isUnlocked) return
         viewModel.cacheIntent(intent)
     }
 
-    internal fun getCachedIntent(): Intent? = viewModel.getCachedIntent()
+    /**
+     * The kept link, or null while the wallet is locked: a screen restored before login, such as
+     * the dashboard after the activity is recreated, must not open it.
+     */
+    internal fun getCachedIntent(): Intent? =
+        if (sessionController.isUnlocked) viewModel.getCachedIntent() else null
 
     @Composable
     protected fun Content(
@@ -85,6 +123,7 @@ open class EudiComponentActivity : FragmentActivity() {
                 }
                 LaunchedEffect(Unit) {
                     viewModel.onFlowStart()
+                    routerHost.requireLoginIfLocked()
                     handleDeepLink(intent, coldBoot = true)
                 }
             }
@@ -96,8 +135,50 @@ open class EudiComponentActivity : FragmentActivity() {
         viewModel.onResume()
     }
 
+    override fun onStart() {
+        super.onStart()
+        sessionController.onUserInteraction()
+        scheduleIdleLock()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        idleLockJob?.cancel()
+        sessionController.recordProtectedFlow(routerHost.isInProtectedFlow())
+    }
+
+    /**
+     * Applies the background timeout when the app returns to the foreground, before anything can
+     * navigate, and sends a locked wallet to login. A recreated activity has no navigation state
+     * until its first composition; its login check then runs from [Content].
+     */
+    private fun checkSessionOnForeground() {
+        sessionController.onForeground()
+        if (routerHost.isNavigationReady() && viewModel.hasFlowStarted()) {
+            routerHost.requireLoginIfLocked()
+        }
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        sessionController.onUserInteraction()
+    }
+
+    private fun scheduleIdleLock() {
+        idleLockJob?.cancel()
+        idleLockJob = lifecycleScope.launch {
+            while (true) {
+                delay(sessionController.timeUntilIdleLock().coerceAtLeast(1.seconds))
+                if (viewModel.hasFlowStarted() && sessionController.lockIfIdle()) {
+                    routerHost.requireLoginIfLocked()
+                }
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        checkSessionOnForeground()
         if (viewModel.hasFlowStarted()) {
             handleDeepLink(intent)
         } else {

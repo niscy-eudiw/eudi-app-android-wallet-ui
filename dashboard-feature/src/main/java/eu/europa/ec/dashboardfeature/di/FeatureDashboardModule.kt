@@ -16,6 +16,7 @@
 
 package eu.europa.ec.dashboardfeature.di
 
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
@@ -131,6 +132,7 @@ fun provideDocumentDetailsInteractor(
     uuidProvider: UuidProvider,
     configLogic: ConfigLogic,
     prefKeys: PrefKeys,
+    sessionController: SessionController,
 ): DocumentDetailsInteractor =
     DocumentDetailsInteractorImpl(
         walletCoreDocumentsController,
@@ -139,6 +141,7 @@ fun provideDocumentDetailsInteractor(
         uuidProvider,
         configLogic,
         prefKeys,
+        sessionController,
     )
 
 @Factory

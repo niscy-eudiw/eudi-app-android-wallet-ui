@@ -17,6 +17,7 @@
 package eu.europa.ec.uilogic.di
 
 import eu.europa.ec.analyticslogic.controller.AnalyticsController
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.di.LogicBusinessModule
 import eu.europa.ec.uilogic.config.ConfigUILogic
 import eu.europa.ec.uilogic.config.ConfigUILogicImpl
@@ -38,8 +39,9 @@ class LogicUiModule
 @Factory
 fun provideRouterHost(
     configUILogic: ConfigUILogic,
-    analyticsController: AnalyticsController
-): RouterHost = RouterHostImpl(configUILogic, analyticsController)
+    analyticsController: AnalyticsController,
+    sessionController: SessionController
+): RouterHost = RouterHostImpl(configUILogic, analyticsController, sessionController)
 
 @Factory
 fun provideUiSerializer(): UiSerializer = UiSerializerImpl()

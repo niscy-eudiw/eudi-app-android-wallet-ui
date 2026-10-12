@@ -28,4 +28,18 @@ interface ConfigUILogic {
    Define the issuance identifier
    */
     val issuanceScreenIdentifier: Screen
+
+    /**
+     * Screens a locked wallet may show: the startup screen and the steps to log in or create a
+     * PIN. A locked wallet restored on any other screen is sent back to login.
+     */
+    val loginScreens: List<Screen>
+
+    /**
+     * Screens on which an issuance, presentation or signing is in progress. On them the background
+     * lock waits for `AuthenticationConfig.protectedFlowLockTimeout` instead of
+     * `backgroundLockTimeout`, because issuance and signing send the user to a website and back.
+     * The idle lock applies as on any other screen.
+     */
+    val protectedFlowScreens: List<Screen>
 }
