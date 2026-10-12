@@ -72,10 +72,15 @@ private fun Context.clearPendingIntent() {
  * come back into the wallet's own link handling, or when no app can open it.
  */
 fun Context.openInBrowser(uri: Uri) {
+    tryOpenInBrowser(uri)
+}
+
+/** Opens [uri] as [openInBrowser] does, and returns whether an app was started for it. */
+fun Context.tryOpenInBrowser(uri: Uri): Boolean {
     val intent = Intent(Intent.ACTION_VIEW)
         .setDataAndNormalize(uri)
         .addCategory(Intent.CATEGORY_BROWSABLE)
-    try {
+    return try {
         val handler = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager.resolveActivity(
                 intent,
@@ -85,9 +90,23 @@ fun Context.openInBrowser(uri: Uri) {
             @Suppress("DEPRECATION")
             packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
         }?.activityInfo?.packageName
-        if (handler == packageName) return
+        if (handler == packageName) return false
         startActivity(intent)
+        true
     } catch (_: Exception) {
+        false
+    }
+}
+
+/**
+ * Opens a link or contact that a relying party or issuer supplied. A web address opens as
+ * [openInBrowser] opens it, so that it cannot come back into the wallet; a `mailto:` or `tel:`
+ * address opens with the app Android picks for it. Any other scheme is ignored.
+ */
+fun Context.openExternalUri(uri: Uri) {
+    when (uri.scheme?.lowercase()) {
+        "http", "https" -> openInBrowser(uri)
+        "mailto", "tel" -> openUrl(uri)
     }
 }
 

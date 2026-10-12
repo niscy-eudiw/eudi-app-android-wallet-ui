@@ -95,7 +95,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapTextButton
-import eu.europa.ec.uilogic.extension.openUrl
+import eu.europa.ec.uilogic.extension.openExternalUri
 import eu.europa.ec.uilogic.extension.paddingFrom
 import kotlinx.coroutines.launch
 
@@ -303,7 +303,7 @@ private fun handleNavigationEffect(
         }
 
         is Effect.Navigation.Pop -> navController.popBackStack()
-        is Effect.Navigation.OpenUrlExternally -> context.openUrl(navigationEffect.url.toUri())
+        is Effect.Navigation.OpenUrlExternally -> context.openExternalUri(navigationEffect.url.toUri())
     }
 }
 

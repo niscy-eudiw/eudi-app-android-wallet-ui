@@ -70,6 +70,7 @@ import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.ThemeColorKey
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.navigation.helper.isOpenableExternalLink
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonPrimitive
@@ -968,7 +969,7 @@ class TransactionDetailsInteractorImpl(
             labelRes = labelRes,
             value = value
         )?.let { field ->
-            field.copy(url = field.value.toWebUrlOrNull())
+            field.copy(url = field.value.toWebUrlOrNull()?.takeIf(::isOpenableExternalLink))
         }
     }
 

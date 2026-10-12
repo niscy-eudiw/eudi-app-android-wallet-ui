@@ -536,7 +536,7 @@ class TestTransactionDetailsInteractor {
                 assertNull(fields.getValue("purpose").url)
                 assertNull(fields.getValue("party:contact:0").url)
                 assertEquals(
-                    mockedTransactionRegistration.privacyPolicyUrls,
+                    listOf("https://example.com/privacy", null),
                     groups[1].fields.map { field -> field.url })
                 assertEquals(
                     listOf(
