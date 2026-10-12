@@ -1575,6 +1575,10 @@ Images from metadata:
   image asked for and over `https`. A download stops after `MAX_REMOTE_IMAGE_BYTES` (2 MiB), and
   Coil decodes to the size shown, at most 4096 pixels a side. An SVG within that size is still
   parsed and drawn, so a hostile but allowed source can slow the screen down.
+* Images embedded in documents, such as the portrait or the signature, are read from their header
+  first. One that declares more than `MAX_EMBEDDED_IMAGE_PIXELS` (40 megapixels) is not shown, and a
+  larger one is downsampled by a power of two to at most `MAX_EMBEDDED_IMAGE_DIMENSION` (2048 pixels)
+  on its longest side.
 
 ## Local Development With Self-Signed Certificates
 
