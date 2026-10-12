@@ -102,6 +102,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                     addConfigField("RQES_HOST", rqesHost)
                     addConfigField("RQES_DEEPLINK", "$rqesScheme://$rqesHost$rqesPath")
                     addConfigField("RQES_DOC_RETRIEVAL_SCHEME", rqesDocRetrievalScheme)
+                    addConfigField("RQES_DOC_RETRIEVAL_HOST", rqesDocRetrievalHost)
 
                     // Manifest placeholders used for OpenId4VP
                     manifestPlaceholders["eudiOpenid4vpScheme"] = eudiOpenId4VpScheme

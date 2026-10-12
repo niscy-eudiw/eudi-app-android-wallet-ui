@@ -472,6 +472,7 @@ complete production process, see [GO_LIVE.md](GO_LIVE.md).
 | RQES TSA URL                               | `RQESConfigImpl.kt`                                                                                                                       | Production timestamp authority URL required by the QTSP/signature profile.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | RQES client ID/secret                      | `RQESConfigImpl.kt`                                                                                                                       | Do not hardcode confidential secrets in the app. Use an approved public-client or backend-mediated design.                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | RQES redirect URI                          | `BuildConfig.RQES_DEEPLINK`                                                                                                               | Redirect URI registered with the QTSP and declared in the Android manifest.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| RQES document retrieval host              | `rqesDocRetrievalHost` in `AndroidLibraryConventionPlugin.kt` | The host of the QTSP's document-retrieval links. The reference `*` accepts any host and is for development only. |
 | RQES document retrieval trust              | `DocumentRetrievalConfig`                                                                                                                 | Production certificates or trust material required for retrieving signing documents.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | RQES transaction logging                   | `signingLogger` in `RQESConfigImpl`, supplied through `ConfigLogicImpl`                                                                   | Keep the provided logger configured so signing activity appears in transaction history, including with `printLogs = false`.                                                                                                                                                                                                                                                                                                                                                                                                          |
 | PIN storage                                | `authentication-logic` and `StorageConfig`                                                                                                | Confirm PBKDF2 parameters, encrypted preferences, and migration behavior meet policy.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -520,6 +521,13 @@ val rqesDocRetrievalHost = "*"
 The reference configuration uses broad wildcard hosts for several custom-scheme links. For
 production, restrict hosts and paths where the protocol allows it, register redirect URIs with the
 issuer/verifier/QTSP, and validate every inbound URI before acting on it.
+
+`rqesDocRetrievalHost` is also exported as `BuildConfig.RQES_DOC_RETRIEVAL_HOST`, and a document
+retrieval link starts a signing only when its host matches. The reference value `*`
+(`DeepLinkType.ANY_HOST`) matches any host and is meant for development; set the exact host of your
+document-retrieval service for production, as the check does not support the manifest's `*.domain`
+form. The certificate trust in `documentRetrievalConfig` remains the control that decides whether a
+document is retrieved; see [GO_LIVE.md](GO_LIVE.md#deep-links-and-redirect-uris).
 
 Let's assume you want to change the credential offer scheme to custom-my-offer:// the *AndroidLibraryConventionPlugin* should look like this:
 
@@ -646,7 +654,8 @@ enum class DeepLinkType(val schemas: List<String>, val host: String? = null) {
         host = BuildConfig.RQES_HOST
     ),
     RQES_DOC_RETRIEVAL(
-        schemas = listOf(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME)
+        schemas = listOf(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME),
+        host = BuildConfig.RQES_DOC_RETRIEVAL_HOST
     ),
     EXTERNAL(emptyList())
 }

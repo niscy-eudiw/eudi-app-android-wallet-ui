@@ -84,7 +84,7 @@ Use this checklist before the first production release.
 | Storage                 | Wallet data, database keys, PIN material, and logs are protected, excluded from backup, and migration-safe.                                                                                                                                                                   |
 | Data deletion           | Removing a document deletes the app's records about it under the rules in [Data Deletion And Factory Reset](#data-deletion-and-factory-reset), and **Reset wallet** deletes the user's data and starts the app again at onboarding. Every local store added by the implementer is covered by both. |
 | Authentication          | PIN, biometrics, device credential fallback, key authentication, lockout, and recovery policies are approved.                                                                                                                                                                 |
-| Deep links              | All inbound URI schemes, hosts, and parameters are validated and threat-modeled.                                                                                                                                                                                              |
+| Deep links              | All inbound URI schemes, hosts, and parameters are validated and threat-modeled; `rqesDocRetrievalHost` names the production document-retrieval host instead of `*`.                                                                                                                                                                                              |
 | Presentation relay risk | Relay attack risk is documented, verifier compensating controls are defined, and residual risk is accepted for each presentation scenario.                                                                                                                                    |
 | Logs                    | Production logs do not include PID, credentials, tokens, request objects, signatures, keys, or user decisions.                                                                                                                                                                |
 | RASP                    | Play Integrity, commercial protection such as DexGuard, or a manual RASP strategy is implemented.                                                                                                                                                                             |
@@ -1387,6 +1387,15 @@ What the app enforces:
   scheme is ignored, and the user stays in the wallet.
 * **Privacy-policy links** from a verifier's or an issuer's registration certificate follow the same
   rule: one that is not `https` is not shown as a link.
+* **RQES document retrieval.** A link with the `eudi-rqes` scheme starts a signing only when its host
+  matches `rqesDocRetrievalHost` (`BuildConfig.RQES_DOC_RETRIEVAL_HOST`), compared without regard
+  to case. Set an exact host: the manifest's `*.domain` form is not supported by the check, and
+  would match no link. The reference value `*` (`DeepLinkType.ANY_HOST`) matches any host so that
+  the demo signing flow works; it is for development only. The host check only narrows which links
+  start the flow, since any web page can use the configured host. The control that decides whether
+  a document is retrieved is the certificate trust in `documentRetrievalConfig`
+  (`RQESConfigImpl`). A document QR code scanned from **Sign** goes to the RQES SDK without the
+  host check.
 
 Production concerns:
 
@@ -1398,6 +1407,8 @@ Production concerns:
 Production rules:
 
 * Keep only schemes required by your supported protocols.
+* Set `rqesDocRetrievalHost` to the host of your QTSP's document-retrieval links. It drives both the
+  manifest filter and the check in `DeepLinkType`.
 * Keep verifier redirects out of the wallet's link handling. If you add `https` App Links to the
   wallet, keep relying parties' domains out of them: a redirect that only the wallet can open is
   not opened, and one that the wallet shares with another app shows Android's app chooser.

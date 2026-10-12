@@ -57,10 +57,27 @@ enum class DeepLinkType(
         host = BuildConfig.RQES_HOST
     ),
     RQES_DOC_RETRIEVAL(
-        schemas = listOf(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME)
+        schemas = listOf(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME),
+        host = BuildConfig.RQES_DOC_RETRIEVAL_HOST
     );
 
     companion object {
+
+        /**
+         * A configured host that matches any host, as the Android manifest treats it. The reference
+         * build ships it for [RQES_DOC_RETRIEVAL] so that the demo signing flow works; a production
+         * build sets `rqesDocRetrievalHost` to the host of its document-retrieval service.
+         */
+        const val ANY_HOST = "*"
+
+        /**
+         * Whether [host] is the [configured] one, or [configured] is [ANY_HOST]. Hosts are compared
+         * without regard to case. A configured host must be exact: the manifest's `*.domain` form
+         * is not supported here, so with it no link would match.
+         */
+        internal fun hostMatches(configured: String?, host: String?): Boolean =
+            configured == ANY_HOST || (host != null && host.equals(configured, ignoreCase = true))
+
         fun parse(scheme: String, host: String? = null): DeepLinkType = when {
 
             OPENID4VP.schemas.contains(scheme) -> {
@@ -79,7 +96,7 @@ enum class DeepLinkType(
                 RQES
             }
 
-            RQES_DOC_RETRIEVAL.schemas.contains(scheme) -> {
+            RQES_DOC_RETRIEVAL.schemas.contains(scheme) && hostMatches(RQES_DOC_RETRIEVAL.host, host) -> {
                 RQES_DOC_RETRIEVAL
             }
 
