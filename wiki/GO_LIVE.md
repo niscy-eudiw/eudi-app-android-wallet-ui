@@ -481,7 +481,7 @@ Meaning:
 
 | Value | Meaning | Production guidance |
 | --- | --- | --- |
-| `userAuthenticationRequired` | Whether document private keys require device user authentication before use. | For LoA High PID and other high-assurance EAA/QEAA credentials, set this to `true` unless an approved remote high-assurance key protection design replaces local key use. If `false`, the app-level PIN protects flows, but document keys are not individually bound to a platform authentication event. |
+| `userAuthenticationRequired` | Whether document private keys require device user authentication before use. | For LoA High PID and other high-assurance EAA/QEAA credentials, set this to `true` unless an approved remote high-assurance key protection design replaces local key use. If `false`, the keys can be used without user authentication. The reference app asks for the PIN or a biometric before every credential release, but that prompt is a screen in the app, not a condition on the keys: a route to the send step that skipped the screen would release credentials without it. See [Authentication And Biometrics](#authentication-and-biometrics). |
 | `userAuthenticationTimeout` | Time window after authentication during which key use remains allowed. `0.seconds` means authentication is required for every key use. | Use the shortest approved value that still supports the intended flow. `0.seconds` is appropriate for isolated high-risk operations where one prompt per key use is acceptable. For batch issuing, a very short window such as `10.seconds` may be needed so one strong authentication can cover the batch without repeatedly prompting the user. |
 | `useStrongBoxForKeys` | Requests StrongBox-backed key storage where available. | Keep `true` for supported devices. Define fallback behavior for devices without StrongBox. Decide whether such devices are allowed, restricted, or rejected. |
 
@@ -888,7 +888,7 @@ configureIssuerTrust {
 configureDocumentStatusResolver {
   configureTrust {
     policy {
-      default(TrustPolicy.Action.INFORM)
+      default(TrustPolicy.Action.ENFORCE)
     }
   }
 }
@@ -899,20 +899,64 @@ configureWrpRegistrationPolicy(WrpRegistrationPolicy.Enabled)
 ```
 
 Validate the chosen configuration with the issuance and presentation services supported by your
-deployment.
+deployment. The example enforces status-list trust for every type, which needs every type you
+check to be classified: with the reference classification, which covers only the PID, a global
+`ENFORCE` makes the status check of every other document fail.
+
+`requireSignedMetadata()` applies whether registration checking is on or off. The wallet refuses an
+issuer that does not serve signed metadata, or whose metadata signing certificate does not
+validate against the access-certificate list (`wrpacProviders`). Wallet Core checks this when an
+offer is resolved, when wallet-initiated issuance or re-issuance starts, and when the app reads an
+issuer's metadata. Registration checking adds the issuer's registration certificate, which needs
+the signed metadata, and, for wallet-initiated issuance and re-issuance, builds the issuance itself
+from the signed metadata. With it off, wallet-initiated issuance and re-issuance check the signed
+metadata and then issue from the unsigned metadata the issuer also serves; an offer always issues
+from the signed metadata it was resolved with.
 
 Production requirements for a trusted-list deployment:
 
 * Use production LoTE URLs from the approved trust framework, over HTTPS.
-* Remove the development-only trust relaxations (`relaxCertificateProfiles()` and
-  `relaxPkixRevocation()`) from production configuration.
-* Review which credential types require trust enforcement and configure their classifications
-  and trusted lists accordingly. Decide how those classifications will be maintained.
+* Remove `relaxCertificateProfiles()` and `relaxPkixRevocation()`. The first removes the end-entity
+  certificate profile checks (ETSI TS 119 412-6 for PID and wallet-provider signing certificates,
+  TS 119 411-8 for access certificates) from every list. The second turns off CRL and OCSP checking during chain
+  validation; a certificate a list names directly is not checked for revocation in either case. Both
+  are workarounds for development PKI and must not ship.
+* Classify every credential type you issue or check the status of (`classifications`), and decide
+  how the classifications will be maintained. The reference flavors classify only the PID.
+  Classification decides what is evaluated. Under `ENFORCE`, issuance of an unclassified type is
+  refused and its status checks fail. Under `INFORM`, an unclassified type is not evaluated, and the
+  app shows its issuer as not verified.
 * Configure the registration-certificate list (`wrprcProviders`) and enable registration checking
   as described in the next section.
-* Review the issuer-trust and status-list-trust policies against the deployment's requirements.
-  For credential issuer trust, `ENFORCE` requires verified trust for issuance; `INFORM` makes this
-  check nonblocking, including when issuer trust is unverified or untrusted.
+* Issuer trust: `ENFORCE` refuses a credential whose issuer is not trusted or cannot be evaluated;
+  Wallet Core does not store it and reports `DocumentFailed`. `INFORM` stores the credential and
+  reports the verdict with it (`issuerTrustResult`). The reference flavors enforce for the PID and
+  inform for everything else.
+* Status-list trust: Wallet Core checks a status list's signature against the certificate in the
+  list's own header, so only the trust evaluation ties the list to its issuer. `ENFORCE` rejects a
+  list whose signer is not trusted; the status check then fails, the app records a failed refresh,
+  and the document keeps its last known state. `INFORM` accepts the list whatever its signer and
+  only logs the verdict. Use `ENFORCE` in production; a rule for one type uses the status context,
+  for example `forContext(VerificationContext.PIDStatus, TrustPolicy.Action.ENFORCE)`. This choice
+  answers IA.19 on the authenticity of revocation information, as the audit maps it.
+* Reader authentication: with `enforceIfPresent()`, the reference setting, a proximity or Digital
+  Credential API mdoc reader that sends no reader authentication receives the data once the user
+  accepts the warning on the consent screen. A reader whose authentication fails verification
+  receives an empty response with status 10, even if the user shares. `alwaysRequire()` gives that
+  empty response to both. Remote OpenID4VP behaves the same under either setting: with the
+  `X509SanDns` and `X509Hash` client-ID schemes a request must be signed, and an untrusted one is
+  rejected when it is resolved. This choice answers HLR.32 and IA.22, which require the relying party to be
+  authenticated before attributes are released; record the decision if unauthenticated readers are
+  accepted.
+* Trusted-list signatures: the default verifier checks each list's JWS signature with the key of the
+  first certificate in its `x5c` header, without validating that certificate's chain, revocation or
+  profile. If the trust framework requires the list signer to be pinned or chain-validated, supply a
+  verifier with `jwtSignatureVerifier(...)` in `configureEtsiTrust`.
+* Caches: a downloaded list is reused from disk until its own `nextUpdate`; `fileCacheExpiration`
+  (24 hours) applies only when the list gives no future `nextUpdate`. Trust anchors are kept in
+  memory for 20 minutes (`cacheTtl`), and refreshing them rereads the disk cache, so a removal from
+  a list takes effect only when the disk entry expires. The reference flavors keep both defaults.
+  Set them according to how quickly a removal must take effect.
 * Under `INFORM` a document is stored even when its issuer is not trusted. The app keeps Wallet
   Core's verdict for each document (`issuerTrustResult` on the issuance event, stored in the
   `issuerTrustRecords` table). Document details say "Issuer verified" only when the chain was
@@ -921,11 +965,9 @@ Production requirements for a trusted-list deployment:
   reference configuration, every non-PID document), says "Issuer not verified" on both screens.
   The verdict is the one taken at issuance and is not re-evaluated later, for example when an
   issuer leaves the trusted list.
-* Choose the reader-authentication policy required by the deployment.
-* Review trusted-list verification and cache settings against the deployment's trust requirements.
-* Test credential issuer trust for both PID and non-PID issuance, covering trusted, untrusted and
-  unverifiable credentials. Confirm the configured policy and remaining issuance checks behave as expected.
-  Test status checks and reader/verifier authentication for each supported protocol.
+* Test both directions, for every protocol and for PID and non-PID documents: a party on the list
+  succeeds; one not on the list is refused, or warned about as described in the next section. Cover
+  trusted, untrusted and unverifiable issuers, status lists and readers.
 
 ### Registration Certificates: The Second Trust Layer
 
@@ -1316,7 +1358,9 @@ The app enqueues `RevocationWorkManager`, which:
 * Status-list trust follows `configureDocumentStatusResolver { configureTrust { … } }`. Under
   `INFORM`, the reference default, a status-list token signed by an untrusted key is still accepted,
   so whoever can serve the list can report a document as Valid. A recorded `INVALID` stays blocked,
-  but a suspension can be lifted this way. Use `ENFORCE` in production.
+  but a suspension can be lifted this way. Use `ENFORCE` in production, for every type you check:
+  with the reference classification, which covers only the PID, a global `ENFORCE` fails the status
+  check of every other document; see ETSI Trusted Lists.
 * Broadcasts changes to refresh UI.
 
 Production decisions:
@@ -1528,7 +1572,7 @@ Current notable settings:
 | Main activity | `exported=true` | Required for launcher and external flows. Harden all intent handling. |
 | NFC service | `exported=true` with `BIND_NFC_SERVICE` | Confirm required for NFC engagement and test exported-service behavior. |
 | FileProvider | `exported=false` | Keep false. Review shared file paths. |
-| `HIDE_OVERLAY_WINDOWS` | Requested | Keep only if overlay protection is part of your UX/security design. |
+| `HIDE_OVERLAY_WINDOWS` | Requested, not used: no window calls `setHideOverlayWindows(true)` | Use it on the PIN and consent screens if overlay protection is part of your design, or remove the permission. |
 | Bluetooth permissions | Requested | Required for proximity. Request at runtime only when needed. |
 | Location permissions | Requested | Required for older BLE flows. Explain to users and privacy review. |
 | Camera permission | Requested | Required for QR scanning. Request at runtime only when needed. |
@@ -1775,6 +1819,32 @@ The database stores:
 * The issuer-trust verdict for each document.
 * The last failed status refresh for each document.
 
+**Transaction log contents.** Wallet Core produces each history entry in the TS10 model, and the
+app stores it as JSON in the `transactionLogs` table. The log records the relying party, the
+attestation types and the identifiers of the attributes requested and presented, never their
+values; this is the rule the ARF and the Implementing Acts set for it. Since release 2026.10.43
+(Wallet Core 0.31.0):
+
+* a presentation entry records the requested and presented claims as attestation type (mdoc
+  `docType` or SD-JWT VC `vct`) and claim paths, without values;
+* when registration checking is on and the request's registration certificate authenticates
+  (valid signature, trusted signer), the entry records the relying party's registered name,
+  identifier, contacts, intermediary, purpose, privacy policy, registrar and supervisory
+  authority, even if the certificate then fails its binding, validity or revocation checks.
+  Otherwise only the relying party's name is recorded. The app records beside the entry whether
+  the registration was verified (see Transaction history);
+* the entry also records the `transaction_data` the request carried, decoded from base64url and
+  otherwise unchanged. For a signing request this includes document names, document locations,
+  hashes, any one-time password for document access and the whole content of a document carried
+  in the request;
+* issuance entries record the attestation types, the number of credentials requested and issued,
+  and the issuer. Signing entries record the QTSP, the signing certificate's serial number, the
+  document's name and size, and the DTBSR.
+
+Entries have no time or count limit. They are removed only when the user deletes an entry, when
+the last document of an attestation type is removed (see
+[Data Deletion And Factory Reset](#data-deletion-and-factory-reset)), and by **Reset wallet**.
+
 Current risk:
 
 ```kotlin
@@ -1785,9 +1855,15 @@ Production guidance:
 
 * Replace destructive migration with explicit Room migrations.
 * Add migration tests.
-* Define retention for transaction logs.
-* Minimize transaction log content.
-* Review whether transaction logs contain personal data or verifier details.
+* The reference app sets no retention limit on transaction logs and has no purge; this is left to
+  implementers. Choose a retention period in the DPIA and implement the deletion that applies it,
+  for example at app start in `WalletCoreTransactionLogController`; a period that nothing enforces
+  has no effect. The controller offers `deleteAllTransactionLogs()` for a "clear history" action,
+  which the reference UI does not expose, and history is read without paging.
+* Minimize transaction log content. Decide whether the raw `transaction_data`, and one-time
+  passwords in particular, belong in the log.
+* The log is personal data: it shows which relying parties the user dealt with, when, and which
+  attributes were disclosed. Cover it in the DPIA.
 * Wipe database key material from memory where practical after opening the DB.
 * Exclude DB files from backup and device transfer.
 
@@ -1889,7 +1965,8 @@ Production rules:
 
 The app has:
 
-* Network logging disabled in release.
+* Logging disabled in release on the app's own HTTP client (`NetworkModule`). Wallet Core's own HTTP
+  clients are not covered; see [Diagnostic logging](#diagnostic-logging).
 * Wallet Core logging routed through `WalletCoreLogController`.
 * File logging through `LogControllerImpl`.
 * Transaction logging through `WalletCoreTransactionLogControllerImpl`.
@@ -1958,6 +2035,32 @@ Production logging rules:
 * Define retention and deletion.
 * Provide a redaction layer for all logs.
 
+Wallet Core logs its own HTTP traffic. When `EudiWallet` is built, it installs Ktor's `Logging`
+plugin at `LogLevel.ALL` on the clients it uses for OpenID4VCI issuance, remote OpenID4VP
+presentation and the Trust Mark. It does so whether or not `withLogger(...)` is called, since it
+falls back to its own logger; that logger drops the records at the default `logLevel`
+(`LEVEL_INFO`), but a supplied logger, such as the app's, receives them all. It also overrides the level of a client supplied with
+`withKtorHttpClientFactory`, so the app's `LogLevel.NONE` for release does not apply to these
+requests. Each request and response, headers and body, reaches the logger as a debug record. This
+includes authorization codes, access and refresh tokens, DPoP proofs, client attestations, request
+objects with their transaction data, and the `vp_token` when the verifier does not ask for an
+encrypted response. Responses from the credential endpoint are encrypted by default and are
+logged as received; deferred credential responses are requested without encryption and are
+logged in clear.
+
+`EudiWalletConfig.logLevel` does not limit this output in the reference app. Wallet Core applies
+`logLevel` only in its own logger, which it uses when no logger is supplied. The app supplies
+`WalletCoreLogController`, which forwards every record to `LogController` whatever its level, and
+`LogControllerImpl` writes debug records to logcat and to the log files in every build type;
+**Settings → Retrieve logs** shares those files. Some of Wallet Core's own debug records also carry
+protocol data: the remote OpenID4VP `vp_token` before it is sent, whether or not the response is
+encrypted, the Digital Credential API request and `vp_token`, and the mdoc `DeviceResponse`
+before it is encrypted.
+
+The reference wiring therefore writes, in release builds, data that the rules above forbid. Before
+release, filter Wallet Core's records in `WalletCoreLogController`: drop debug records, or apply
+`logLevel` there. Lowering `logLevel` alone has no effect while the app supplies its own logger.
+
 Current `LogControllerImpl` always plants a `Timber.DebugTree()` and a file logger. For production,
 consider:
 
@@ -1997,6 +2100,13 @@ Recommended controls:
 * Consider overlay detection or blocking for critical consent and PIN screens.
 * Keep `HIDE_OVERLAY_WINDOWS` only if tested and justified.
 * Do not show PID attributes in notifications.
+
+The reference app implements none of these controls, and leaves them to implementers. No window
+sets `FLAG_SECURE`, `setRecentsScreenshotEnabled(false)` is not called, and no dialog uses
+`SecureFlagPolicy.SecureOn`, so screenshots, screen recording and the recent-apps thumbnail show
+every screen. The manifest requests `HIDE_OVERLAY_WINDOWS`, but no window calls
+`setHideOverlayWindows(true)`, so the permission has no effect. Apply the controls at least to the
+screens listed above, and remove the permission if you do not use it.
 
 Test cases:
 
