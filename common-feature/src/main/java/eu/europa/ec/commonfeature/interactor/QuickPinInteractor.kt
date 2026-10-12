@@ -17,11 +17,13 @@
 package eu.europa.ec.commonfeature.interactor
 
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
+import eu.europa.ec.authenticationlogic.controller.device.DeviceLockController
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
+import eu.europa.ec.authenticationlogic.secure.isWeakPin
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -32,11 +34,25 @@ interface QuickPinInteractor {
     val maxFailedPinAttempts: Int
 
     /**
-     * Stores [newPin] once it matches [initialPin]. Creating the PIN unlocks the session, as a
-     * login does.
+     * The message to show when [pin] is too easy to guess (see [isWeakPin] and
+     * `AuthenticationConfig.commonPins`), or null when it may be used.
+     */
+    fun weakPinError(pin: SecurePin): String?
+
+    /**
+     * What to tell the user before the wallet is set up on a device without a screen lock, or null
+     * when the device has one. Setup is blocked when `AuthenticationConfig.requireDeviceSecure` is
+     * true, and only warned about otherwise.
+     */
+    fun deviceLockNotice(): DeviceLockNotice?
+
+    /**
+     * Stores [newPin] once it matches [initialPin] and is not too easy to guess. Creating the PIN
+     * unlocks the session, as a login does.
      */
     fun setPin(newPin: SecurePin, initialPin: SecurePin): Flow<QuickPinInteractorSetPinPartialState>
 
+    /** Replaces the stored PIN with [newPin] unless it is too easy to guess. */
     fun changePin(
         newPin: SecurePin
     ): Flow<QuickPinInteractorSetPinPartialState>
@@ -55,6 +71,7 @@ class QuickPinInteractorImpl(
     private val pinThrottleController: PinThrottleController,
     private val authenticationConfig: AuthenticationConfig,
     private val sessionController: SessionController,
+    private val deviceLockController: DeviceLockController,
 ) : QuickPinInteractor {
 
     override val maxFailedPinAttempts: Int
@@ -75,6 +92,24 @@ class QuickPinInteractorImpl(
 
     override suspend fun hasPin(): Boolean = pinStorageController.hasPin()
 
+    override fun weakPinError(pin: SecurePin): String? =
+        if (isWeakPin(pin, authenticationConfig.commonPins)) {
+            resourceProvider.getString(R.string.quick_pin_weak)
+        } else {
+            null
+        }
+
+    override fun deviceLockNotice(): DeviceLockNotice? = when {
+        deviceLockController.isDeviceSecure() -> null
+        authenticationConfig.requireDeviceSecure -> DeviceLockNotice.Blocking(
+            resourceProvider.getString(R.string.quick_pin_device_lock_required)
+        )
+
+        else -> DeviceLockNotice.Warning(
+            resourceProvider.getString(R.string.quick_pin_device_lock_missing)
+        )
+    }
+
     override fun setPin(
         newPin: SecurePin,
         initialPin: SecurePin
@@ -89,6 +124,10 @@ class QuickPinInteractorImpl(
                             resourceProvider.getString(R.string.quick_pin_non_match)
                         )
                     )
+                    return@flow
+                }
+                weakPinError(newPin)?.let { error ->
+                    emit(QuickPinInteractorSetPinPartialState.Failed(error))
                     return@flow
                 }
                 pinStorageController.setPin(newPin)
@@ -115,6 +154,11 @@ class QuickPinInteractorImpl(
         newPin: SecurePin
     ): Flow<QuickPinInteractorSetPinPartialState> =
         flow {
+            weakPinError(newPin)?.let { error ->
+                newPin.close()
+                emit(QuickPinInteractorSetPinPartialState.Failed(error))
+                return@flow
+            }
             pinStorageController.setPin(newPin)
             emit(QuickPinInteractorSetPinPartialState.Success)
         }.safeAsync {
@@ -145,6 +189,14 @@ class QuickPinInteractorImpl(
                 it.localizedMessage ?: genericErrorMsg
             )
         }
+}
+
+/** What the PIN screen says about a missing device screen lock; [Blocking] stops the setup. */
+sealed interface DeviceLockNotice {
+    val message: String
+
+    data class Warning(override val message: String) : DeviceLockNotice
+    data class Blocking(override val message: String) : DeviceLockNotice
 }
 
 sealed class QuickPinInteractorSetPinPartialState {

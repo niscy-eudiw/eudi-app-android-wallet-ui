@@ -479,6 +479,7 @@ complete production process, see [GO_LIVE.md](GO_LIVE.md).
 | PIN storage                                | `authentication-logic` and `StorageConfig`                                                                                                | Confirm PBKDF2 parameters, encrypted preferences, and migration behavior meet policy.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Session lock                               | `AuthenticationConfig` and `ConfigUILogic` | Confirm `backgroundLockTimeout`, `idleLockTimeout` and `protectedFlowLockTimeout` for the assurance level, and keep `loginScreens` and `protectedFlowScreens` in step with the app's screens. |
 | Pictures of the holder                     | `ConfigUILogic.userImageClaimKeys` in `ui-logic` | The claims that hold a picture of the holder, `portrait` and `picture` in the reference configuration. They are shown as images, and a request that includes one raises the biometric-data notice and the confirmation on Share. Add any such claim your credentials use. |
+| PIN rules                                  | `AuthenticationConfig`                                                                                                                    | Extend `commonPins` to match the PIN policy, and set `requireDeviceSecure` to true if the wallet must not be set up on a device without a screen lock (the check runs at setup only).                                                                                                                                                                                                                                                                                                                                                                                   |
 | PIN throttle policy                        | `authentication-logic` and `AuthenticationConfig`                                                                                         | Confirm `maxFailedPinAttempts` and `pinLockoutDurations` meet policy. Define what happens once the final lockout tier is reached (e.g. wipe, support flow, step-up).                                                                                                                                                                                                                                                                                                                                                                 |
 | Database key/storage                       | `storage-logic` and encrypted `PrefsController`                                                                                           | Ensure database keys are generated securely, encrypted at rest, excluded from backup, and migrated safely.                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Network logging                            | `network-logic/.../NetworkModule.kt`                                                                                                      | `LogLevel.NONE` for release. Never log tokens, credentials, signatures, or document data.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -890,6 +891,18 @@ interface AuthenticationConfig {
      * Duration.INFINITE never locks during such a flow.
      */
     val protectedFlowLockTimeout: Duration
+
+    /**
+     * PINs refused when the user creates or changes the PIN, besides one digit repeated and
+     * ascending or descending runs, which are always refused.
+     */
+    val commonPins: Set<String>
+
+    /**
+     * Whether the wallet can be set up only on a device with a screen lock. When false, a device
+     * without one gets a warning on the PIN screen and setup continues.
+     */
+    val requireDeviceSecure: Boolean
 }
 ```
 
@@ -906,8 +919,19 @@ class AuthenticationConfigImpl : AuthenticationConfig {
     override val backgroundLockTimeout: Duration = 60.seconds
     override val idleLockTimeout: Duration = 5.minutes
     override val protectedFlowLockTimeout: Duration = 10.minutes
+    override val commonPins: Set<String> = setOf(
+        "123123", "121212", "112233", "123321", "102030",
+        "147258", "159753", "789456", "696969", "000123",
+    )
+    override val requireDeviceSecure: Boolean = false
 }
 ```
+
+`commonPins` and `requireDeviceSecure` apply when the PIN is set. A PIN on the list, one digit
+repeated or an ascending or descending run is refused with the `quick_pin_weak` message.
+Without a screen lock the PIN screen shows `quick_pin_device_lock_missing` during setup, or,
+when `requireDeviceSecure` is true, shows `quick_pin_device_lock_required` and accepts no PIN
+until a lock is set.
 
 The three timeouts drive the session lock (*SessionController*). The screens it treats as login
 screens and as protected-flow screens are listed in *ConfigUILogic* (`loginScreens`,

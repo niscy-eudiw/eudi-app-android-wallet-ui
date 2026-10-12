@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import eu.europa.ec.authenticationlogic.secure.SecurePin
@@ -47,10 +49,12 @@ import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
+import eu.europa.ec.uilogic.component.ThemeColorKey
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ImePaddingConfig
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.toColor
 import eu.europa.ec.uilogic.component.utils.OncePerViewModelEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
@@ -131,6 +135,10 @@ fun PinScreen(
     OncePerViewModelEffect(viewModel) {
         viewModel.setEvent(Event.Init)
     }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.setEvent(Event.Resumed)
+    }
 }
 
 private fun handleNavigationEffect(
@@ -198,6 +206,14 @@ private fun Content(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             )
+            state.deviceLockNotice?.let { safeNotice ->
+                Text(
+                    text = safeNotice,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = ThemeColorKey.Warning.toColor()
+                    )
+                )
+            }
         }
 
         Column(
@@ -292,8 +308,8 @@ private fun PinFieldLayout(
         errorMessage = state.lockoutMessage ?: state.quickPinError,
         pinWidth = 42.dp,
         clearCode = state.resetPin,
-        focusOnCreate = !state.isLockedOut,
-        enabled = !state.isLoading && !state.isLockedOut
+        focusOnCreate = !state.isLockedOut && !state.isBlockedByDeviceLock,
+        enabled = !state.isLoading && !state.isLockedOut && !state.isBlockedByDeviceLock
     )
 }
 

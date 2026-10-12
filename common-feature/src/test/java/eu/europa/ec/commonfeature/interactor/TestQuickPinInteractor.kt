@@ -17,6 +17,7 @@
 package eu.europa.ec.commonfeature.interactor
 
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
+import eu.europa.ec.authenticationlogic.controller.device.DeviceLockController
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
@@ -32,6 +33,7 @@ import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNull
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -65,6 +67,9 @@ class TestQuickPinInteractor {
     @Mock
     private lateinit var sessionController: SessionController
 
+    @Mock
+    private lateinit var deviceLockController: DeviceLockController
+
     private lateinit var interactor: QuickPinInteractor
 
     private lateinit var closeable: AutoCloseable
@@ -78,7 +83,8 @@ class TestQuickPinInteractor {
             resourceProvider = resourceProvider,
             pinThrottleController = pinThrottleController,
             authenticationConfig = authenticationConfig,
-            sessionController = sessionController
+            sessionController = sessionController,
+            deviceLockController = deviceLockController,
         )
 
         whenever(resourceProvider.genericErrorMessage())
@@ -237,6 +243,7 @@ class TestQuickPinInteractor {
             val newPin = mock<SecurePin>()
             val initialPin = mock<SecurePin>()
             whenever(initialPin.contentEquals(newPin)).thenReturn(true)
+            stubDigits(newPin, mockedPin)
 
             // When
             interactor.setPin(newPin = newPin, initialPin = initialPin).runFlowTest {
@@ -304,6 +311,28 @@ class TestQuickPinInteractor {
                     awaitItem()
                 )
             }
+        }
+    }
+
+    @Test
+    fun `Given matching PINs that are easy to guess, When setPin is called, Then it returns Failed and stores nothing`() {
+        coroutineRule.runTest {
+            whenever(resourceProvider.getString(R.string.quick_pin_weak))
+                .thenReturn(mockedWeakPinMessage)
+
+            interactor.setPin(
+                newPin = securePin(mockedWeakPin),
+                initialPin = securePin(mockedWeakPin),
+            ).runFlowTest {
+                assertEquals(
+                    QuickPinInteractorSetPinPartialState.Failed(
+                        errorMessage = mockedWeakPinMessage
+                    ),
+                    awaitItem()
+                )
+            }
+            verify(pinStorageController, never()).setPin(any<SecurePin>())
+            verify(sessionController, never()).unlock()
         }
     }
     //endregion
@@ -374,6 +403,26 @@ class TestQuickPinInteractor {
                     awaitItem()
                 )
             }
+        }
+    }
+
+    @Test
+    fun `Given a new PIN that is easy to guess, When changePin is called, Then it returns Failed and stores nothing`() {
+        coroutineRule.runTest {
+            whenever(resourceProvider.getString(R.string.quick_pin_weak))
+                .thenReturn(mockedWeakPinMessage)
+
+            interactor.changePin(
+                newPin = securePin(mockedWeakPin)
+            ).runFlowTest {
+                assertEquals(
+                    QuickPinInteractorSetPinPartialState.Failed(
+                        errorMessage = mockedWeakPinMessage
+                    ),
+                    awaitItem()
+                )
+            }
+            verify(pinStorageController, never()).setPin(any<SecurePin>())
         }
     }
     //endregion
@@ -536,11 +585,74 @@ class TestQuickPinInteractor {
         }
     //endregion
 
+    @Test
+    fun `Given repeated digits, runs and common PINs, When weakPinError is called, Then each is rejected`() {
+        whenever(authenticationConfig.commonPins).thenReturn(setOf("147258"))
+        whenever(resourceProvider.getString(R.string.quick_pin_weak))
+            .thenReturn(mockedWeakPinMessage)
+
+        listOf("000000", "123456", "654321", "147258").forEach { value ->
+            assertEquals(mockedWeakPinMessage, interactor.weakPinError(securePin(value)))
+        }
+    }
+
+    @Test
+    fun `Given a PIN that is not easy to guess, When weakPinError is called, Then it returns null`() {
+        whenever(authenticationConfig.commonPins).thenReturn(setOf("147258"))
+
+        assertNull(interactor.weakPinError(securePin("135792")))
+    }
+
+    @Test
+    fun `Given a device with a screen lock, When deviceLockNotice is called, Then it returns null`() {
+        whenever(deviceLockController.isDeviceSecure()).thenReturn(true)
+        whenever(authenticationConfig.requireDeviceSecure).thenReturn(true)
+
+        assertNull(interactor.deviceLockNotice())
+    }
+
+    @Test
+    fun `Given no screen lock and none required, When deviceLockNotice is called, Then it returns a Warning`() {
+        whenever(deviceLockController.isDeviceSecure()).thenReturn(false)
+        whenever(authenticationConfig.requireDeviceSecure).thenReturn(false)
+        whenever(resourceProvider.getString(R.string.quick_pin_device_lock_missing))
+            .thenReturn(mockedDeviceLockMissingMessage)
+
+        assertEquals(
+            DeviceLockNotice.Warning(mockedDeviceLockMissingMessage),
+            interactor.deviceLockNotice()
+        )
+    }
+
+    @Test
+    fun `Given no screen lock and one required, When deviceLockNotice is called, Then it returns Blocking`() {
+        whenever(deviceLockController.isDeviceSecure()).thenReturn(false)
+        whenever(authenticationConfig.requireDeviceSecure).thenReturn(true)
+        whenever(resourceProvider.getString(R.string.quick_pin_device_lock_required))
+            .thenReturn(mockedDeviceLockRequiredMessage)
+
+        assertEquals(
+            DeviceLockNotice.Blocking(mockedDeviceLockRequiredMessage),
+            interactor.deviceLockNotice()
+        )
+    }
+
     //region Mocked objects needed for tests.
-    private val mockedPin = "1234"
-    private val mockedNewPin = "5678"
+    private val mockedPin = "1357"
+    private val mockedNewPin = "5821"
+    private val mockedWeakPin = "1234"
+    private val mockedWeakPinMessage = "This PIN is too easy to guess"
+    private val mockedDeviceLockMissingMessage = "This device has no screen lock"
+    private val mockedDeviceLockRequiredMessage = "Set a screen lock"
     private val mockedInitialPin = "0000"
     private val mockedPinsDontMatchMessage = "Pins do not match"
     private val mockedInvalidPinMessage = "Invalid quick pin"
+
+    /** Lets a mocked [SecurePin] answer `readChars` as if it held [digits]. */
+    private fun stubDigits(pin: SecurePin, digits: String) {
+        whenever(pin.readChars<Boolean>(any())).thenAnswer { invocation ->
+            invocation.getArgument<(CharArray) -> Boolean>(0).invoke(digits.toCharArray())
+        }
+    }
     //endregion
 }

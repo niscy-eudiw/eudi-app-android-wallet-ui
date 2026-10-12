@@ -22,6 +22,7 @@ import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
+import eu.europa.ec.commonfeature.interactor.DeviceLockNotice
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorSetPinPartialState
@@ -70,7 +71,9 @@ data class State(
     val sheetContent: PinBottomSheetContent = PinBottomSheetContent.CancelConfirmation,
     val quickPinSize: Int = 6,
     val isLockedOut: Boolean = false,
-    val lockoutMessage: String? = null
+    val lockoutMessage: String? = null,
+    val deviceLockNotice: String? = null,
+    val isBlockedByDeviceLock: Boolean = false,
 ) : ViewState {
     val action: ScreenNavigateAction
         get() {
@@ -93,6 +96,9 @@ sealed class Event : ViewEvent {
     data object Init : Event()
     data class PinEntered(val pin: SecurePin) : Event()
     data object OnQuickPinLengthChanged : Event()
+
+    /** The screen came to the front, for example after the user set a screen lock in the settings. */
+    data object Resumed : Event()
     data object CancelPressed : Event()
     data object Finish : Event()
     sealed class BottomSheet : Event() {
@@ -184,17 +190,24 @@ class PinViewModel(
                 handleQuickPinLengthChanged()
             }
 
+            is Event.Resumed -> checkDeviceLock()
+
             is Event.PinEntered -> {
                 val state = viewState.value
-                if (state.isLockedOut) {
+                if (state.isLockedOut || state.isBlockedByDeviceLock) {
                     event.pin.close()
                     return
                 }
 
                 when (state.pinState) {
                     PinValidationState.ENTER -> {
-                        // Set state for re-enter phase
-                        setupReenterPhase(enteredPin = event.pin)
+                        val weakPinError = interactor.weakPinError(event.pin)
+                        if (weakPinError != null) {
+                            event.pin.close()
+                            showWeakPinError(message = weakPinError)
+                        } else {
+                            setupReenterPhase(enteredPin = event.pin)
+                        }
                     }
 
                     PinValidationState.REENTER -> {
@@ -288,6 +301,35 @@ class PinViewModel(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Shows [message] the way the other PIN errors are shown, after the field has cleared itself:
+     * the field clears when the PIN is complete, and that change of length removes any error set
+     * before it.
+     */
+    private fun showWeakPinError(message: String) {
+        setState { copy(isLoading = true) }
+        viewModelScope.launch {
+            artificialDelay()
+            setState { copy(quickPinError = message, isLoading = false) }
+        }
+    }
+
+    /**
+     * Shows whether the device lacks a screen lock while the wallet is being set up, and blocks PIN
+     * entry when the configuration requires one. Changing the PIN of a wallet already set up is not
+     * affected.
+     */
+    private fun checkDeviceLock() {
+        if (pinFlow == PinFlow.UPDATE) return
+        val notice = interactor.deviceLockNotice()
+        setState {
+            copy(
+                deviceLockNotice = notice?.message,
+                isBlockedByDeviceLock = notice is DeviceLockNotice.Blocking,
+            )
         }
     }
 

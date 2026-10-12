@@ -36,6 +36,8 @@ class TestSessionController {
         override val backgroundLockTimeout: Duration = 60.seconds
         override val idleLockTimeout: Duration = 5.minutes
         override val protectedFlowLockTimeout: Duration = 10.minutes
+        override val commonPins: Set<String> = emptySet()
+        override val requireDeviceSecure: Boolean = false
     }
 
     private lateinit var controller: SessionController

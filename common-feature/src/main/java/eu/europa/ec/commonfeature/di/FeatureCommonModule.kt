@@ -19,6 +19,7 @@ package eu.europa.ec.commonfeature.di
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthenticationController
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationController
+import eu.europa.ec.authenticationlogic.controller.device.DeviceLockController
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.controller.storage.BiometryStorageController
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
@@ -64,14 +65,16 @@ fun provideQuickPinInteractor(
     resourceProvider: ResourceProvider,
     pinThrottleController: PinThrottleController,
     authenticationConfig: AuthenticationConfig,
-    sessionController: SessionController
+    sessionController: SessionController,
+    deviceLockController: DeviceLockController,
 ): QuickPinInteractor {
     return QuickPinInteractorImpl(
         pinStorageController,
         resourceProvider,
         pinThrottleController,
         authenticationConfig,
-        sessionController
+        sessionController,
+        deviceLockController,
     )
 }
 

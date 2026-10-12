@@ -55,6 +55,18 @@ interface AuthenticationConfig {
      * [Duration.INFINITE] never locks during such a flow.
      */
     val protectedFlowLockTimeout: Duration
+
+    /**
+     * PINs refused when the user creates or changes the PIN, besides one digit repeated and ascending
+     * or descending runs, which are always refused.
+     */
+    val commonPins: Set<String>
+
+    /**
+     * Whether the wallet can be set up only on a device with a screen lock. When false, a device
+     * without one gets a warning on the PIN screen and setup continues.
+     */
+    val requireDeviceSecure: Boolean
 }
 
 class AuthenticationConfigImpl : AuthenticationConfig {
@@ -67,4 +79,17 @@ class AuthenticationConfigImpl : AuthenticationConfig {
     override val backgroundLockTimeout: Duration = 60.seconds
     override val idleLockTimeout: Duration = 5.minutes
     override val protectedFlowLockTimeout: Duration = 10.minutes
+    override val commonPins: Set<String> = setOf(
+        "123123",
+        "121212",
+        "112233",
+        "123321",
+        "102030",
+        "147258",
+        "159753",
+        "789456",
+        "696969",
+        "000123",
+    )
+    override val requireDeviceSecure: Boolean = false
 }

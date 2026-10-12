@@ -129,6 +129,8 @@ You will also need to download the EUDI Verifier app. More information can be fo
 
 1. Launch the application
 2. You will be presented with a welcome screen where you will be asked to create a PIN for future logins.
+   PINs that are easy to guess, such as `000000`, `123456` or `654321`, are refused. If the device has
+   no screen lock, the PIN screen suggests setting one.
 
 Once unlocked, the Wallet locks again after 60 seconds in the background or 5 minutes without
 interaction, and asks for the PIN or a biometric. While an issuance, presentation or signing is in
