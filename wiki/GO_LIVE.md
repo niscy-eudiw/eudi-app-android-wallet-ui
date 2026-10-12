@@ -1345,6 +1345,8 @@ Production concerns:
 Production rules:
 
 * Keep only schemes required by your supported protocols.
+* Check the merged manifest for components that libraries export. The RQES SDK declares its container activity
+  exported; `assembly-logic` overrides it to `exported="false"`, because the app starts it explicitly.
 * Do not export internal navigation. Screens are reached by route inside the app. An exported intent filter for an
   internal scheme, or a `navDeepLink` on a navigation-graph destination, lets any app or web page open that screen
   without passing the wallet's login. If screen deep links are needed for UI tests, keep them in a debug-only
