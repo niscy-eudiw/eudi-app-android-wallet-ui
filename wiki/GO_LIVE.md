@@ -876,6 +876,14 @@ Production requirements for a trusted-list deployment:
 * Review the issuer-trust and status-list-trust policies against the deployment's requirements.
   For credential issuer trust, `ENFORCE` requires verified trust for issuance; `INFORM` makes this
   check nonblocking, including when issuer trust is unverified or untrusted.
+* Under `INFORM` a document is stored even when its issuer is not trusted. The app keeps Wallet
+  Core's verdict for each document (`issuerTrustResult` on the issuance event, stored in the
+  `issuerTrustRecords` table). Document details say "Issuer verified" only when the chain was
+  trusted; on the issuance success screen the issuer gets the verified badge only when every issued
+  document's issuer was trusted. A document whose issuer was untrusted, or not evaluated (in the
+  reference configuration, every non-PID document), says "Issuer not verified" on both screens.
+  The verdict is the one taken at issuance and is not re-evaluated later, for example when an
+  issuer leaves the trusted list.
 * Choose the reader-authentication policy required by the deployment.
 * Review trusted-list verification and cache settings against the deployment's trust requirements.
 * Test credential issuer trust for both PID and non-PID issuance, covering trusted, untrusted and

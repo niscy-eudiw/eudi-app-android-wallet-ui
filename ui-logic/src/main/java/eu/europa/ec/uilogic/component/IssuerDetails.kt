@@ -62,12 +62,15 @@ import java.net.URI
  * @property documentState The current state of the document (e.g., Issued or Revoked),
  * containing relevant dates.
  * @property isExpanded Boolean flag indicating whether the card is currently in its expanded state.
+ * @property issuerIsVerified True only when Wallet Core found the issuer trusted when the document
+ * was issued.
  */
 data class IssuerDetailsCardDataUi(
     val issuerName: String?,
     val issuerLogo: URI?,
     val documentState: DocumentState,
     val isExpanded: Boolean,
+    val issuerIsVerified: Boolean,
 ) {
     sealed class DocumentState {
         data class Issued(
@@ -82,6 +85,23 @@ data class IssuerDetailsCardDataUi(
 
         data object Revoked : DocumentState()
     }
+
+    /**
+     * The string resource ID for the line saying whether the issuer was verified.
+     */
+    val issuerVerificationTextResId: Int
+        @StringRes
+        get() = if (issuerIsVerified) {
+            R.string.document_details_issuer_card_issuer_verified_text
+        } else {
+            R.string.document_details_issuer_card_issuer_not_verified_text
+        }
+
+    /**
+     * The colour of the line saying whether the issuer was verified.
+     */
+    val issuerVerificationColorKey: ThemeColorKey
+        get() = if (issuerIsVerified) ThemeColorKey.Success else ThemeColorKey.Warning
 
     /**
      * The string resource ID for the message text displayed when the card is expanded.
@@ -240,6 +260,7 @@ fun IssuerDetailsCard(
                             text = data.issuerName
                                 ?: stringResource(R.string.document_details_issuer_card_unknown_issuer)
                         ),
+                        overlineText = stringResource(data.issuerVerificationTextResId),
                         supportingContentData = supportingContentData,
                         leadingContentData = leadingContent,
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
@@ -253,6 +274,11 @@ fun IssuerDetailsCard(
                     },
                     mainContentVerticalPadding = SPACING_MEDIUM.dp,
                     colors = colors,
+                    overlineTextStyle = {
+                        MaterialTheme.typography.labelMedium.copy(
+                            color = data.issuerVerificationColorKey.toColor()
+                        )
+                    },
                 )
             },
             cardExpandedContent = {
@@ -285,6 +311,15 @@ private fun IssuerDetailsCardExpanded(
         verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
         horizontalAlignment = Alignment.Start
     ) {
+        if (data.showsExpandedContentOnly) {
+            Text(
+                text = stringResource(data.issuerVerificationTextResId),
+                modifier = Modifier.fillMaxWidth(),
+                color = data.issuerVerificationColorKey.toColor(),
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+
         when (val docState = data.documentState) {
             is IssuerDetailsCardDataUi.DocumentState.Issued -> {
                 IssuedOnText(
@@ -383,42 +418,49 @@ private fun IssuerDetailsCardPreview() {
                 issuerLogo = null,
                 documentState = issuedState,
                 isExpanded = false,
+                issuerIsVerified = true,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = issuedState,
                 isExpanded = true,
+                issuerIsVerified = true,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = revokedState,
                 isExpanded = false,
+                issuerIsVerified = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = revokedState,
                 isExpanded = true,
+                issuerIsVerified = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = expiredState,
                 isExpanded = false,
+                issuerIsVerified = true,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = expiredState,
                 isExpanded = true,
+                issuerIsVerified = true,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = null,
                 issuerLogo = null,
                 documentState = issuedNoNameNoExpiryState,
                 isExpanded = false,
+                issuerIsVerified = false,
             )
         )
 

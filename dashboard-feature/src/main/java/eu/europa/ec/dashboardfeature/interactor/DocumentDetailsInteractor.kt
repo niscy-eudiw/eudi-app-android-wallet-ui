@@ -194,7 +194,8 @@ class DocumentDetailsInteractorImpl(
                             expirationDate = documentDetailsDomain.documentExpirationDate
                         )
                     },
-                    isExpanded = wasIssuerDetailsExpanded ?: false
+                    isExpanded = wasIssuerDetailsExpanded ?: false,
+                    issuerIsVerified = walletCoreDocumentsController.isIssuerTrusted(documentId),
                 )
 
                 emit(

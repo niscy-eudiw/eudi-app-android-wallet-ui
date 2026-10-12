@@ -72,6 +72,7 @@ import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -141,6 +142,7 @@ class TestDocumentDetailsInteractor {
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
         whenever(configLogic.forcePidActivation).thenReturn(true)
+        runBlocking { mockIsIssuerTrusted(isTrusted = false) }
     }
 
     @After
@@ -194,6 +196,40 @@ class TestDocumentDetailsInteractor {
                         documentDetailsDomain = mockedBasicPidDomain,
                         documentIsBookmarked = false,
                         documentCredentialsInfoUi = documentCredentialsInfoUi,
+                    ),
+                    awaitItem()
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `Given the issuer was trusted at issuance, When getDocumentDetails is called, Then the issuer is shown as verified`() {
+        coroutineRule.runTest {
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentDetailsStrings(
+                resourceProvider = resourceProvider,
+            )
+
+            val mockedPidWithBasicFields = getMockedPidWithBasicFields()
+            mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
+            mockIsDocumentLowOnCredentialsCall(response = false)
+            mockRetrieveBookmarkCall(response = false)
+            mockIsDocumentRevoked(isRevoked = false)
+            mockIsIssuerTrusted(isTrusted = true)
+
+            interactor.getDocumentDetails(
+                documentId = mockedPidId,
+                wasIssuerDetailsExpanded = null,
+            ).runFlowTest {
+                assertEquals(
+                    DocumentDetailsInteractorPartialState.Success(
+                        issuerDetails = getMockedIssuerDetailsCardDataUi(issuerIsVerified = true),
+                        documentDetailsDomain = mockedBasicPidDomain,
+                        documentIsBookmarked = false,
+                        documentCredentialsInfoUi = getMockedDocumentCredentialsInfoUi(
+                            resourceProvider = resourceProvider,
+                        ),
                     ),
                     awaitItem()
                 )
@@ -1663,6 +1699,10 @@ class TestDocumentDetailsInteractor {
         whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
     }
 
+    private suspend fun mockIsIssuerTrusted(isTrusted: Boolean) {
+        whenever(walletCoreDocumentsController.isIssuerTrusted(any())).thenReturn(isTrusted)
+    }
+
     private suspend fun mockIsDocumentLowOnCredentialsCall(response: Boolean) {
         whenever(walletCoreDocumentsController.isDocumentLowOnCredentials(any()))
             .thenReturn(response)
@@ -1696,12 +1736,14 @@ class TestDocumentDetailsInteractor {
             expirationDate = mockedFormattedExpirationDate
         ),
         isExpanded: Boolean = false,
+        issuerIsVerified: Boolean = false,
     ): IssuerDetailsCardDataUi {
         return IssuerDetailsCardDataUi(
             issuerName = issuerName,
             issuerLogo = issuerLogo,
             documentState = documentState,
             isExpanded = isExpanded,
+            issuerIsVerified = issuerIsVerified,
         )
     }
 

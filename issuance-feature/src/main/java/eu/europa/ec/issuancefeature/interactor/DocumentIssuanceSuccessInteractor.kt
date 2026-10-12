@@ -33,8 +33,10 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
+import eu.europa.ec.uilogic.component.ThemeColorKey
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.net.URI
@@ -71,7 +73,7 @@ class DocumentIssuanceSuccessInteractorImpl(
 
             var issuerName =
                 resourceProvider.getString(R.string.issuance_success_header_issuer_default_name)
-            val issuerIsTrusted = false
+            var allIssuersTrusted = true
             var issuerLogo: URI? = null
 
             val userLocale = resourceProvider.getLocale()
@@ -80,6 +82,8 @@ class DocumentIssuanceSuccessInteractorImpl(
                 try {
                     val document =
                         walletCoreDocumentsController.getDocumentById(documentId = documentId) as IssuedDocument
+
+                    val documentIssuerIsTrusted = isIssuerTrusted(documentId)
 
                     val localizedIssuerMetadata = document.localizedIssuerMetadata(userLocale)
 
@@ -113,9 +117,16 @@ class DocumentIssuanceSuccessInteractorImpl(
                         header = ListItemDataUi(
                             itemId = documentId,
                             mainContentData = ListItemMainContentDataUi.Text(text = document.name),
-                            supportingContentData = ListItemSupportingContentDataUi.Text(
-                                text = resourceProvider.getString(R.string.document_success_collapsed_supporting_text),
-                            ),
+                            supportingContentData = if (documentIssuerIsTrusted) {
+                                ListItemSupportingContentDataUi.Text(
+                                    text = resourceProvider.getString(R.string.document_success_collapsed_supporting_text),
+                                )
+                            } else {
+                                ListItemSupportingContentDataUi.Text(
+                                    text = resourceProvider.getString(R.string.issuance_success_document_issuer_not_verified_text),
+                                    textColorKey = ThemeColorKey.Warning,
+                                )
+                            },
                             trailingContentData = ListItemTrailingContentDataUi.Icon(
                                 iconData = AppIcons.KeyboardArrowDown
                             )
@@ -125,6 +136,9 @@ class DocumentIssuanceSuccessInteractorImpl(
                     )
 
                     documentsUi.add(documentUi)
+                    if (!documentIssuerIsTrusted) {
+                        allIssuersTrusted = false
+                    }
                 } catch (_: Exception) {
                 }
             }
@@ -138,7 +152,7 @@ class DocumentIssuanceSuccessInteractorImpl(
                 description = headerConfigDescription,
                 relyingPartyData = RelyingPartyDataUi(
                     logo = issuerLogo,
-                    isVerified = issuerIsTrusted,
+                    isVerified = documentsUi.isNotEmpty() && allIssuersTrusted,
                     name = issuerName,
                     uniqueId = null,
                     description = null,
@@ -158,4 +172,17 @@ class DocumentIssuanceSuccessInteractorImpl(
             )
         }
     }
+
+    /**
+     * The stored issuer-trust verdict for [documentId]. A lookup that fails reads as not trusted, so
+     * the document is still listed, marked as from an unverified issuer.
+     */
+    private suspend fun isIssuerTrusted(documentId: DocumentId): Boolean =
+        try {
+            walletCoreDocumentsController.isIssuerTrusted(documentId = documentId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
 }

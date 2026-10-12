@@ -20,25 +20,36 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
+import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
+import eu.europa.ec.storagelogic.model.IssuerTrustRecord
 import eu.europa.ec.storagelogic.model.RevokedDocument
 import eu.europa.ec.storagelogic.model.TransactionLog
 
+/**
+ * The app's Room database. Schema changes bump the version and rely on the destructive fallback in
+ * `provideAppDatabase`, which recreates the tables; no migrations are kept.
+ *
+ * Version 2 was used from March to September 2026 with a different schema and is skipped: a
+ * database still at that version would otherwise be opened as current and fail Room's schema check.
+ */
 @Database(
     entities = [
         Bookmark::class,
         RevokedDocument::class,
         TransactionLog::class,
-        FailedReIssuedDocument::class
+        FailedReIssuedDocument::class,
+        IssuerTrustRecord::class,
     ],
-    version = 1
+    version = 3
 )
 abstract class DatabaseService : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun revokedDocumentDao(): RevokedDocumentDao
     abstract fun transactionLogDao(): TransactionLogDao
     abstract fun failedReIssuedDocumentDao(): FailedReIssuedDocumentDao
+    abstract fun issuerTrustDao(): IssuerTrustDao
 }

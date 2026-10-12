@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.di.getOrCreateKoinScope
 import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getLocalizedDisplayName
 import eu.europa.ec.corelogic.extension.toIssuerRegistrationDomain
+import eu.europa.ec.corelogic.extension.toIssuerTrustVerdict
 import eu.europa.ec.corelogic.extension.toUntrustedIssuerReasonOrNull
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.DocumentCategories
@@ -63,17 +64,25 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
+import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
+import eu.europa.ec.storagelogic.model.IssuerTrustRecord
+import eu.europa.ec.storagelogic.model.IssuerTrustVerdict
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -236,6 +245,13 @@ interface WalletCoreDocumentsController {
 
     suspend fun isDocumentRevoked(id: String): Boolean
 
+    /**
+     * Whether Wallet Core found the issuer of [documentId] trusted when the document was issued.
+     * False when the chain was not trusted, when nothing was evaluated, and when no verdict was
+     * recorded (documents issued before the verdict was kept).
+     */
+    suspend fun isIssuerTrusted(documentId: DocumentId): Boolean
+
     suspend fun resolveDocumentStatus(document: IssuedDocument): Result<Status>
 
     suspend fun isDocumentBookmarked(documentId: DocumentId): Boolean
@@ -257,6 +273,7 @@ class WalletCoreDocumentsControllerImpl(
     private val bookmarkDao: BookmarkDao,
     private val revokedDocumentDao: RevokedDocumentDao,
     private val failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
+    private val issuerTrustDao: IssuerTrustDao,
     private val prefKeys: PrefKeys,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     walletCore: EudiWallet? = null,
@@ -581,6 +598,7 @@ class WalletCoreDocumentsControllerImpl(
             .kotlinResult
             .onSuccess {
                 revokedDocumentDao.delete(documentId)
+                issuerTrustDao.delete(documentId)
                 emit(DeleteDocumentPartialState.Success)
             }
             .onFailure {
@@ -751,15 +769,21 @@ class WalletCoreDocumentsControllerImpl(
                             }
 
                             is DeferredIssueResult.DocumentIssued -> {
-                                trySendBlocking(
-                                    IssueDeferredDocumentPartialState.Issued(
-                                        DeferredDocumentDataDomain(
-                                            documentId = deferredIssuanceResult.documentId,
-                                            formatType = deferredIssuanceResult.docType,
-                                            docName = deferredIssuanceResult.name
+                                launch(start = CoroutineStart.ATOMIC) {
+                                    storeIssuerTrust(
+                                        documentId = deferredIssuanceResult.documentId,
+                                        verdict = deferredIssuanceResult.issuerTrustResult.toIssuerTrustVerdict(),
+                                    )
+                                    trySendBlocking(
+                                        IssueDeferredDocumentPartialState.Issued(
+                                            DeferredDocumentDataDomain(
+                                                documentId = deferredIssuanceResult.documentId,
+                                                formatType = deferredIssuanceResult.docType,
+                                                docName = deferredIssuanceResult.name
+                                            )
                                         )
                                     )
-                                )
+                                }
                             }
 
                             is DeferredIssueResult.DocumentNotReady -> {
@@ -848,6 +872,26 @@ class WalletCoreDocumentsControllerImpl(
     override suspend fun isDocumentRevoked(id: String): Boolean =
         revokedDocumentDao.retrieve(id) != null
 
+    override suspend fun isIssuerTrusted(documentId: DocumentId): Boolean =
+        issuerTrustDao.retrieve(documentId)?.verdict == IssuerTrustVerdict.TRUSTED
+
+    /**
+     * Keeps the issuer-trust verdict for [documentId]. Wallet Core has already stored the document,
+     * so the write completes even if the issuance flow is no longer collected. A failed write leaves
+     * no record, which reads as not trusted, rather than turning a completed issuance into a
+     * reported failure.
+     */
+    private suspend fun storeIssuerTrust(documentId: DocumentId, verdict: IssuerTrustVerdict) {
+        withContext(NonCancellable) {
+            try {
+                issuerTrustDao.store(IssuerTrustRecord(identifier = documentId, verdict = verdict))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     override suspend fun resolveDocumentStatus(document: IssuedDocument): Result<Status> =
         eudiWallet.resolveStatus(document)
 
@@ -896,6 +940,11 @@ class WalletCoreDocumentsControllerImpl(
             )
         }
 
+    /**
+     * Turns Wallet Core's issuance events into [IssueDocumentsPartialState]s. Each issued document's
+     * issuer-trust verdict is stored as it arrives, and the outcome is reported only after those
+     * writes finish, because the success screen reads the stored verdicts.
+     */
     private fun ProducerScope<IssueDocumentsPartialState>.issuanceCallback(
         prioritizeDeferred: Boolean = true
     ): OpenId4VciManager.OnIssueEvent {
@@ -905,6 +954,7 @@ class WalletCoreDocumentsControllerImpl(
         val nonIssuedDocuments: MutableMap<FormatType, String> = mutableMapOf()
         val deferredDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
         val issuedDocuments: MutableMap<DocumentId, FormatType> = mutableMapOf()
+        val issuerTrustWrites: MutableList<Job> = mutableListOf()
 
         val listener = OpenId4VciManager.OnIssueEvent { event ->
             when (event) {
@@ -1003,69 +1053,78 @@ class WalletCoreDocumentsControllerImpl(
                 }
 
                 is IssueEvent.Finished -> {
+                    launch {
+                        issuerTrustWrites.joinAll()
 
-                    // event.issuedDocuments folds in deferred ids too — the Core emits
-                    // Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted
-                    // outcome is decided on the locally tracked *actually issued* documents.
-                    // Otherwise a batch of "one untrusted + one deferred from the same issuer"
-                    // would be treated as a partial success and navigate the user on the success screen with a deferred
-                    // (un-issued) id instead of the "Issuance blocked" sheet.
-                    if (untrustedDocuments.isNotEmpty() && issuedDocuments.isEmpty()) {
+                        // event.issuedDocuments folds in deferred ids too — the Core emits
+                        // Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted
+                        // outcome is decided on the locally tracked *actually issued* documents.
+                        // Otherwise a batch of "one untrusted + one deferred from the same issuer"
+                        // would be treated as a partial success and navigate the user on the success screen with a deferred
+                        // (un-issued) id instead of the "Issuance blocked" sheet.
+                        if (untrustedDocuments.isNotEmpty() && issuedDocuments.isEmpty()) {
+                            trySendBlocking(
+                                IssueDocumentsPartialState.IssuerNotTrusted(
+                                    reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE
+                                )
+                            )
+                            return@launch
+                        }
+
+                        if (untrustedDocuments.isNotEmpty()) {
+                            trySendBlocking(
+                                IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                                    issuedDocumentIds = issuedDocuments.keys.toList(),
+                                    untrustedDocuments = untrustedDocuments
+                                )
+                            )
+                            return@launch
+                        }
+
+                        if (deferredDocuments.isNotEmpty() && (prioritizeDeferred || (issuedDocuments.isEmpty()))) {
+                            trySendBlocking(
+                                IssueDocumentsPartialState.DeferredSuccess(
+                                    deferredDocuments = deferredDocuments
+                                )
+                            )
+                            return@launch
+                        }
+
+                        if (event.issuedDocuments.isEmpty()) {
+                            trySendBlocking(
+                                IssueDocumentsPartialState.Failure(
+                                    errorMessage = documentErrorMessage
+                                )
+                            )
+                            return@launch
+                        }
+
+                        if (event.issuedDocuments.size == totalDocumentsToBeIssued) {
+                            trySendBlocking(
+                                IssueDocumentsPartialState.Success(
+                                    documentIds = event.issuedDocuments
+                                )
+                            )
+                            return@launch
+                        }
+
                         trySendBlocking(
-                            IssueDocumentsPartialState.IssuerNotTrusted(
-                                reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE
+                            IssueDocumentsPartialState.PartialSuccess(
+                                documentIds = event.issuedDocuments,
+                                nonIssuedDocuments = nonIssuedDocuments
                             )
                         )
-                        return@OnIssueEvent
                     }
-
-                    if (untrustedDocuments.isNotEmpty()) {
-                        trySendBlocking(
-                            IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
-                                issuedDocumentIds = issuedDocuments.keys.toList(),
-                                untrustedDocuments = untrustedDocuments
-                            )
-                        )
-                        return@OnIssueEvent
-                    }
-
-                    if (deferredDocuments.isNotEmpty() && (prioritizeDeferred || (issuedDocuments.isEmpty()))) {
-                        trySendBlocking(
-                            IssueDocumentsPartialState.DeferredSuccess(
-                                deferredDocuments = deferredDocuments
-                            )
-                        )
-                        return@OnIssueEvent
-                    }
-
-                    if (event.issuedDocuments.isEmpty()) {
-                        trySendBlocking(
-                            IssueDocumentsPartialState.Failure(
-                                errorMessage = documentErrorMessage
-                            )
-                        )
-                        return@OnIssueEvent
-                    }
-
-                    if (event.issuedDocuments.size == totalDocumentsToBeIssued) {
-                        trySendBlocking(
-                            IssueDocumentsPartialState.Success(
-                                documentIds = event.issuedDocuments
-                            )
-                        )
-                        return@OnIssueEvent
-                    }
-
-                    trySendBlocking(
-                        IssueDocumentsPartialState.PartialSuccess(
-                            documentIds = event.issuedDocuments,
-                            nonIssuedDocuments = nonIssuedDocuments
-                        )
-                    )
                 }
 
                 is IssueEvent.DocumentIssued -> {
                     issuedDocuments[event.documentId] = event.docType
+                    issuerTrustWrites += launch(start = CoroutineStart.ATOMIC) {
+                        storeIssuerTrust(
+                            documentId = event.documentId,
+                            verdict = event.issuerTrustResult.toIssuerTrustVerdict(),
+                        )
+                    }
                 }
 
                 is IssueEvent.Started -> {

@@ -156,6 +156,12 @@ start the issuance again. The timeouts are set in `AuthenticationConfig`; see
 6. After submission, a success screen will appear. Tap "Close".
 7. You will be redirected back to the "Documents" tab within the "Dashboard" screen. The flow is now complete.
 
+Both flows end on a success screen that shows whether the issuer was verified: the issuer carries a
+verified badge only when its certificate chain was trusted, and each document from an issuer that was
+not verified is marked "Issuer not verified". In the reference configuration only the PID issuer is
+checked against the trusted list, so other documents are marked. The document's details show the
+same.
+
 With **Check Registration Certificates** enabled in Settings, both issuance flows require the
 provider to be registered for what it offers: if its registration certificate is missing, cannot be
 validated, or does not cover the offered document, the flow stops on an "Issuance blocked" sheet and

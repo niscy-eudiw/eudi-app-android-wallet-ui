@@ -22,6 +22,7 @@ import eu.europa.ec.businesslogic.controller.crypto.CryptoController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
+import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import eu.europa.ec.storagelogic.service.DatabaseService
@@ -74,3 +75,7 @@ fun provideTransactionLogDao(service: DatabaseService): TransactionLogDao =
 @Single
 fun provideFailedReIssuedDocumentDao(service: DatabaseService): FailedReIssuedDocumentDao =
     service.failedReIssuedDocumentDao()
+
+@Single
+fun provideIssuerTrustDao(service: DatabaseService): IssuerTrustDao =
+    service.issuerTrustDao()

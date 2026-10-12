@@ -547,6 +547,7 @@ private fun DocumentDetailsScreenPreview() {
                     expirationDate = "22 March 2030"
                 ),
                 isExpanded = true,
+                issuerIsVerified = true,
             ),
             documentCredentialsInfoUi = DocumentCredentialsInfoUi(
                 availableCredentials = availableCredentials,
