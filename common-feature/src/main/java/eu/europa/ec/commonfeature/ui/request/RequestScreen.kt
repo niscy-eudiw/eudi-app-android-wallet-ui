@@ -1092,13 +1092,7 @@ private fun previewTransactionData(
     scenario: TransactionDataPreviewScenario,
     isExpanded: Boolean,
 ): RequestTransactionDataUi {
-    val rows = listOf(
-        previewTransactionField(
-            itemId = "$sectionId/framework",
-            label = stringResource(R.string.request_transaction_trust_framework),
-            value = stringResource(R.string.request_transaction_trust_framework_value),
-        ),
-    ) + when (scenario) {
+    val rows = when (scenario) {
         TransactionDataPreviewScenario.Approval -> previewApprovalRows(sectionId = sectionId)
         TransactionDataPreviewScenario.ReferencedQes -> previewReferencedQesRows(sectionId = sectionId)
         TransactionDataPreviewScenario.InlineQes -> previewInlineQesRows(sectionId = sectionId)

@@ -664,6 +664,27 @@ Rules:
 * Do not include development verifier URLs in production.
 * If a verifier is not trusted, the user interface must clearly show that status before disclosure.
 
+### Transaction Data
+
+A presentation request can carry signing transaction data (`QES_APPROVAL` and `QES`). The consent
+screen shows it in a **Data to be signed** section, open by default. The section lists every field
+of the transaction data, since Wallet Core binds the transaction data as received into the
+response; a QES approval, for example, returns a hash of the whole object. The signed attributes,
+which the relying party chooses freely, are marked "Chosen by the relying party; not checked by
+the wallet". A document the request carries inline is shown as included, with its type and size;
+its content is not displayed. A document given by reference can be opened in the browser.
+
+The wallet displays hashes and checksums as the relying party supplied them. It does not verify
+them: neither the app nor Wallet Core compares a document opened from its link with them, so the
+screen cannot show that a hash belongs to that document. **Share** does not depend on the section
+having been read.
+
+The transaction log keeps the transaction data as received, decoded but otherwise unchanged,
+including one-time passwords for document access and the whole content of a document carried
+inline, so a large document makes a large entry. Transaction history shows the same fields
+without the one-time passwords and without the open action. Decide whether one-time passwords
+and inline documents belong in the log at all for your deployment.
+
 ### Relay Attack Risk In Presentation Flows
 
 Production presentation flows must explicitly account for relay attacks. This is especially

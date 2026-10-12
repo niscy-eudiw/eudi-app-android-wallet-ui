@@ -954,7 +954,7 @@ class TestRequestTransformer {
     // 1. Alternative combinations contain the same credential/query but different signing documents.
     //
     // Case 21 Expected Result:
-    // Each combination has only its own collapsed section and distinct IDs.
+    // Each combination has only its own expanded section and distinct IDs.
     @Test
     fun `Given Case 21, When transformToCombinationsUi is called, Then Case 21 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -990,7 +990,7 @@ class TestRequestTransformer {
             )
             assertEquals(listOf("Second.pdf"), combinations[1].transactionValues("Document"))
             val sections = combinations.map { combination -> combination.transactionData!! }
-            assertTrue(sections.all { section -> !section.details.isExpanded })
+            assertTrue(sections.all { section -> section.details.isExpanded })
             assertEquals(2, sections.map { section -> section.details.header.itemId }.toSet().size)
             assertTrue(sections.all { section ->
                 section.details.header.itemId.startsWith("transaction-data:")
@@ -1089,7 +1089,6 @@ class TestRequestTransformer {
 
             // Then
             val section = combination.transactionData!!
-            assertEquals(listOf("eIDAS"), combination.transactionValues("Trust framework"))
             assertEquals(listOf("1", "1"), combination.transactionValues("Number of signatures"))
             assertTrue(section.details.nestedItems.all { item ->
                 item.header.supportingContentData == null && item.header.trailingContentData == null

@@ -645,7 +645,7 @@ class TestPresentationRequestInteractor {
     // 1. A revoked PID and a valid mDL each carry transaction data.
     //
     // Case 15 Expected Result:
-    // Only the mDL contributes transaction rows in a collapsed section, without RP origin or identifier.
+    // Only the mDL contributes transaction rows in an expanded section, without RP origin or identifier.
     @Test
     fun `Given Case 15, When getRequestDocuments is called, Then Case 15 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -685,7 +685,7 @@ class TestPresentationRequestInteractor {
                     combination.documents.map { document -> document.domainPayload.docId })
                 val section = combination.transactionData!!
                 val rows = section.details.nestedItems.map { item -> item.header }
-                assertEquals(false, section.details.isExpanded)
+                assertEquals(true, section.details.isExpanded)
                 assertEquals(
                     listOf("1"),
                     rows.filter { row -> row.overlineText == "Number of signatures" }
@@ -751,7 +751,7 @@ class TestPresentationRequestInteractor {
             mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
             mockTransactionDataStrings(resourceProvider = resourceProvider)
             whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
-            whenever(resourceProvider.getString(R.string.request_transaction_trust_framework))
+            whenever(resourceProvider.getString(R.string.request_transaction_type))
                 .thenThrow(mockedExceptionWithMessage)
             mockGetAllIssuedDocumentsCall(response = listOf(getMockedPidWithBasicFields()))
             mockIsDocumentRevoked(isRevoked = false)

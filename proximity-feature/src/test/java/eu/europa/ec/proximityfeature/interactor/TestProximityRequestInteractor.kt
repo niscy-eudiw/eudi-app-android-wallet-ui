@@ -876,7 +876,7 @@ class TestProximityRequestInteractor {
     // 1. A represented match has transaction data.
     //
     // Case 18 Expected Result:
-    // The shared transformer prepares a collapsed section with payload fields and no RP origin or identifier.
+    // The shared transformer prepares an expanded section with payload fields and no RP origin or identifier.
     @Test
     fun `Given Case 18, When getRequestDocuments is called, Then Case 18 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -902,7 +902,7 @@ class TestProximityRequestInteractor {
                 // Then
                 val result = awaitItem() as ProximityRequestInteractorPartialState.Success
                 val section = result.combinationsUi.single().transactionData!!
-                assertEquals(false, section.details.isExpanded)
+                assertEquals(true, section.details.isExpanded)
                 assertEquals(
                     listOf(mockedTransactionQueryId),
                     section.details.nestedItems.filter { item -> item.header.overlineText == "Requested credentials" }
