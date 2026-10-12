@@ -203,9 +203,12 @@ checked, for example while offline, the document's details say so.
 11. A browser will open, confirming that the Verifier has accepted your request.
 12. Return to the app. The flow is now complete.
 
-If the relying party rejects the response, the Wallet displays "The Relying Party rejected the
-response." Select **Close** or use Android Back to leave the presentation. The Wallet returns to
-the screen that initiated it and opens the relying party's redirect, if supplied.
+If the relying party rejects the response, the Wallet displays "Your response was sent to the relying
+party, which then rejected it." Select **Close** or use Android Back to leave the presentation. The
+Wallet returns to the screen that initiated it and opens the relying party's redirect in the browser,
+if one is supplied and it is an `https` address. The same rule applies to the redirect after a
+successful presentation; a redirect with any other scheme is not opened, and the Wallet never treats
+it as one of its own links.
 
 When a presentation request includes transaction data for signing, each applicable option shows a
 **Data to be signed** section below its requested data. Expand the initially collapsed

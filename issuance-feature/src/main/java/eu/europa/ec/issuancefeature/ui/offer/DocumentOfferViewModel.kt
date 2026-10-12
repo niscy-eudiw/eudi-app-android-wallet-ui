@@ -52,6 +52,7 @@ import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
 import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
+import eu.europa.ec.uilogic.navigation.helper.isOpenableExternalLink
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -385,7 +386,7 @@ class DocumentOfferViewModel(
                 description = null,
             ),
             intendedUse = details?.intendedUse,
-            privacyPolicyUrl = details?.privacyPolicyUrl,
+            privacyPolicyUrl = details?.privacyPolicyUrl?.takeIf(::isOpenableExternalLink),
         )
     }
 

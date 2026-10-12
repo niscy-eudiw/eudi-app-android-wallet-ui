@@ -1377,6 +1377,17 @@ Current schemes include:
 | RQES OAuth redirect | `rqes://oauth/callback` |
 | RQES document retrieval | `eudi-rqes` |
 
+What the app enforces:
+
+* **Verifier redirects.** After a presentation, and after a rejection, the app opens the verifier's
+  redirect only when it is an `https` URL with a host, and then as an ordinary web link, normally in
+  the browser (`isOpenableExternalLink`, `Context.openInBrowser`). It never passes a redirect to
+  its own link handling, so a verifier cannot start an issuance, a presentation or a signing in the
+  wallet, and it opens nothing when Android would hand the link back to the wallet. Every other
+  scheme is ignored, and the user stays in the wallet.
+* **Privacy-policy links** from a verifier's or an issuer's registration certificate follow the same
+  rule: one that is not `https` is not shown as a link.
+
 Production concerns:
 
 * Many manifest filters use wildcard hosts (`*`).
@@ -1387,6 +1398,9 @@ Production concerns:
 Production rules:
 
 * Keep only schemes required by your supported protocols.
+* Keep verifier redirects out of the wallet's link handling. If you add `https` App Links to the
+  wallet, keep relying parties' domains out of them: a redirect that only the wallet can open is
+  not opened, and one that the wallet shares with another app shows Android's app chooser.
 * Expect any link to arrive out of turn: a scheme exported to browsers can be opened by any web page. The
   app ignores an RQES callback or document link that the RQES SDK refuses (for example a callback with no
   signing session in progress) rather than letting the SDK's exception end the process.
@@ -2490,6 +2504,8 @@ Before release candidate approval, test:
 * Remote presentation rejection with and without a redirect. Confirm that **Close** and Android Back
   both exit to the initiating screen, including when the presentation starts during issuance. When a
   redirect is supplied, confirm it opens and returning to the Wallet does not reopen the presentation.
+  Confirm that a redirect that is not `https` opens nothing, after a presentation and after a
+  rejection.
 * Presentation from a verifier with no valid registration certificate, and from one asking beyond
   its registered scope.
 * Relayed OpenID4VP request and response handling.

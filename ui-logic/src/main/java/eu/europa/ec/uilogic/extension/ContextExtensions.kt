@@ -20,7 +20,9 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import eu.europa.ec.uilogic.container.EudiComponentActivity
@@ -61,6 +63,32 @@ fun Context.findActivity(): ComponentActivity {
 
 private fun Context.clearPendingIntent() {
     (this as? EudiComponentActivity)?.cacheIntent(null)
+}
+
+/**
+ * Opens [uri] as a link from a web page would be opened: with the app Android picks for it, normally
+ * the browser. The scheme is normalised to lower case first, since Android matches schemes
+ * case-sensitively. Does nothing when that app would be the wallet itself, so that the link cannot
+ * come back into the wallet's own link handling, or when no app can open it.
+ */
+fun Context.openInBrowser(uri: Uri) {
+    val intent = Intent(Intent.ACTION_VIEW)
+        .setDataAndNormalize(uri)
+        .addCategory(Intent.CATEGORY_BROWSABLE)
+    try {
+        val handler = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.resolveActivity(
+                intent,
+                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong())
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        }?.activityInfo?.packageName
+        if (handler == packageName) return
+        startActivity(intent)
+    } catch (_: Exception) {
+    }
 }
 
 /**

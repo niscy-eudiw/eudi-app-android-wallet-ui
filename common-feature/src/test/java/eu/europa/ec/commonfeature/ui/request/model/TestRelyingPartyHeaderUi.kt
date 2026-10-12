@@ -134,6 +134,29 @@ class TestRelyingPartyHeaderUi {
     }
 
     @Test
+    fun `Given a privacy-policy link into one of the wallet's own flows, When toRelyingPartyHeaderUi is called, Then no link is shown`() {
+        listOf(
+            "eudi-rqes://sign?request_uri=https%3A%2F%2Fattacker.example%2Fdoc",
+            "openid-credential-offer://?credential_offer_uri=https%3A%2F%2Fattacker.example",
+            "http://nordicbank.example/privacy",
+        ).forEach { link ->
+            val relyingParty = buildRelyingPartyDomain(
+                name = mockedVerifierName,
+                uniqueId = mockedDetails.uniqueId,
+                hasTrustedAccessCertificate = true,
+                registration = RegistrationStatusDomain.NotVerified(
+                    reason = RegistrationFailureReasonDomain.CERTIFICATE_ABSENT,
+                    details = mockedDetails.copy(privacyPolicyUrl = link),
+                ),
+            )
+
+            val result = relyingParty.toRelyingPartyHeaderUi(fallbackName = mockedFallbackName)
+
+            assertNull(link, result.privacyPolicyUrl)
+        }
+    }
+
+    @Test
     fun `Given a not verified registration carrying parsed details, When toRelyingPartyHeaderUi is called, Then the registration sections render without the badge`() {
         // Given
         val relyingParty = buildRelyingPartyDomain(

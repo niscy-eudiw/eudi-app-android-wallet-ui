@@ -20,6 +20,7 @@ import eu.europa.ec.businesslogic.extension.ifEmptyOrNull
 import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
+import eu.europa.ec.uilogic.navigation.helper.isOpenableExternalLink
 
 /**
  * The request screen's who-is-asking header: the requester's identity block and the registration
@@ -56,7 +57,7 @@ fun RelyingPartyDomain.toRelyingPartyHeaderUi(fallbackName: String): RelyingPart
             description = null,
         ),
         intendedUse = details?.intendedUse,
-        privacyPolicyUrl = details?.privacyPolicyUrl,
+        privacyPolicyUrl = details?.privacyPolicyUrl?.takeIf(::isOpenableExternalLink),
     )
 }
 

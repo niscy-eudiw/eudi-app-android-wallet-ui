@@ -81,8 +81,8 @@ import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.component.wrap.WrapText
 import eu.europa.ec.uilogic.component.wrap.shadowsAtElevation1
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.cacheUri
 import eu.europa.ec.uilogic.extension.findActivity
+import eu.europa.ec.uilogic.extension.openInBrowser
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -144,8 +144,8 @@ fun DocumentSuccessScreen(
                         )
                     }
 
-                    is Effect.Navigation.DeepLink -> {
-                        context.cacheUri(navigationEffect.link)
+                    is Effect.Navigation.OpenRedirect -> {
+                        navigationEffect.link?.let { link -> context.openInBrowser(link) }
                         navigationEffect.routeToPop?.let {
                             navController.popBackStack(
                                 route = it,

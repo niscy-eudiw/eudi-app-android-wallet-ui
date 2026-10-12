@@ -94,7 +94,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapSelectableCard
 import eu.europa.ec.uilogic.component.wrap.WrapText
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
-import eu.europa.ec.uilogic.extension.openUrl
+import eu.europa.ec.uilogic.extension.openInBrowser
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -178,7 +178,7 @@ fun RequestScreen(
                     }
 
                     is Effect.Navigation.OpenUrlExternally -> {
-                        context.openUrl(uri = navigationEffect.url)
+                        context.openInBrowser(uri = navigationEffect.url)
                     }
                 }
             },
