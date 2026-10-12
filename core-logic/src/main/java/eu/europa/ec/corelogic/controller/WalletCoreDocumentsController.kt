@@ -60,12 +60,14 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
+import eu.europa.ec.eudi.wallet.statium.DefaultStatusReferenceExtractor
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
 import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
+import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
 import eu.europa.ec.storagelogic.model.IssuerTrustRecord
@@ -241,8 +243,6 @@ interface WalletCoreDocumentsController {
 
     fun getAllDocumentCategories(): DocumentCategories
 
-    suspend fun getRevokedDocumentIds(): List<String>
-
     suspend fun isDocumentRevoked(id: String): Boolean
 
     /**
@@ -253,6 +253,15 @@ interface WalletCoreDocumentsController {
     suspend fun isIssuerTrusted(documentId: DocumentId): Boolean
 
     suspend fun resolveDocumentStatus(document: IssuedDocument): Result<Status>
+
+    /**
+     * Whether [document] carries a status-list reference. A document without one has no status to
+     * check, so a failed resolution for it is not a failed refresh.
+     */
+    suspend fun hasStatusReference(document: IssuedDocument): Boolean
+
+    /** Whether the last attempt to refresh the status of [documentId] failed. */
+    suspend fun hasStatusRefreshFailed(documentId: DocumentId): Boolean
 
     suspend fun isDocumentBookmarked(documentId: DocumentId): Boolean
 
@@ -274,6 +283,7 @@ class WalletCoreDocumentsControllerImpl(
     private val revokedDocumentDao: RevokedDocumentDao,
     private val failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     private val issuerTrustDao: IssuerTrustDao,
+    private val statusRefreshFailureDao: StatusRefreshFailureDao,
     private val prefKeys: PrefKeys,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     walletCore: EudiWallet? = null,
@@ -599,6 +609,7 @@ class WalletCoreDocumentsControllerImpl(
             .onSuccess {
                 revokedDocumentDao.delete(documentId)
                 issuerTrustDao.delete(documentId)
+                statusRefreshFailureDao.delete(documentId)
                 emit(DeleteDocumentPartialState.Success)
             }
             .onFailure {
@@ -866,9 +877,6 @@ class WalletCoreDocumentsControllerImpl(
                 && documentRemainingCredentials <= 1
     }
 
-    override suspend fun getRevokedDocumentIds(): List<String> =
-        revokedDocumentDao.retrieveAll().map { it.identifier }
-
     override suspend fun isDocumentRevoked(id: String): Boolean =
         revokedDocumentDao.retrieve(id) != null
 
@@ -894,6 +902,12 @@ class WalletCoreDocumentsControllerImpl(
 
     override suspend fun resolveDocumentStatus(document: IssuedDocument): Result<Status> =
         eudiWallet.resolveStatus(document)
+
+    override suspend fun hasStatusReference(document: IssuedDocument): Boolean =
+        DefaultStatusReferenceExtractor.extractStatusReference(document).isSuccess
+
+    override suspend fun hasStatusRefreshFailed(documentId: DocumentId): Boolean =
+        statusRefreshFailureDao.retrieve(documentId) != null
 
     private fun issueDocumentsWithOpenId4VCI(
         configIds: List<String>,

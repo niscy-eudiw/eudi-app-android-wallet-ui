@@ -178,6 +178,8 @@ class DocumentDetailsInteractorImpl(
                     walletCoreDocumentsController.isDocumentBookmarked(documentId)
 
                 val documentIsRevoked = walletCoreDocumentsController.isDocumentRevoked(documentId)
+                val statusRefreshFailed =
+                    walletCoreDocumentsController.hasStatusRefreshFailed(documentId)
                 val issuerDetails = IssuerDetailsCardDataUi(
                     issuerName = issuerName,
                     issuerLogo = issuerLogo?.uri,
@@ -194,8 +196,9 @@ class DocumentDetailsInteractorImpl(
                             expirationDate = documentDetailsDomain.documentExpirationDate
                         )
                     },
-                    isExpanded = wasIssuerDetailsExpanded ?: false,
+                    isExpanded = wasIssuerDetailsExpanded == true || statusRefreshFailed,
                     issuerIsVerified = walletCoreDocumentsController.isIssuerTrusted(documentId),
+                    statusRefreshFailed = statusRefreshFailed,
                 )
 
                 emit(

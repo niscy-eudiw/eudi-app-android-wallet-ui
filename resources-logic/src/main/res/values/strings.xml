@@ -429,6 +429,7 @@
     <string name="document_details_issuer_card_unknown_issuer">@string/generic_unknown_issuer</string>
     <string name="document_details_issuer_card_issuer_verified_text">@string/generic_issuer_verified</string>
     <string name="document_details_issuer_card_issuer_not_verified_text">@string/generic_issuer_not_verified</string>
+    <string name="document_details_issuer_card_status_refresh_failed_text">The document\'s status could not be refreshed. The state shown is from the last successful check.</string>
     <string name="document_details_issuer_card_expires_on_text">Expires on:\ %1$s</string>
     <string name="document_details_issuer_card_revoked_text">Document revoked</string>
     <string name="document_details_issuer_card_issued_on_text">Issued on:\ %1$s</string>

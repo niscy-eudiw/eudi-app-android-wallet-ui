@@ -1222,7 +1222,24 @@ The app enqueues `RevocationWorkManager`, which:
 
 * Loads issued documents.
 * Resolves document status through Wallet Core.
-* Stores invalid or suspended document IDs.
+* Records a blocked document with the reason: `INVALID`, `SUSPENDED`, or `UNRECOGNISED` for an
+  application-specific or reserved status value the wallet cannot interpret. Every record blocks
+  presentation.
+* Treats `INVALID` as permanent: a later Valid does not clear it, and a later Suspended does not
+  downgrade it. A later Valid clears `SUSPENDED` and `UNRECOGNISED`.
+* Records a failed refresh (status list unreachable, malformed, or rejected by its signature check)
+  for a document that has a status reference, and clears it on the next successful check. Document
+  details then open the issuer card and say the status could not be refreshed. The document keeps
+  its last known state; a failed refresh does not block it.
+* Runs once at every app start as well as on its interval, so records lost when the database is
+  recreated after a schema change are rebuilt at the next start that has network access. Until then a
+  document revoked before the upgrade is not blocked.
+* Treats a document whose status reference Wallet Core cannot extract (no `status` claim, or a
+  mechanism other than a status list) as having no status, and records no failure for it.
+* Status-list trust follows `configureDocumentStatusResolver { configureTrust { … } }`. Under
+  `INFORM`, the reference default, a status-list token signed by an untrusted key is still accepted,
+  so whoever can serve the list can report a document as Valid. A recorded `INVALID` stays blocked,
+  but a suspension can be lifted this way. Use `ENFORCE` in production.
 * Broadcasts changes to refresh UI.
 
 Production decisions:
@@ -1236,8 +1253,12 @@ Production decisions:
 
 Recommended:
 
-* Keep background checks, but add observability around repeated failures.
-* Add UX for "status could not be refreshed" if required.
+* Keep background checks, but add observability around repeated failures. The failure record
+  (`statusRefreshFailures` table) keeps the time and reason of the last failure.
+* Decide whether a document whose status has not been refreshed for a long time should be blocked,
+  and how ecosystem-defined application-specific status values should be treated. The reference app
+  only reports the first and blocks on the second; both are decided in `revocationUpdateFor` and
+  `RevocationWorkManager` (`core-logic`).
 * Test revoked, suspended, valid, unreachable, malformed status list, and expired status token cases.
 
 ## RQES Configuration
@@ -1606,9 +1627,11 @@ Production gaps to address:
 The database stores:
 
 * Bookmarks.
-* Revoked document IDs.
+* Revoked document IDs and the status that blocked them.
 * Transaction logs.
 * Failed reissuance document IDs.
+* The issuer-trust verdict for each document.
+* The last failed status refresh for each document.
 
 Current risk:
 

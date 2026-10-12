@@ -64,6 +64,8 @@ import java.net.URI
  * @property isExpanded Boolean flag indicating whether the card is currently in its expanded state.
  * @property issuerIsVerified True only when Wallet Core found the issuer trusted when the document
  * was issued.
+ * @property statusRefreshFailed True when the last attempt to refresh the document's status failed,
+ * so the state shown is the one from the last successful check.
  */
 data class IssuerDetailsCardDataUi(
     val issuerName: String?,
@@ -71,6 +73,7 @@ data class IssuerDetailsCardDataUi(
     val documentState: DocumentState,
     val isExpanded: Boolean,
     val issuerIsVerified: Boolean,
+    val statusRefreshFailed: Boolean,
 ) {
     sealed class DocumentState {
         data class Issued(
@@ -320,6 +323,15 @@ private fun IssuerDetailsCardExpanded(
             )
         }
 
+        if (data.statusRefreshFailed) {
+            Text(
+                text = stringResource(R.string.document_details_issuer_card_status_refresh_failed_text),
+                modifier = Modifier.fillMaxWidth(),
+                color = ThemeColorKey.Warning.toColor(),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         when (val docState = data.documentState) {
             is IssuerDetailsCardDataUi.DocumentState.Issued -> {
                 IssuedOnText(
@@ -419,6 +431,7 @@ private fun IssuerDetailsCardPreview() {
                 documentState = issuedState,
                 isExpanded = false,
                 issuerIsVerified = true,
+                statusRefreshFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -426,6 +439,7 @@ private fun IssuerDetailsCardPreview() {
                 documentState = issuedState,
                 isExpanded = true,
                 issuerIsVerified = true,
+                statusRefreshFailed = true,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -433,6 +447,7 @@ private fun IssuerDetailsCardPreview() {
                 documentState = revokedState,
                 isExpanded = false,
                 issuerIsVerified = false,
+                statusRefreshFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -440,6 +455,7 @@ private fun IssuerDetailsCardPreview() {
                 documentState = revokedState,
                 isExpanded = true,
                 issuerIsVerified = false,
+                statusRefreshFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -447,6 +463,7 @@ private fun IssuerDetailsCardPreview() {
                 documentState = expiredState,
                 isExpanded = false,
                 issuerIsVerified = true,
+                statusRefreshFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
@@ -454,6 +471,7 @@ private fun IssuerDetailsCardPreview() {
                 documentState = expiredState,
                 isExpanded = true,
                 issuerIsVerified = true,
+                statusRefreshFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = null,
@@ -461,6 +479,7 @@ private fun IssuerDetailsCardPreview() {
                 documentState = issuedNoNameNoExpiryState,
                 isExpanded = false,
                 issuerIsVerified = false,
+                statusRefreshFailed = false,
             )
         )
 

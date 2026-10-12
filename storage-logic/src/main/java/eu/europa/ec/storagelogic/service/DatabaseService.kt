@@ -22,16 +22,19 @@ import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
 import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
+import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
 import eu.europa.ec.storagelogic.model.IssuerTrustRecord
 import eu.europa.ec.storagelogic.model.RevokedDocument
+import eu.europa.ec.storagelogic.model.StatusRefreshFailure
 import eu.europa.ec.storagelogic.model.TransactionLog
 
 /**
  * The app's Room database. Schema changes bump the version and rely on the destructive fallback in
- * `provideAppDatabase`, which recreates the tables; no migrations are kept.
+ * `provideAppDatabase`, which recreates the tables; no migrations are kept. Recreating the tables
+ * also drops the revocation records, which the revocation check run at app start rebuilds.
  *
  * Version 2 was used from March to September 2026 with a different schema and is skipped: a
  * database still at that version would otherwise be opened as current and fail Room's schema check.
@@ -43,8 +46,9 @@ import eu.europa.ec.storagelogic.model.TransactionLog
         TransactionLog::class,
         FailedReIssuedDocument::class,
         IssuerTrustRecord::class,
+        StatusRefreshFailure::class,
     ],
-    version = 3
+    version = 4
 )
 abstract class DatabaseService : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
@@ -52,4 +56,5 @@ abstract class DatabaseService : RoomDatabase() {
     abstract fun transactionLogDao(): TransactionLogDao
     abstract fun failedReIssuedDocumentDao(): FailedReIssuedDocumentDao
     abstract fun issuerTrustDao(): IssuerTrustDao
+    abstract fun statusRefreshFailureDao(): StatusRefreshFailureDao
 }

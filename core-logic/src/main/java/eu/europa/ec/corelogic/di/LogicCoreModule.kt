@@ -49,6 +49,7 @@ import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
 import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
+import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import io.ktor.client.HttpClient
 import org.koin.core.annotation.ComponentScan
@@ -163,6 +164,7 @@ fun provideWalletCoreDocumentsController(
     revokedDocumentDao: RevokedDocumentDao,
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     issuerTrustDao: IssuerTrustDao,
+    statusRefreshFailureDao: StatusRefreshFailureDao,
     prefKeys: PrefKeys
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
@@ -172,6 +174,7 @@ fun provideWalletCoreDocumentsController(
         revokedDocumentDao,
         failedReIssuedDocumentDao,
         issuerTrustDao,
+        statusRefreshFailureDao,
         prefKeys
     )
 

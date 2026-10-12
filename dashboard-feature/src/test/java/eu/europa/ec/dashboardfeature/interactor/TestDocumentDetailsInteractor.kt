@@ -142,7 +142,10 @@ class TestDocumentDetailsInteractor {
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
         whenever(configLogic.forcePidActivation).thenReturn(true)
-        runBlocking { mockIsIssuerTrusted(isTrusted = false) }
+        runBlocking {
+            mockIsIssuerTrusted(isTrusted = false)
+            mockHasStatusRefreshFailed(hasFailed = false)
+        }
     }
 
     @After
@@ -199,6 +202,61 @@ class TestDocumentDetailsInteractor {
                     ),
                     awaitItem()
                 )
+            }
+        }
+    }
+
+    @Test
+    fun `Given the last status refresh failed, When getDocumentDetails is called, Then the issuer card opens and says so`() {
+        coroutineRule.runTest {
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentDetailsStrings(
+                resourceProvider = resourceProvider,
+            )
+
+            val mockedPidWithBasicFields = getMockedPidWithBasicFields()
+            mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
+            mockIsDocumentLowOnCredentialsCall(response = false)
+            mockRetrieveBookmarkCall(response = false)
+            mockIsDocumentRevoked(isRevoked = false)
+            mockHasStatusRefreshFailed(hasFailed = true)
+
+            interactor.getDocumentDetails(
+                documentId = mockedPidId,
+                wasIssuerDetailsExpanded = null,
+            ).runFlowTest {
+                val success = awaitItem() as DocumentDetailsInteractorPartialState.Success
+
+                assertEquals(
+                    getMockedIssuerDetailsCardDataUi(isExpanded = true, statusRefreshFailed = true),
+                    success.issuerDetails
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `Given a collapsed card and a failed status refresh, When getDocumentDetails is called again, Then the card opens`() {
+        coroutineRule.runTest {
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentDetailsStrings(
+                resourceProvider = resourceProvider,
+            )
+
+            val mockedPidWithBasicFields = getMockedPidWithBasicFields()
+            mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
+            mockIsDocumentLowOnCredentialsCall(response = false)
+            mockRetrieveBookmarkCall(response = false)
+            mockIsDocumentRevoked(isRevoked = false)
+            mockHasStatusRefreshFailed(hasFailed = true)
+
+            interactor.getDocumentDetails(
+                documentId = mockedPidId,
+                wasIssuerDetailsExpanded = false,
+            ).runFlowTest {
+                val success = awaitItem() as DocumentDetailsInteractorPartialState.Success
+
+                assertEquals(true, success.issuerDetails.isExpanded)
             }
         }
     }
@@ -1703,6 +1761,10 @@ class TestDocumentDetailsInteractor {
         whenever(walletCoreDocumentsController.isIssuerTrusted(any())).thenReturn(isTrusted)
     }
 
+    private suspend fun mockHasStatusRefreshFailed(hasFailed: Boolean) {
+        whenever(walletCoreDocumentsController.hasStatusRefreshFailed(any())).thenReturn(hasFailed)
+    }
+
     private suspend fun mockIsDocumentLowOnCredentialsCall(response: Boolean) {
         whenever(walletCoreDocumentsController.isDocumentLowOnCredentials(any()))
             .thenReturn(response)
@@ -1737,6 +1799,7 @@ class TestDocumentDetailsInteractor {
         ),
         isExpanded: Boolean = false,
         issuerIsVerified: Boolean = false,
+        statusRefreshFailed: Boolean = false,
     ): IssuerDetailsCardDataUi {
         return IssuerDetailsCardDataUi(
             issuerName = issuerName,
@@ -1744,6 +1807,7 @@ class TestDocumentDetailsInteractor {
             documentState = documentState,
             isExpanded = isExpanded,
             issuerIsVerified = issuerIsVerified,
+            statusRefreshFailed = statusRefreshFailed,
         )
     }
 

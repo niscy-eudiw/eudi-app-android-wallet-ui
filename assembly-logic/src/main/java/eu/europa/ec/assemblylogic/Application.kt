@@ -18,7 +18,9 @@ package eu.europa.ec.assemblylogic
 
 import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.ListenableWorker
+import androidx.work.OneTimeWorkRequest
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import eu.europa.ec.analyticslogic.controller.AnalyticsController
@@ -66,7 +68,17 @@ class Application : Application() {
         analyticsController.initialize(this)
     }
 
+    /**
+     * Schedules the background workers. The revocation check also runs once at every app start,
+     * so that a status change, or revocation records lost when the database is recreated after a
+     * schema change, is picked up without waiting for the periodic interval.
+     */
     private fun initializeWorkManagers() {
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            RevocationWorkManager.REVOCATION_ON_START_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequest.from(RevocationWorkManager::class.java)
+        )
         enqueuePeriodicWorker(
             RevocationWorkManager.REVOCATION_WORK_NAME,
             walletCoreConfig.revocationInterval,

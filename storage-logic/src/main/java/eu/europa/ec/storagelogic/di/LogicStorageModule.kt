@@ -24,6 +24,7 @@ import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
 import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
+import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import eu.europa.ec.storagelogic.service.DatabaseService
 import kotlinx.coroutines.Dispatchers
@@ -79,3 +80,7 @@ fun provideFailedReIssuedDocumentDao(service: DatabaseService): FailedReIssuedDo
 @Single
 fun provideIssuerTrustDao(service: DatabaseService): IssuerTrustDao =
     service.issuerTrustDao()
+
+@Single
+fun provideStatusRefreshFailureDao(service: DatabaseService): StatusRefreshFailureDao =
+    service.statusRefreshFailureDao()

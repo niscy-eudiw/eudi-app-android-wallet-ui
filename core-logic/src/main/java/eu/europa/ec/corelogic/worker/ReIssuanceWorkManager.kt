@@ -35,6 +35,11 @@ import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
 
+/**
+ * Re-issues documents whose credential policy says they are due. A revoked document is never
+ * re-issued: Wallet Core deletes the original after a successful re-issuance, and the new copy
+ * would carry no revocation record.
+ */
 @KoinWorker
 class ReIssuanceWorkManager(
     appContext: Context,
@@ -58,6 +63,7 @@ class ReIssuanceWorkManager(
 
             walletCoreDocumentsController
                 .getAllIssuedDocuments()
+                .filterNot { document -> walletCoreDocumentsController.isDocumentRevoked(document.id) }
                 .filter { document ->
                     when (val policy = document.credentialPolicy) {
                         is CredentialPolicy.LimitedTime -> document.isDueForLifetimeReIssue(
