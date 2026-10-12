@@ -16,13 +16,17 @@
 
 package eu.europa.ec.commonfeature.ui.trustmark.model
 
+/**
+ * What the Trust Mark screen shows. The certification paragraphs and the links in them are present
+ * only when the build is certified (`WalletCoreConfig.isWalletCertified`).
+ */
 data class TrustMarkUi(
     val imageUrl: String?,
     val text: String?,
     val certifiedWalletsUrl: String?,
     val walletSolutionUrl: String?,
-    val certificationDescription: TrustMarkParagraphUi,
-    val certificationInformationDescription: TrustMarkParagraphUi,
+    val certificationDescription: TrustMarkParagraphUi?,
+    val certificationInformationDescription: TrustMarkParagraphUi?,
 )
 
 data class TrustMarkParagraphUi(

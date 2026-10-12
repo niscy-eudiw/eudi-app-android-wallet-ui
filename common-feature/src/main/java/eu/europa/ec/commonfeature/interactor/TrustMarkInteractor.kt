@@ -57,20 +57,31 @@ class TrustMarkInteractorImpl(
         withContext(dispatcher) {
             runCatching<LoadTrustMarkPartialState> {
                 val trustMark = walletCoreTrustMarkController.getTrustMark().getOrThrow()
+                val certified = trustMark.isCertified
                 LoadTrustMarkPartialState.Success(
                     trustMark = TrustMarkUi(
                         imageUrl = resolveImageUrl(trustMark.imageUrl, trustMark.resourceUrl),
                         text = trustMark.localisedText,
-                        certifiedWalletsUrl = usableWebUrl(trustMark.certifiedWalletsUrl),
-                        walletSolutionUrl = usableWebUrl(trustMark.walletSolutionUrl),
-                        certificationDescription = linkedParagraph(
-                            textRes = R.string.trust_mark_certification_description,
-                            linkRes = R.string.trust_mark_certified_wallets_link,
-                        ),
-                        certificationInformationDescription = linkedParagraph(
-                            textRes = R.string.trust_mark_certification_information_description,
-                            linkRes = R.string.trust_mark_certification_information_link,
-                        )
+                        certifiedWalletsUrl = usableWebUrl(trustMark.certifiedWalletsUrl)
+                            ?.takeIf { certified },
+                        walletSolutionUrl = usableWebUrl(trustMark.walletSolutionUrl)
+                            ?.takeIf { certified },
+                        certificationDescription = if (certified) {
+                            linkedParagraph(
+                                textRes = R.string.trust_mark_certification_description,
+                                linkRes = R.string.trust_mark_certified_wallets_link,
+                            )
+                        } else {
+                            null
+                        },
+                        certificationInformationDescription = if (certified) {
+                            linkedParagraph(
+                                textRes = R.string.trust_mark_certification_information_description,
+                                linkRes = R.string.trust_mark_certification_information_link,
+                            )
+                        } else {
+                            null
+                        }
                     )
                 )
             }.getOrElse {

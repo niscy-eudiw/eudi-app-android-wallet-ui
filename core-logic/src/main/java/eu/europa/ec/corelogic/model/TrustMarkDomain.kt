@@ -23,4 +23,5 @@ data class TrustMarkDomain(
     val localisedText: String?,
     val certifiedWalletsUrl: String,
     val walletSolutionUrl: String,
+    val isCertified: Boolean,
 )

@@ -24,6 +24,7 @@ import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.trustmark.TrustMarkInformation
 import eu.europa.ec.eudi.wallet.trustmark.TrustMarkSource
+import eu.europa.ec.resourceslogic.R
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -208,14 +209,30 @@ interface WalletCoreConfig {
 
     /**
      * Provides the information used to display the wallet's Trust Mark and link to its
-     * certification page and the list of certified wallets.
+     * certification page and the list of certified wallets. The reference build bundles its Trust
+     * Mark resource ([trustMarkResource]), so `trustMarkResourceURL` is left empty; a build that
+     * lets Wallet Core fetch the resource sets it and uses [TrustMarkResourceSource.Remote].
      */
     val trustMarkSource: TrustMarkSource
         get() = TrustMarkSource.Static(
             information = TrustMarkInformation(
-                trustMarkResourceURL = "https://gist.githubusercontent.com/sraptis-scy/025334375fe26177d9a7bcb60fd8a93f/raw/TrustMarkResource.json",
+                trustMarkResourceURL = "",
                 listOfCertifiedWalletsURL = "https://eidas.ec.europa.eu/efda/wallet/certified",
                 walletSolutionInfoPageURL = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_SOLUTION_ID",
             )
         )
+
+    /**
+     * Where the Trust Mark's image and text come from. The reference build reads a sample bundled
+     * in the app, so a new install fetches no Trust Mark resource.
+     */
+    val trustMarkResource: TrustMarkResourceSource
+        get() = TrustMarkResourceSource.Bundled(resId = R.raw.trust_mark_resource)
+
+    /**
+     * Whether this wallet solution is certified. Only then does the Trust Mark screen say that it
+     * is and link to its certification. The reference build is not certified.
+     */
+    val isWalletCertified: Boolean
+        get() = false
 }

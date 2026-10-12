@@ -206,24 +206,28 @@ private fun Content(
                     imageUrl = safeTrustMark.imageUrl,
                     text = safeTrustMark.text,
                 )
-                LinkedParagraph(
-                    modifier = Modifier.fillMaxWidth(),
-                    paragraph = safeTrustMark.certificationDescription,
-                    trailingIcon = AppIcons.OpenNew,
-                    onClick = safeTrustMark.certifiedWalletsUrl?.takeIf { linksEnabled }
-                        ?.let { url ->
-                            { onEventSend(Event.OpenLink(url)) }
-                        },
-                )
-                LinkedParagraph(
-                    modifier = Modifier.fillMaxWidth(),
-                    paragraph = safeTrustMark.certificationInformationDescription,
-                    trailingIcon = AppIcons.OpenNew,
-                    onClick = safeTrustMark.walletSolutionUrl?.takeIf { linksEnabled }
-                        ?.let { url ->
-                            { onEventSend(Event.OpenLink(url)) }
-                        },
-                )
+                safeTrustMark.certificationDescription?.let { paragraph ->
+                    LinkedParagraph(
+                        modifier = Modifier.fillMaxWidth(),
+                        paragraph = paragraph,
+                        trailingIcon = AppIcons.OpenNew,
+                        onClick = safeTrustMark.certifiedWalletsUrl?.takeIf { linksEnabled }
+                            ?.let { url ->
+                                { onEventSend(Event.OpenLink(url)) }
+                            },
+                    )
+                }
+                safeTrustMark.certificationInformationDescription?.let { paragraph ->
+                    LinkedParagraph(
+                        modifier = Modifier.fillMaxWidth(),
+                        paragraph = paragraph,
+                        trailingIcon = AppIcons.OpenNew,
+                        onClick = safeTrustMark.walletSolutionUrl?.takeIf { linksEnabled }
+                            ?.let { url ->
+                                { onEventSend(Event.OpenLink(url)) }
+                            },
+                    )
+                }
             }
         }
     }
@@ -552,6 +556,18 @@ private class TrustMarkPreviewProvider : PreviewParameterProvider<State> {
                 mode = TrustMarkMode.About
             ),
             trustMark = previewTrustMark().copy(text = null),
+        ),
+        State(
+            config = TrustMarkUiConfig(
+                mode = TrustMarkMode.About
+            ),
+            trustMark = previewTrustMark().copy(
+                text = "Sample Trust Mark. This reference build is not certified.",
+                certifiedWalletsUrl = null,
+                walletSolutionUrl = null,
+                certificationDescription = null,
+                certificationInformationDescription = null,
+            ),
         ),
         State(
             config = TrustMarkUiConfig(

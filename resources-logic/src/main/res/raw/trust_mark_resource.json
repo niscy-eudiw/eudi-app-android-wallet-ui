@@ -1,0 +1,14 @@
+{
+  "text": {
+    "name": "Trust Mark user information, used for rendering in the EUDI Wallet user interface.",
+    "localisations": {
+      "en": "Sample Trust Mark. This reference build is not certified.",
+      "de": "Beispiel-Trust-Mark. Diese Referenzversion ist nicht zertifiziert.",
+      "fr": "Exemple de Trust Mark. Cette version de référence n'est pas certifiée."
+    }
+  },
+  "image": {
+    "url": "https://eidas.ec.europa.eu/efda/assets/img/header/eu-logo.svg",
+    "name": "eudi-wallet-trustmark-logo.png"
+  }
+}

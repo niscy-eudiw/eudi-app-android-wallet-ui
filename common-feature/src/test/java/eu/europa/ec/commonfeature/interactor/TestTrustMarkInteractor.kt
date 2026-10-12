@@ -89,6 +89,27 @@ class TestTrustMarkInteractor {
 
     //region getTrustMark
 
+    @Test
+    fun `Given a build that is not certified, When getTrustMark is called, Then no certification is claimed or linked`() {
+        coroutineRule.runTest {
+            mockTrustMarkCall(mockedTrustMark.copy(isCertified = false))
+
+            val result = interactor.getTrustMark()
+
+            assertEquals(
+                LoadTrustMarkPartialState.Success(
+                    mockedTrustMarkUi.copy(
+                        certifiedWalletsUrl = null,
+                        walletSolutionUrl = null,
+                        certificationDescription = null,
+                        certificationInformationDescription = null,
+                    )
+                ),
+                result
+            )
+        }
+    }
+
     // Case 1:
     // 1. The domain value includes localized text and absolute web URLs.
     // Case 1 Expected Result:
@@ -467,6 +488,7 @@ class TestTrustMarkInteractor {
         localisedText = mockedEnglishText,
         certifiedWalletsUrl = "https://eidas.ec.europa.eu/efda/wallet/certified",
         walletSolutionUrl = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_SOLUTION_ID",
+        isCertified = true,
     )
     private val mockedTrustMarkUi = TrustMarkUi(
         imageUrl = mockedTrustMark.imageUrl,
