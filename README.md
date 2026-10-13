@@ -2,7 +2,7 @@
 
 [![License: EUPL 1.2](https://img.shields.io/badge/License-EUPL%201.2-blue.svg)](https://joinup.ec.europa.eu/software/page/eupl)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-7F52FF.svg?logo=kotlin)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.06.00-4285F4.svg?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.09.00-4285F4.svg?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Android API](https://img.shields.io/badge/Android%20API-29%2B-3DDC84.svg?logo=android)](https://developer.android.com/about/versions/10)
 [![SonarCloud](https://img.shields.io/badge/SonarCloud-enabled-F3702A.svg?logo=sonarcloud)](https://sonarcloud.io)
 [![Dependency Check](https://img.shields.io/badge/Dependency--Check-enabled-005A9C.svg)](https://owasp.org/www-project-dependency-check/)
@@ -93,7 +93,7 @@ If you're planning to use this application in production, we recommend reviewing
 - Configure the application properly by following the guide [here](wiki/CONFIGURATION.md)
 - Follow the production go-live guide [here](wiki/GO_LIVE.md) before creating a release candidate.
 - The session lock suits your assurance level: the timeouts in `AuthenticationConfig`, and the screens it
-  treats as login and protected-flow screens in `ConfigUILogic`. See [wiki/GO_LIVE.md](wiki/GO_LIVE.md).
+  treats as login and protected-flow screens in `ConfigUILogic`. See [wiki/GO_LIVE.md](wiki/GO_LIVE.md#authentication-and-biometrics).
 - The Pin storage configuration matches your security requirements, or provide your own by following this guide [Pin Storage Configuration](wiki/CONFIGURATION.md#pin-storage-configuration)
 - The application meets the OWASP MASVS industry standard. Please refer to the following links for further information on the controls you must implement to ensure maximum compliance:
     - [OWASP MASVS](https://mas.owasp.org/MASVS/)
@@ -133,12 +133,14 @@ You will also need to download the EUDI Verifier app. More information can be fo
    no screen lock, the PIN screen suggests setting one.
 
 Once unlocked, the Wallet locks again after 60 seconds in the background or 5 minutes without
-interaction, and asks for the PIN or a biometric. While an issuance, presentation or signing is in
-progress it waits up to 10 minutes in the background, so that a visit to the issuer's website does
-not end the session. A link that arrives while the Wallet is locked, such as a presentation request
-or a credential offer, opens after you log in; if the Wallet locked in the middle of an issuance,
-start the issuance again. The timeouts are set in `AuthenticationConfig`; see
-[wiki/CONFIGURATION.md](wiki/CONFIGURATION.md).
+interaction (a touch, key press or screen-reader action on any of its screens or sheets), and asks
+for the PIN or a biometric. While an issuance, presentation or signing is in progress it waits up
+to 10 minutes in the background, so that a visit to the issuer's website does not end the session.
+The signing service's screens get the same 10 minutes, since the Wallet cannot see interaction
+there. A link that arrives while the Wallet is locked, such as a presentation request or a
+credential offer, opens after you log in; if the Wallet locked in the middle of an issuance, start
+the issuance again. The timeouts are set in `AuthenticationConfig`; see
+[wiki/CONFIGURATION.md](wiki/CONFIGURATION.md#pin-throttle-configuration).
 
 ### Issuance flow (Scoped - Wallet initiated)
 
@@ -162,15 +164,16 @@ start the issuance again. The timeouts are set in `AuthenticationConfig`; see
 The offer must come from an issuer the build is configured for: `issuer.eudiw.dev` or
 `issuer-backend.eudiw.dev` in the demo flavor, `ec.dev.issuer.eudiw.dev` or
 `dev.issuer-backend.eudiw.dev` in the dev flavor. An offer from any other issuer stops with "This
-offer comes from an issuer that this wallet is not set up to use". An offer included in the link is
-refused before the Wallet contacts anyone; one that the link points to is fetched only from a
-configured issuer.
+offer comes from an issuer that this wallet is not set up to use". When the offer is included in the
+link, the Wallet refuses it before contacting anyone; when the link points to the offer, the Wallet
+fetches it only from a configured issuer's address, and still refuses it if it names another
+issuer.
 
 Both flows end on a success screen that shows whether the issuer was verified: the issuer carries a
-verified badge only when its certificate chain was trusted, and each document from an issuer that was
-not verified is marked "Issuer not verified". In the reference configuration only the PID issuer is
-checked against the trusted list, so other documents are marked. The document's details show the
-same.
+verified badge only when every document added came from a trusted issuer, and each document whose
+issuer was not verified is marked "Issuer not verified". In the reference configuration only PID
+documents are checked against the trusted list, so every other document is marked, even one from
+the PID's issuer. The document's details show the same.
 
 If the issuer adds only some of the requested documents, the success screen lists the ones that were
 not added. If the Wallet cannot renew a document in the background, the document's details say so,
@@ -181,10 +184,10 @@ provider to be registered for what it offers: if its registration certificate is
 validated, or does not cover the offered document, the flow stops on an "Issuance blocked" sheet and
 nothing is added to the Wallet. The same applies to re-issuance, where the document you already hold
 is left untouched. With the setting off — the default — no registration is checked and none of this
-applies.
+applies. A change to this setting applies the next time the app starts.
 
-The Wallet checks each document's status list in the background, every 15 minutes and once each time
-the app starts. A revoked document can no longer be presented, and stays blocked even if its status later
+The Wallet checks each document's status list in the background, every 15 minutes, and once when the
+app starts in a new process (not on each return from the background). A revoked document can no longer be presented, and stays blocked even if its status later
 reads valid; a suspended document is blocked, and shown as suspended, until the issuer reinstates it.
 If the status could not be checked, for example while offline, the document's details say so.
 
@@ -260,7 +263,8 @@ documents from the picker and declines such requests.
    only while registration-certificate checking is enabled, a reader whose registration certificate
    is missing or cannot be validated raises a warning that keeps "Share" disabled until you
    acknowledge it. A reader that sends no reader authentication, or one that cannot be verified,
-   raises a warning in every configuration.
+   raises a warning in every configuration, and "Share" stays disabled until you acknowledge it. A
+   reader whose authentication fails verification receives no data even if you share.
    If the request includes your portrait, a notice says that it can be used as biometric data. The
    portrait is selected like the other attributes; while it stays selected, "Share" first asks you
    to confirm on a "Share your portrait?" sheet.
@@ -282,8 +286,9 @@ To erase everything:
 2. Tap "Reset wallet". A confirmation lists what will be deleted: your documents and their keys,
    your transaction history, and your PIN, settings and logs.
 3. Tap "Reset", then enter your PIN or use your biometric.
-4. The Wallet deletes the data and starts again as on first use: the welcome screen appears and you
-   create a new PIN.
+4. The Wallet deletes the data and starts again as on first use: the Trust Mark introduction
+   appears, then you create a new PIN. Settings return to their defaults; **Check Registration
+   Certificates** shows off again and takes effect the next time the app starts.
 
 See [wiki/GO_LIVE.md](wiki/GO_LIVE.md#data-deletion-and-factory-reset) for what each step removes.
 

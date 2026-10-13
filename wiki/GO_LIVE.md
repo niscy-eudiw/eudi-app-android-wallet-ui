@@ -444,6 +444,8 @@ interface WalletCoreConfig {
     val documentIssuanceConfig: DocumentIssuanceConfig
     val walletProviderHost: String
     val trustMarkSource: TrustMarkSource
+    val isRegistrationCheckEnabled: Boolean
+    val workerStopTimeout: Duration
 }
 ```
 
@@ -461,6 +463,8 @@ Current flavor implementations configure:
 * Reader trust store (ETSI trusted lists in both reference flavors).
 * ETSI trusted-list (LoTE) trust: one trust source shared by issuer trust, status-list signer
   trust, and reader authentication.
+* Wallet Core log level (`configureLogging`: `LEVEL_DEBUG` for debug builds, `LEVEL_INFO` for release;
+  see [Diagnostic logging](#diagnostic-logging)).
 
 ### Document Key Creation
 
@@ -551,7 +555,7 @@ core-logic/src/main/java/eu/europa/ec/corelogic/di/LogicCoreModule.kt
 inside `provideEudiWallet(...)`:
 
 ```kotlin
-EudiWallet(
+val eudiWallet = EudiWallet(
     context = context,
     config = walletCoreConfig.config,
     walletProvider = walletCoreAttestationProvider,
@@ -560,7 +564,9 @@ EudiWallet(
     withLogger(walletCoreLogController)
     withTransactionLogger(walletCoreTransactionLogController)
     withKtorHttpClientFactory { httpClient }
+    withDCAPIRegistration(walletCoreDCAPIRegistrationController)
 }
+eudiWallet.addTransferEventListener(walletCoreTransactionLogController)
 ```
 
 If production requires document key storage other than the default Android Keystore secure area,
@@ -573,7 +579,7 @@ customize the `EudiWallet.Builder` block. Wallet Core exposes the following exte
 | `withDocumentManager(...)` | Replaces the Wallet Core document manager. | Use only for advanced integrations that need full control over document lifecycle, storage, and key binding. |
 | `withWalletKeyManager(...)` | Replaces the key manager used for wallet attestation/client-attestation keys. | Use when wallet attestation keys must be stored, attested, or unlocked through a custom secure area or remote high-assurance key service. |
 | `DPopConfig.Custom(...)` in issuer configuration | Customizes OpenID4VCI DPoP key storage and unlock behavior. | Use when issuance proof-of-possession keys must be generated in a specific secure area, require user authentication, or satisfy issuer policy beyond `DPopConfig.Default`. |
-| `withPresentationManager(...)` | Replaces the default remote/proximity presentation manager. | Use only if the default OpenID4VP/proximity implementation does not meet production key-handling, transaction logging, or protocol policy. |
+| `withPresentationManager(...)` | Replaces the default remote/proximity presentation manager. | Use only if the default OpenID4VP/proximity implementation does not meet production key-handling, transaction logging, or protocol policy. A presentation manager supplied this way is not wrapped with Wallet Core's `PresentationLogger`: presentations then leave no transaction-history entry, and the app records no registration outcome, unless your implementation logs them. |
 
 Production implementation rules:
 
@@ -1015,7 +1021,9 @@ two directions differently, and the asymmetry is intentional:
   DC-API, that sends no reader authentication or one that does not verify), the request reaches the
   consent screen behind its own warning that the requester's identity could not be verified, with
   the same acknowledgement before sharing. This warning does not depend on the registration
-  setting.
+  setting. A reader whose authentication fails verification still receives an empty response
+  (status 10) after the user shares; see Reader authentication under
+  [ETSI Trusted Lists (LoTE)](#etsi-trusted-lists-lote).
 
 The verified indicator needs both layers: a trusted access certificate and a registration that did
 not fail validation.
@@ -2022,8 +2030,8 @@ under [SQLCipher Room Database](#sqlcipher-room-database).
 
 Wallet Core records a relying party's registration details in the entry even when the
 registration certificate failed its binding, validity or revocation checks, and does not record
-the outcome. The app records it
-beside the entry (`registrationCheck` in `transactionLogs`) when the request arrives, matching the
+the outcome. The app records it beside the entry (`registrationCheck` in `transactionLogs`) when
+the request arrives, matching the
 request to the pending entry Wallet Core has just written: in Wallet Core 0.31.0 its transaction
 listener is registered first and writes that entry before the app's listener sees the request.
 The app checks that the relying party in the entry is the one in the request before recording
@@ -2040,8 +2048,9 @@ every later entry would then read as not verified.
 
 When an entry carries details from a registration certificate (contacts, an identifier, an
 intermediary or registration fields) and the registration was not verified, its details say so
-and the deletion-request and DPA-report screens repeat the warning. When the certificate was issued to another party than
-the one that asked (`NOT_BOUND_TO_REQUESTER`), its contacts are not that party's, and no deletion
+and the deletion-request and DPA-report screens repeat the warning. When the certificate was
+issued to a party other than the one that asked (`NOT_BOUND_TO_REQUESTER`), its contacts are not
+that party's, and no deletion
 request is offered. A DPA report is still offered in every case.
 
 Data-deletion request and DPA-report attempts are associated with their originating presentation
@@ -2169,7 +2178,7 @@ Production decisions:
 | Session duration | The wallet locks after `AuthenticationConfig.backgroundLockTimeout` in the background (default 60 seconds) and after `idleLockTimeout` without interaction on any of the wallet's screens (default 5 minutes). The RQES SDK's signing screens are a separate activity whose interaction the wallet cannot see: while they are in front the idle lock gives way to `protectedFlowLockTimeout`, and returning to the wallet after that long requires login. While an issuance, presentation or signing is in progress, the background limit is `protectedFlowLockTimeout` instead (default 10 minutes), because issuance and signing send the user to a website and back. Tune all three for your assurance level; production wallets usually lock sooner. Every credential release already asks for the PIN or a biometric. |
 | PIN length | Current UI defaults to 6 digits. Confirm policy. |
 | PIN strength | A new PIN is refused when it is one digit repeated (`000000`), an ascending or descending run (`123456`, `654321`), or on `AuthenticationConfig.commonPins`, a short list of common PINs. The check applies when the PIN is created and when it is changed. Extend the list to match your policy. |
-| Device screen lock | During setup the PIN screen checks `KeyguardManager.isDeviceSecure()`. On a device without a screen lock it shows a warning and setup continues; with `AuthenticationConfig.requireDeviceSecure = true` setup stops until a lock is set, and the check runs again when the user returns from the device settings. Changing the PIN of a wallet already set up is not affected. Keys that require user authentication (`userAuthenticationRequired = true`) need a screen lock in any case. |
+| Device screen lock | During setup the PIN screen checks `KeyguardManager.isDeviceSecure()`. On a device without a screen lock it shows a warning and setup continues; with `AuthenticationConfig.requireDeviceSecure = true` setup stops until a lock is set, and the check runs again when the user returns from the device settings. Changing the PIN of a wallet already set up is not affected. Wallet Core does not refuse `userAuthenticationRequired = true` on a device without a screen lock: when `EudiWallet` is built it sets the option to false and creates keys without user authentication (`EudiWallet.Builder.ensureUserAuthIsSupported`), and StrongBox falls back the same way. Where key-level protection is required, also set `requireDeviceSecure = true`, and decide what happens if the user removes the screen lock later. |
 | PIN lockout policy | Defaults to 3 attempts then escalating lockouts of 30s, 90s, 5m (then 5m repeats). Tune via `AuthenticationConfig.maxFailedPinAttempts` and `pinLockoutDurations`. Decide whether the final tier should escalate further (wipe, support flow, device credential step-up). |
 | Recovery | Define what happens if user forgets PIN or changes biometrics. |
 
@@ -2182,6 +2191,10 @@ Session lock:
   once from `Application`). Another activity of the app, such as the RQES screens, does not count.
 * Whether the screen was a protected-flow screen is recorded when the app leaves, so nothing opened or
   restored on return can extend the limit.
+* Touches and screen-reader actions count as interaction for the idle lock, both in the activity's
+  window and in bottom sheets built with `WrapModalBottomSheet`, which draw in a window of their own
+  (`reportAccessibilityInteraction`, `reportingUserInteractionTo`). A dialog or popup you add in its
+  own window must report interaction the same way.
 * A link that arrives while the wallet is locked is kept and opened after login. Screens restored before
   login, such as the dashboard after the activity is recreated, do not receive it. The issuance redirect
   is the exception: it belongs to the issuance that was in progress, so a lock during that issuance means
@@ -2576,7 +2589,7 @@ Controls to evidence:
 
 Project-specific actions:
 
-* Add PIN attempt lockout.
+* Review the PIN lockout policy (`AuthenticationConfig.maxFailedPinAttempts`, `pinLockoutDurations`).
 * Decide device credential fallback policy.
 * Consider `userAuthenticationRequired = true` for document keys.
 * Test biometric enrollment changes.
