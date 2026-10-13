@@ -45,7 +45,8 @@ class TestActivityExtensions {
 
     @Test
     fun `Given a launch intent, When the launching package is read, Then the activity keeps that same intent`() {
-        val activity = activityStartedWith(linkIntent().putExtra(Intent.EXTRA_REFERRER, Uri.parse(PAGE)))
+        val activity =
+            activityStartedWith(linkIntent().putExtra(Intent.EXTRA_REFERRER, Uri.parse(PAGE)))
         val launch = activity.intent
 
         activity.launchingPackage()

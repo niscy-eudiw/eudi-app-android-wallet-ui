@@ -107,7 +107,8 @@ fun provideEudiWallet(
         DefaultDCAPIRegistration(
             context = context,
             documentManager = eudiWallet,
-            supportedProtocols = walletCoreConfig.config.dcapiConfig?.supportedProtocols?.toList().orEmpty(),
+            supportedProtocols = walletCoreConfig.config.dcapiConfig?.supportedProtocols?.toList()
+                .orEmpty(),
             logger = walletCoreLogController,
         )
     }

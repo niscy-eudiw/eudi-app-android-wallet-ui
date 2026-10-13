@@ -126,8 +126,10 @@ private fun decodedSize(base64: String): Int? {
     val content = base64.filterNot { character -> character.isWhitespace() }
     val data = content.trimEnd('=')
     val padding = content.length - data.length
-    val isStandard = data.all { character -> character.isBase64Digit() || character == '+' || character == '/' }
-    val isUrlSafe = data.all { character -> character.isBase64Digit() || character == '-' || character == '_' }
+    val isStandard =
+        data.all { character -> character.isBase64Digit() || character == '+' || character == '/' }
+    val isUrlSafe =
+        data.all { character -> character.isBase64Digit() || character == '-' || character == '_' }
     return when {
         !isStandard && !isUrlSafe -> null
         data.length % 4 == 1 || padding > 2 -> null

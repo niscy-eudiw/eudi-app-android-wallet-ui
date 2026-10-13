@@ -100,7 +100,8 @@ fun WrapAsyncImage(
         contentDescription = contentDescription,
         contentScale = contentScale,
         error = error?.resourceId?.let { resourceId -> painterResource(resourceId) },
-        fallback = (fallback ?: error)?.resourceId?.let { resourceId -> painterResource(resourceId) },
+        fallback = (fallback
+            ?: error)?.resourceId?.let { resourceId -> painterResource(resourceId) },
         placeholder = placeholder?.resourceId?.let { resourceId -> painterResource(resourceId) },
         onLoading = { onLoading() },
         onSuccess = { onSuccess() },

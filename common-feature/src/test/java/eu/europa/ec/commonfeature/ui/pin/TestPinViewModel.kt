@@ -99,7 +99,11 @@ class TestPinViewModel {
     @Test
     fun `Given no screen lock and one required, When the setup screen resumes, Then entered PINs are dropped`() =
         coroutineRule.runTest {
-            whenever(interactor.getDeviceLockNotice()).thenReturn(DeviceLockNotice.Blocking(LOCK_REQUIRED))
+            whenever(interactor.getDeviceLockNotice()).thenReturn(
+                DeviceLockNotice.Blocking(
+                    LOCK_REQUIRED
+                )
+            )
             val viewModel = viewModel(PinFlow.CREATE_WITH_ACTIVATION)
             val pin = SecurePinImpl("135792")
 

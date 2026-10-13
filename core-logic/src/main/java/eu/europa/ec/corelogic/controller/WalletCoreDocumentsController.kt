@@ -759,10 +759,14 @@ class WalletCoreDocumentsControllerImpl(
         callbackFlow {
 
             val issuerId = when (
-                val offerIssuer = offerIssuerOf(offerUri = offerUri, configuredIssuers = configuredIssuerIds)
+                val offerIssuer =
+                    offerIssuerOf(offerUri = offerUri, configuredIssuers = configuredIssuerIds)
             ) {
                 is OfferIssuer.Configured -> offerIssuer.issuerId
-                is OfferIssuer.NotConfigured -> throw IllegalArgumentException(unconfiguredIssuerMessage)
+                is OfferIssuer.NotConfigured -> throw IllegalArgumentException(
+                    unconfiguredIssuerMessage
+                )
+
                 is OfferIssuer.Unreadable -> throw IllegalArgumentException(unreadableOfferMessage)
             }
 
@@ -979,7 +983,10 @@ class WalletCoreDocumentsControllerImpl(
      * Core has deleted it. The history stays.
      */
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    internal suspend fun cleanUpAfterReIssuance(originalId: DocumentId, state: IssueDocumentsPartialState) {
+    internal suspend fun cleanUpAfterReIssuance(
+        originalId: DocumentId,
+        state: IssueDocumentsPartialState
+    ) {
         val newIds = when (state) {
             is IssueDocumentsPartialState.Success -> state.documentIds
             is IssueDocumentsPartialState.PartialSuccess -> state.documentIds

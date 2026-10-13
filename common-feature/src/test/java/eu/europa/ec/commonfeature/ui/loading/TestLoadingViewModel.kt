@@ -93,7 +93,10 @@ class TestLoadingViewModel {
                     viewModel.setEvent(Event.CloseRejection)
 
                     assertEquals(
-                        Effect.Navigation.CloseRejection(initiatorRoute = INITIATOR_ROUTE, redirectUri = null),
+                        Effect.Navigation.CloseRejection(
+                            initiatorRoute = INITIATOR_ROUTE,
+                            redirectUri = null
+                        ),
                         awaitItem()
                     )
                 }

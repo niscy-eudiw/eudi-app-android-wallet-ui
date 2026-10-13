@@ -111,12 +111,13 @@ open class EudiComponentActivity : FragmentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(getStateToRestore(savedInstanceState, navigationStartedInProcess))
-        opensItsLaunchIntent = shouldOpenLaunchIntent(savedInstanceState) && viewModel.shouldOpenLaunchLink(
-            intent = intent,
-            taskId = taskId,
-            isTaskRoot = isTaskRoot,
-            launchedBy = launchingPackage(),
-        )
+        opensItsLaunchIntent =
+            shouldOpenLaunchIntent(savedInstanceState) && viewModel.shouldOpenLaunchLink(
+                intent = intent,
+                taskId = taskId,
+                isTaskRoot = isTaskRoot,
+                launchedBy = launchingPackage(),
+            )
         viewModel.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
         window.decorView.reportAccessibilityInteraction { onUserInteraction() }

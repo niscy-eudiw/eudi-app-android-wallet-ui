@@ -105,8 +105,17 @@ class TestWalletCoreResetController {
             assertEquals(ResetWalletPartialState.Success, result)
             assertEquals(
                 listOf(
-                    "stop work", "hold registry", "delete mdl", "delete pid", "clear registry",
-                    "clear history", "clear database", "clear prefs", "delete logs", "delete cache", "lock",
+                    "stop work",
+                    "hold registry",
+                    "delete mdl",
+                    "delete pid",
+                    "clear registry",
+                    "clear history",
+                    "clear database",
+                    "clear prefs",
+                    "delete logs",
+                    "delete cache",
+                    "lock",
                     "schedule work",
                 ),
                 steps
@@ -166,7 +175,10 @@ class TestWalletCoreResetController {
             val result = buildController().resetWallet()
 
             assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
-            assertEquals(listOf("stop work", "hold registry", "clear registry", "schedule work"), steps)
+            assertEquals(
+                listOf("stop work", "hold registry", "clear registry", "schedule work"),
+                steps
+            )
         }
     }
 
@@ -199,11 +211,20 @@ class TestWalletCoreResetController {
         coroutineRule.runTest {
             givenDocuments(emptyList(), mainPid = null)
 
-            val result = buildController(clearDatabase = { throw IllegalStateException("database error") })
-                .resetWallet()
+            val result =
+                buildController(clearDatabase = { throw IllegalStateException("database error") })
+                    .resetWallet()
 
             assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
-            assertEquals(listOf("stop work", "hold registry", "clear registry", "clear history", "schedule work"), steps)
+            assertEquals(
+                listOf(
+                    "stop work",
+                    "hold registry",
+                    "clear registry",
+                    "clear history",
+                    "schedule work"
+                ), steps
+            )
         }
     }
 
@@ -212,8 +233,9 @@ class TestWalletCoreResetController {
         coroutineRule.runTest {
             givenDocuments(emptyList(), mainPid = null)
 
-            val result = buildController(deleteCacheFiles = { throw CancellationException("cancelled") })
-                .resetWallet()
+            val result =
+                buildController(deleteCacheFiles = { throw CancellationException("cancelled") })
+                    .resetWallet()
 
             assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
             assertEquals("schedule work", steps.last())

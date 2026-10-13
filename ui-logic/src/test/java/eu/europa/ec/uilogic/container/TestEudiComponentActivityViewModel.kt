@@ -78,7 +78,13 @@ class TestEudiComponentActivityViewModel {
         assertSame(tap, viewModel.getCachedIntent())
 
         assertFalse(opens(linkIntent(RESTART_FLAGS), launchedBy = SYSTEM_UI_PACKAGE))
-        assertTrue(opens(linkIntent(RESTART_FLAGS), launchedBy = SYSTEM_UI_PACKAGE, taskId = TASK + 1))
+        assertTrue(
+            opens(
+                linkIntent(RESTART_FLAGS),
+                launchedBy = SYSTEM_UI_PACKAGE,
+                taskId = TASK + 1
+            )
+        )
         assertTrue(opens(linkIntent(CHROME_TAP_FLAGS), launchedBy = "com.android.chrome"))
         assertTrue(opens(linkIntent(RESTART_FLAGS), launchedBy = "com.example.relyingparty"))
     }
@@ -116,8 +122,22 @@ class TestEudiComponentActivityViewModel {
         whenever(sessionController.isUnlocked).thenReturn(true)
         val tap = linkIntent(CHROME_TAP_FLAGS)
 
-        assertTrue(viewModel.shouldOpenLaunchLink(tap, TASK, isTaskRoot = false, launchedBy = SYSTEM_UI_PACKAGE))
-        assertTrue(viewModel.shouldOpenLaunchLink(mock(), TASK, isTaskRoot = true, launchedBy = null))
+        assertTrue(
+            viewModel.shouldOpenLaunchLink(
+                tap,
+                TASK,
+                isTaskRoot = false,
+                launchedBy = SYSTEM_UI_PACKAGE
+            )
+        )
+        assertTrue(
+            viewModel.shouldOpenLaunchLink(
+                mock(),
+                TASK,
+                isTaskRoot = true,
+                launchedBy = null
+            )
+        )
         viewModel.cacheIntent(tap)
         viewModel.getCachedIntent()
 

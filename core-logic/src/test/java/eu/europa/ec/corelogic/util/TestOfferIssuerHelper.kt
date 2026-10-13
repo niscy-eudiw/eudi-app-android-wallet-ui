@@ -32,7 +32,12 @@ class TestOfferIssuerHelper {
         )
         assertEquals(
             OfferIssuer.Configured("https://issuer.example"),
-            offerIssuerOf(offerByValue("https://issuer.example", prefix = "haip-vci://credential_offer?"), configured)
+            offerIssuerOf(
+                offerByValue(
+                    "https://issuer.example",
+                    prefix = "haip-vci://credential_offer?"
+                ), configured
+            )
         )
     }
 
@@ -44,7 +49,11 @@ class TestOfferIssuerHelper {
             "https://issuer.example.attacker.example",
             "http://issuer.example",
         ).forEach { issuer ->
-            assertEquals(issuer, OfferIssuer.NotConfigured, offerIssuerOf(offerByValue(issuer), configured))
+            assertEquals(
+                issuer,
+                OfferIssuer.NotConfigured,
+                offerIssuerOf(offerByValue(issuer), configured)
+            )
         }
     }
 
@@ -67,7 +76,11 @@ class TestOfferIssuerHelper {
             "https://second.example/offers/123",
             "https://issuer.example:8443/offers/123",
         ).forEach { reference ->
-            assertEquals(reference, OfferIssuer.NotConfigured, offerIssuerOf(offerByReference(reference), configured))
+            assertEquals(
+                reference,
+                OfferIssuer.NotConfigured,
+                offerIssuerOf(offerByReference(reference), configured)
+            )
         }
     }
 
@@ -89,7 +102,10 @@ class TestOfferIssuerHelper {
     fun `Given a parameter name in another case, Then it is read as the library reads it`() {
         assertEquals(
             OfferIssuer.NotConfigured,
-            offerIssuerOf("openid-credential-offer://?CREDENTIAL_OFFER=${encode(offer("https://attacker.example"))}", configured)
+            offerIssuerOf(
+                "openid-credential-offer://?CREDENTIAL_OFFER=${encode(offer("https://attacker.example"))}",
+                configured
+            )
         )
     }
 
@@ -113,7 +129,10 @@ class TestOfferIssuerHelper {
     private fun offer(issuer: String) =
         """{"credential_issuer":"$issuer","credential_configuration_ids":["pid"]}"""
 
-    private fun offerByValue(issuer: String, prefix: String = "openid-credential-offer://?"): String =
+    private fun offerByValue(
+        issuer: String,
+        prefix: String = "openid-credential-offer://?"
+    ): String =
         "${prefix}credential_offer=${encode(offer(issuer))}"
 
     private fun offerByReference(reference: String): String =

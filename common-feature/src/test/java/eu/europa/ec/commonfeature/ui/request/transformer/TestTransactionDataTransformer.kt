@@ -599,11 +599,17 @@ class TestTransactionDataTransformer {
             credentialIds = listOf(mockedTransactionQueryId),
             signatureRequests = listOf(
                 mockedSignature.copy(
-                    inlineDocument = QesInlineDocumentDomain(documentType = "sod", sizeInBytes = 2048),
+                    inlineDocument = QesInlineDocumentDomain(
+                        documentType = "sod",
+                        sizeInBytes = 2048
+                    ),
                 ),
                 mockedSignature.copy(
                     label = "Formatted.pdf",
-                    inlineDocument = QesInlineDocumentDomain(documentType = "sfd", sizeInBytes = null),
+                    inlineDocument = QesInlineDocumentDomain(
+                        documentType = "sfd",
+                        sizeInBytes = null
+                    ),
                 ),
             ),
         )
@@ -670,7 +676,8 @@ class TestTransactionDataTransformer {
         })
         assertEquals(
             listOf("Signed attributes"),
-            section.rows().filter { row -> row.itemId.endsWith("/attributes") }.map { row -> row.text() },
+            section.rows().filter { row -> row.itemId.endsWith("/attributes") }
+                .map { row -> row.text() },
         )
     }
 
@@ -680,7 +687,11 @@ class TestTransactionDataTransformer {
             displayName = null,
             credentialIds = listOf(mockedTransactionQueryId),
             signatureRequests = listOf(
-                mockedSignature.copy(href = mockedDocumentUrl, oneTimePassword = mockedOtp, accessMode = "OTP"),
+                mockedSignature.copy(
+                    href = mockedDocumentUrl,
+                    oneTimePassword = mockedOtp,
+                    accessMode = "OTP"
+                ),
             ),
         )
 

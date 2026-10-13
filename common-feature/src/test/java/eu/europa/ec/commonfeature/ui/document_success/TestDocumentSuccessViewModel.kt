@@ -36,7 +36,8 @@ class TestDocumentSuccessViewModel {
     val coroutineRule = CoroutineTestRule()
 
     /** A success screen whose next step is a verifier's redirect to [link]. */
-    private class FakeDocumentSuccessViewModel(private val link: String) : DocumentSuccessViewModel() {
+    private class FakeDocumentSuccessViewModel(private val link: String) :
+        DocumentSuccessViewModel() {
         override fun getNextScreenConfigNavigation() = ConfigNavigation(
             navigationType = NavigationType.Deeplink(link = link, routeToPop = INITIATOR_ROUTE)
         )
@@ -49,7 +50,8 @@ class TestDocumentSuccessViewModel {
     @Test
     fun `Given an https redirect, When the user continues, Then it opens in the browser and the screen returns to its initiator`() {
         coroutineRule.runTest {
-            val viewModel = FakeDocumentSuccessViewModel(link = "https://verifier.example/done?state=1")
+            val viewModel =
+                FakeDocumentSuccessViewModel(link = "https://verifier.example/done?state=1")
 
             viewModel.effect.runFlowTest {
                 viewModel.setEvent(Event.StickyButtonPressed)

@@ -57,14 +57,21 @@ class TestIssuerLogoHelper {
 
         assertEquals(
             URI("https://cdn.example/logo.svg"),
-            issuerLogoOrNull(logo = URI("https://cdn.example/logo.svg"), issuerId = issuer, additionalOrigins = origins)
+            issuerLogoOrNull(
+                logo = URI("https://cdn.example/logo.svg"),
+                issuerId = issuer,
+                additionalOrigins = origins
+            )
         )
         listOf(
             "https://other.example/logo.svg",
             "https://plain.example/logo.svg",
             "http://cdn.example/logo.svg",
         ).forEach { logo ->
-            assertNull(logo, issuerLogoOrNull(logo = URI(logo), issuerId = issuer, additionalOrigins = origins))
+            assertNull(
+                logo,
+                issuerLogoOrNull(logo = URI(logo), issuerId = issuer, additionalOrigins = origins)
+            )
         }
     }
 

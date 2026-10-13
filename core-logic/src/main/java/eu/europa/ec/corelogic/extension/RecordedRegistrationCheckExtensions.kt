@@ -28,7 +28,10 @@ private const val CHECK_NOT_EVALUATED = "NOT_EVALUATED"
 internal fun RegistrationStatusDomain.toRecordedRegistrationCheck(): RecordedRegistrationCheckDomain =
     when (this) {
         is RegistrationStatusDomain.Verified -> RecordedRegistrationCheckDomain.Verified
-        is RegistrationStatusDomain.NotVerified -> RecordedRegistrationCheckDomain.NotVerified(reason = reason)
+        is RegistrationStatusDomain.NotVerified -> RecordedRegistrationCheckDomain.NotVerified(
+            reason = reason
+        )
+
         RegistrationStatusDomain.NotEvaluated -> RecordedRegistrationCheckDomain.NotEvaluated
     }
 

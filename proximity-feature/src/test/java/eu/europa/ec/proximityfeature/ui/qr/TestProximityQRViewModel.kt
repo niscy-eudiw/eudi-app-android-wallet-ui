@@ -62,7 +62,13 @@ class TestProximityQRViewModel {
     @Test
     fun `Given a QR shown and no reader connected, When the screen goes away, Then the session is stopped`() {
         coroutineRule.runTest {
-            whenever(interactor.startQrEngagement()).thenReturn(flowOf(ProximityQRPartialState.QrReady("qr")))
+            whenever(interactor.startQrEngagement()).thenReturn(
+                flowOf(
+                    ProximityQRPartialState.QrReady(
+                        "qr"
+                    )
+                )
+            )
             val viewModel = ProximityQRViewModel(interactor, uiSerializer, "config")
 
             viewModel.setEvent(Event.Init)
@@ -92,7 +98,13 @@ class TestProximityQRViewModel {
     @Test
     fun `Given the user went back, When the screen is then removed, Then the session is stopped once`() {
         coroutineRule.runTest {
-            whenever(interactor.startQrEngagement()).thenReturn(flowOf(ProximityQRPartialState.QrReady("qr")))
+            whenever(interactor.startQrEngagement()).thenReturn(
+                flowOf(
+                    ProximityQRPartialState.QrReady(
+                        "qr"
+                    )
+                )
+            )
             val viewModel = ProximityQRViewModel(interactor, uiSerializer, "config")
 
             viewModel.setEvent(Event.Init)

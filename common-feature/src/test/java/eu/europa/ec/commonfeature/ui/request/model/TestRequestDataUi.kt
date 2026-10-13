@@ -82,7 +82,12 @@ class TestRequestDataUi {
     @Test
     fun `Given no picture of the holder, When the request is read, Then neither the notice nor the confirmation applies`() {
         val requestDataUi = RequestDataUi.Single(
-            combination(document(keys = listOf("family_name", "signature_usual_mark"), selectable = true))
+            combination(
+                document(
+                    keys = listOf("family_name", "signature_usual_mark"),
+                    selectable = true
+                )
+            )
         )
 
         assertFalse(requestDataUi.requestsUserImage)

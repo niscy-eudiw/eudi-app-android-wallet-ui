@@ -229,7 +229,10 @@ class TestDocumentDetailsInteractor {
                 val success = awaitItem() as DocumentDetailsInteractorPartialState.Success
 
                 assertEquals(
-                    getMockedIssuerDetailsCardDataUi(isExpanded = true, hasStatusRefreshFailed = true),
+                    getMockedIssuerDetailsCardDataUi(
+                        isExpanded = true,
+                        hasStatusRefreshFailed = true
+                    ),
                     success.issuerDetails
                 )
             }
@@ -1450,6 +1453,7 @@ class TestDocumentDetailsInteractor {
             order.verify(sessionController, atLeastOnce()).endExternalFlow()
         }
     }
+
     @Test
     fun `Given a re-issuance that fails, When reIssueDocument is called, Then the external flow ends with the failure`() {
         coroutineRule.runTest {
@@ -1477,6 +1481,7 @@ class TestDocumentDetailsInteractor {
             order.verify(sessionController, atLeastOnce()).endExternalFlow()
         }
     }
+
     @Test
     fun `Given controller emits PartialSuccess, When reIssueDocument is called, Then Success is emitted`() {
         coroutineRule.runTest {

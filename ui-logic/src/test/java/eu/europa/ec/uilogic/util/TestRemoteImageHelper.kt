@@ -96,7 +96,10 @@ class TestRemoteImageHelper {
     @Test
     fun `Given a redirect within the image's origin, Then it is followed`() {
         val response = SameOriginRedirects().intercept(
-            redirectChain(requested = "https://issuer.example/logo", current = "https://ISSUER.example/v2/logo")
+            redirectChain(
+                requested = "https://issuer.example/logo",
+                current = "https://ISSUER.example/v2/logo"
+            )
         )
 
         assertEquals(200, response.code)

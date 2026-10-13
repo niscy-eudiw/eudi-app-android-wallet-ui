@@ -28,7 +28,10 @@ class TestRecordedRegistrationCheckExtensions {
 
     @Test
     fun `Given every recordable check, When it is stored and read back, Then it is unchanged`() {
-        val checks = listOf(RecordedRegistrationCheckDomain.Verified, RecordedRegistrationCheckDomain.NotEvaluated) +
+        val checks = listOf(
+            RecordedRegistrationCheckDomain.Verified,
+            RecordedRegistrationCheckDomain.NotEvaluated
+        ) +
                 RegistrationFailureReasonDomain.entries.map { reason ->
                     RecordedRegistrationCheckDomain.NotVerified(reason = reason)
                 }
@@ -46,8 +49,14 @@ class TestRecordedRegistrationCheckExtensions {
 
     @Test
     fun `Given nothing recorded or an unknown value, When it is read, Then the check is unknown`() {
-        assertEquals(RecordedRegistrationCheckDomain.Unknown, recordedRegistrationCheckOf(null, null))
-        assertEquals(RecordedRegistrationCheckDomain.Unknown, recordedRegistrationCheckOf("SOMETHING", null))
+        assertEquals(
+            RecordedRegistrationCheckDomain.Unknown,
+            recordedRegistrationCheckOf(null, null)
+        )
+        assertEquals(
+            RecordedRegistrationCheckDomain.Unknown,
+            recordedRegistrationCheckOf("SOMETHING", null)
+        )
         assertNull(RecordedRegistrationCheckDomain.Unknown.toStoredRegistrationCheck())
     }
 

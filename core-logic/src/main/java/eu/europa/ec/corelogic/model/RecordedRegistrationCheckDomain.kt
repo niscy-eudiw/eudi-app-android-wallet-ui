@@ -25,7 +25,8 @@ sealed interface RecordedRegistrationCheckDomain {
     data object Verified : RecordedRegistrationCheckDomain
 
     /** The registration failed its checks; [reason] is null when the recorded reason is not known. */
-    data class NotVerified(val reason: RegistrationFailureReasonDomain?) : RecordedRegistrationCheckDomain
+    data class NotVerified(val reason: RegistrationFailureReasonDomain?) :
+        RecordedRegistrationCheckDomain
 
     /** The registration was not checked, for example because checking is turned off. */
     data object NotEvaluated : RecordedRegistrationCheckDomain

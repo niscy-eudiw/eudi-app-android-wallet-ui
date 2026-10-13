@@ -145,7 +145,12 @@ class TestRevocationWorkManager {
 
             runWorker()
 
-            verify(revokedDocumentDao).store(RevokedDocument(documentId, RevocationStatus.SUSPENDED))
+            verify(revokedDocumentDao).store(
+                RevokedDocument(
+                    documentId,
+                    RevocationStatus.SUSPENDED
+                )
+            )
         }
     }
 
@@ -182,7 +187,12 @@ class TestRevocationWorkManager {
 
             runWorker()
 
-            verify(revokedDocumentDao).store(RevokedDocument(documentId, RevocationStatus.UNRECOGNISED))
+            verify(revokedDocumentDao).store(
+                RevokedDocument(
+                    documentId,
+                    RevocationStatus.UNRECOGNISED
+                )
+            )
         }
     }
 
@@ -194,7 +204,12 @@ class TestRevocationWorkManager {
 
             runWorker()
 
-            verify(revokedDocumentDao).store(RevokedDocument(documentId, RevocationStatus.UNRECOGNISED))
+            verify(revokedDocumentDao).store(
+                RevokedDocument(
+                    documentId,
+                    RevocationStatus.UNRECOGNISED
+                )
+            )
         }
     }
 
@@ -332,19 +347,39 @@ class TestRevocationWorkManager {
             Triple(null, Status.Valid, RevocationUpdate.Keep),
             Triple(null, Status.Invalid, RevocationUpdate.Record(RevocationStatus.INVALID)),
             Triple(null, Status.Suspended, RevocationUpdate.Record(RevocationStatus.SUSPENDED)),
-            Triple(null, applicationSpecific, RevocationUpdate.Record(RevocationStatus.UNRECOGNISED)),
+            Triple(
+                null,
+                applicationSpecific,
+                RevocationUpdate.Record(RevocationStatus.UNRECOGNISED)
+            ),
             Triple(null, reserved, RevocationUpdate.Record(RevocationStatus.UNRECOGNISED)),
             Triple(RevocationStatus.INVALID, Status.Valid, RevocationUpdate.Keep),
             Triple(RevocationStatus.INVALID, Status.Invalid, RevocationUpdate.Keep),
             Triple(RevocationStatus.INVALID, Status.Suspended, RevocationUpdate.Keep),
             Triple(RevocationStatus.INVALID, applicationSpecific, RevocationUpdate.Keep),
             Triple(RevocationStatus.SUSPENDED, Status.Valid, RevocationUpdate.Clear),
-            Triple(RevocationStatus.SUSPENDED, Status.Invalid, RevocationUpdate.Record(RevocationStatus.INVALID)),
+            Triple(
+                RevocationStatus.SUSPENDED,
+                Status.Invalid,
+                RevocationUpdate.Record(RevocationStatus.INVALID)
+            ),
             Triple(RevocationStatus.SUSPENDED, Status.Suspended, RevocationUpdate.Keep),
-            Triple(RevocationStatus.SUSPENDED, reserved, RevocationUpdate.Record(RevocationStatus.UNRECOGNISED)),
+            Triple(
+                RevocationStatus.SUSPENDED,
+                reserved,
+                RevocationUpdate.Record(RevocationStatus.UNRECOGNISED)
+            ),
             Triple(RevocationStatus.UNRECOGNISED, Status.Valid, RevocationUpdate.Clear),
-            Triple(RevocationStatus.UNRECOGNISED, Status.Invalid, RevocationUpdate.Record(RevocationStatus.INVALID)),
-            Triple(RevocationStatus.UNRECOGNISED, Status.Suspended, RevocationUpdate.Record(RevocationStatus.SUSPENDED)),
+            Triple(
+                RevocationStatus.UNRECOGNISED,
+                Status.Invalid,
+                RevocationUpdate.Record(RevocationStatus.INVALID)
+            ),
+            Triple(
+                RevocationStatus.UNRECOGNISED,
+                Status.Suspended,
+                RevocationUpdate.Record(RevocationStatus.SUSPENDED)
+            ),
             Triple(RevocationStatus.UNRECOGNISED, applicationSpecific, RevocationUpdate.Keep),
         )
 
@@ -391,21 +426,22 @@ class TestRevocationWorkManager {
     }
 
     private suspend fun runWorker(): ListenableWorker.Result {
-        val worker = TestListenableWorkerBuilder<RevocationWorkManager>(RuntimeEnvironment.getApplication())
-            .setWorkerFactory(object : WorkerFactory() {
-                override fun createWorker(
-                    appContext: Context,
-                    workerClassName: String,
-                    workerParameters: WorkerParameters,
-                ): ListenableWorker = RevocationWorkManager(
-                    appContext = appContext,
-                    workerParams = workerParameters,
-                    revokedDocumentDao = revokedDocumentDao,
-                    statusRefreshFailureDao = statusRefreshFailureDao,
-                    walletCoreDocumentsController = walletCoreDocumentsController,
-                )
-            })
-            .build()
+        val worker =
+            TestListenableWorkerBuilder<RevocationWorkManager>(RuntimeEnvironment.getApplication())
+                .setWorkerFactory(object : WorkerFactory() {
+                    override fun createWorker(
+                        appContext: Context,
+                        workerClassName: String,
+                        workerParameters: WorkerParameters,
+                    ): ListenableWorker = RevocationWorkManager(
+                        appContext = appContext,
+                        workerParams = workerParameters,
+                        revokedDocumentDao = revokedDocumentDao,
+                        statusRefreshFailureDao = statusRefreshFailureDao,
+                        walletCoreDocumentsController = walletCoreDocumentsController,
+                    )
+                })
+                .build()
         return worker.doWork()
     }
 }

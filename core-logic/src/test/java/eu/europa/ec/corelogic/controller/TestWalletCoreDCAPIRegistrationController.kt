@@ -110,7 +110,14 @@ class TestWalletCoreDCAPIRegistrationController {
             release.complete(Unit)
             coroutineRule.testScope.runCurrent()
 
-            assertEquals(listOf("register started", "register", "delete documents", "clear registry"), steps)
+            assertEquals(
+                listOf(
+                    "register started",
+                    "register",
+                    "delete documents",
+                    "clear registry"
+                ), steps
+            )
         }
     }
 
@@ -142,17 +149,18 @@ class TestWalletCoreDCAPIRegistrationController {
         isEnabled = { enabled },
     )
 
-    private fun registration(release: CompletableDeferred<Unit>? = null) = object : DCAPIRegistration {
-        override suspend fun registerCredentials() {
-            if (release != null) {
-                steps.add("register started")
-                release.await()
+    private fun registration(release: CompletableDeferred<Unit>? = null) =
+        object : DCAPIRegistration {
+            override suspend fun registerCredentials() {
+                if (release != null) {
+                    steps.add("register started")
+                    release.await()
+                }
+                steps.add("register")
             }
-            steps.add("register")
-        }
 
-        override suspend fun unregisterCredentials() {
-            steps.add("unregister")
+            override suspend fun unregisterCredentials() {
+                steps.add("unregister")
+            }
         }
-    }
 }

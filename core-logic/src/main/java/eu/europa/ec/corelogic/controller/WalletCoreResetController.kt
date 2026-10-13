@@ -97,33 +97,35 @@ class WalletCoreResetControllerImpl(
      * queue before the tables are, so that a deletion entry Wallet Core logged for a removed
      * document cannot be written after the tables are empty.
      */
-    override suspend fun resetWallet(): ResetWalletPartialState = withContext(dispatcher + NonCancellable) {
-        resetStatus.setResetting(true)
-        try {
-            if (!stopBackgroundWork()) {
-                return@withContext failure()
-            }
-            val documentsDeleted = walletCoreDCAPIRegistrationController.clearAround { deleteDocuments() }
-            if (!documentsDeleted) {
-                return@withContext failure()
-            }
-            clearTransactionLogs()
-            clearDatabase()
-            prefKeys.clearAllExceptSessionIdAndDbKey()
-            deleteLogFiles()
-            deleteCacheFiles()
-            sessionController.lock()
-            ResetWalletPartialState.Success
-        } catch (_: Exception) {
-            failure()
-        } finally {
+    override suspend fun resetWallet(): ResetWalletPartialState =
+        withContext(dispatcher + NonCancellable) {
+            resetStatus.setResetting(true)
             try {
-                scheduleBackgroundWork()
+                if (!stopBackgroundWork()) {
+                    return@withContext failure()
+                }
+                val documentsDeleted =
+                    walletCoreDCAPIRegistrationController.clearAround { deleteDocuments() }
+                if (!documentsDeleted) {
+                    return@withContext failure()
+                }
+                clearTransactionLogs()
+                clearDatabase()
+                prefKeys.clearAllExceptSessionIdAndDbKey()
+                deleteLogFiles()
+                deleteCacheFiles()
+                sessionController.lock()
+                ResetWalletPartialState.Success
             } catch (_: Exception) {
+                failure()
+            } finally {
+                try {
+                    scheduleBackgroundWork()
+                } catch (_: Exception) {
+                }
+                resetStatus.setResetting(false)
             }
-            resetStatus.setResetting(false)
         }
-    }
 
     /**
      * Deletes every document Wallet Core stores, the main PID last, as

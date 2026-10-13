@@ -74,76 +74,88 @@ class TestRequestViewModel {
     private val viewModel = FakeRequestViewModel()
 
     @Test
-    fun `Given a document without the portrait, When Share is pressed, Then the PIN screen opens straight away`() = coroutineRule.runTest {
-        viewModel.show(document(keys = listOf("family_name")))
+    fun `Given a document without the portrait, When Share is pressed, Then the PIN screen opens straight away`() =
+        coroutineRule.runTest {
+            viewModel.show(document(keys = listOf("family_name")))
 
-        viewModel.effect.runFlowTest {
-            viewModel.handleEvents(Event.StickyButtonPressed)
+            viewModel.effect.runFlowTest {
+                viewModel.handleEvents(Event.StickyButtonPressed)
 
-            assertEquals(Effect.Navigation.SwitchScreen(NEXT_SCREEN), awaitItem())
+                assertEquals(Effect.Navigation.SwitchScreen(NEXT_SCREEN), awaitItem())
+            }
         }
-    }
 
     @Test
-    fun `Given a document with the portrait, When Share is pressed, Then a confirmation is asked first`() = coroutineRule.runTest {
-        viewModel.show(document(keys = listOf("family_name", "portrait")))
+    fun `Given a document with the portrait, When Share is pressed, Then a confirmation is asked first`() =
+        coroutineRule.runTest {
+            viewModel.show(document(keys = listOf("family_name", "portrait")))
 
-        viewModel.effect.runFlowTest {
-            viewModel.handleEvents(Event.StickyButtonPressed)
+            viewModel.effect.runFlowTest {
+                viewModel.handleEvents(Event.StickyButtonPressed)
 
-            assertEquals(Effect.ShowBottomSheet, awaitItem())
-            assertEquals(
-                RequestBottomSheetContent.UserImageConfirmation,
-                viewModel.viewState.value.sheetContent
+                assertEquals(Effect.ShowBottomSheet, awaitItem())
+                assertEquals(
+                    RequestBottomSheetContent.UserImageConfirmation,
+                    viewModel.viewState.value.sheetContent
+                )
+                expectNoEvents()
+            }
+        }
+
+    @Test
+    fun `Given the portrait confirmation, When Share is confirmed, Then sharing goes ahead once the sheet has closed`() =
+        coroutineRule.runTest {
+            viewModel.show(document(keys = listOf("portrait")))
+
+            viewModel.effect.runFlowTest {
+                viewModel.handleEvents(Event.StickyButtonPressed)
+                assertEquals(Effect.ShowBottomSheet, awaitItem())
+
+                viewModel.handleEvents(Event.BottomSheet.UserImageConfirmation.Share)
+                assertEquals(Effect.CloseBottomSheet, awaitItem())
+                expectNoEvents()
+
+                viewModel.handleEvents(Event.BottomSheet.FinishedClosing)
+                assertEquals(Effect.Navigation.SwitchScreen(NEXT_SCREEN), awaitItem())
+                assertFalse(viewModel.viewState.value.shareAfterSheetCloses)
+            }
+        }
+
+    @Test
+    fun `Given the portrait confirmation, When it is cancelled, Then nothing is shared`() =
+        coroutineRule.runTest {
+            viewModel.show(document(keys = listOf("portrait")))
+
+            viewModel.effect.runFlowTest {
+                viewModel.handleEvents(Event.StickyButtonPressed)
+                assertEquals(Effect.ShowBottomSheet, awaitItem())
+
+                viewModel.handleEvents(Event.BottomSheet.UserImageConfirmation.Cancel)
+                assertEquals(Effect.CloseBottomSheet, awaitItem())
+
+                viewModel.handleEvents(Event.BottomSheet.FinishedClosing)
+                expectNoEvents()
+            }
+        }
+
+    @Test
+    fun `Given an unticked portrait, When Share is pressed, Then no confirmation is needed`() =
+        coroutineRule.runTest {
+            viewModel.show(
+                document(
+                    keys = listOf(
+                        "family_name",
+                        "portrait"
+                    )
+                ).withUnchecked("portrait")
             )
-            expectNoEvents()
+
+            viewModel.effect.runFlowTest {
+                viewModel.handleEvents(Event.StickyButtonPressed)
+
+                assertEquals(Effect.Navigation.SwitchScreen(NEXT_SCREEN), awaitItem())
+            }
         }
-    }
-
-    @Test
-    fun `Given the portrait confirmation, When Share is confirmed, Then sharing goes ahead once the sheet has closed`() = coroutineRule.runTest {
-        viewModel.show(document(keys = listOf("portrait")))
-
-        viewModel.effect.runFlowTest {
-            viewModel.handleEvents(Event.StickyButtonPressed)
-            assertEquals(Effect.ShowBottomSheet, awaitItem())
-
-            viewModel.handleEvents(Event.BottomSheet.UserImageConfirmation.Share)
-            assertEquals(Effect.CloseBottomSheet, awaitItem())
-            expectNoEvents()
-
-            viewModel.handleEvents(Event.BottomSheet.FinishedClosing)
-            assertEquals(Effect.Navigation.SwitchScreen(NEXT_SCREEN), awaitItem())
-            assertFalse(viewModel.viewState.value.shareAfterSheetCloses)
-        }
-    }
-
-    @Test
-    fun `Given the portrait confirmation, When it is cancelled, Then nothing is shared`() = coroutineRule.runTest {
-        viewModel.show(document(keys = listOf("portrait")))
-
-        viewModel.effect.runFlowTest {
-            viewModel.handleEvents(Event.StickyButtonPressed)
-            assertEquals(Effect.ShowBottomSheet, awaitItem())
-
-            viewModel.handleEvents(Event.BottomSheet.UserImageConfirmation.Cancel)
-            assertEquals(Effect.CloseBottomSheet, awaitItem())
-
-            viewModel.handleEvents(Event.BottomSheet.FinishedClosing)
-            expectNoEvents()
-        }
-    }
-
-    @Test
-    fun `Given an unticked portrait, When Share is pressed, Then no confirmation is needed`() = coroutineRule.runTest {
-        viewModel.show(document(keys = listOf("family_name", "portrait")).withUnchecked("portrait"))
-
-        viewModel.effect.runFlowTest {
-            viewModel.handleEvents(Event.StickyButtonPressed)
-
-            assertEquals(Effect.Navigation.SwitchScreen(NEXT_SCREEN), awaitItem())
-        }
-    }
 
     private fun document(
         keys: List<String>,

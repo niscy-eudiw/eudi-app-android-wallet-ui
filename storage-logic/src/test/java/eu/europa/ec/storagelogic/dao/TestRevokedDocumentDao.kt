@@ -44,14 +44,15 @@ class TestRevokedDocumentDao {
     }
 
     @Test
-    fun `Given a suspended document, When it is stored again as invalid, Then its record is replaced`() = runBlocking {
-        dao.store(RevokedDocument(identifier = "document", status = RevocationStatus.SUSPENDED))
+    fun `Given a suspended document, When it is stored again as invalid, Then its record is replaced`() =
+        runBlocking {
+            dao.store(RevokedDocument(identifier = "document", status = RevocationStatus.SUSPENDED))
 
-        dao.store(RevokedDocument(identifier = "document", status = RevocationStatus.INVALID))
+            dao.store(RevokedDocument(identifier = "document", status = RevocationStatus.INVALID))
 
-        assertEquals(
-            listOf(RevokedDocument(identifier = "document", status = RevocationStatus.INVALID)),
-            dao.retrieveAll(),
-        )
-    }
+            assertEquals(
+                listOf(RevokedDocument(identifier = "document", status = RevocationStatus.INVALID)),
+                dao.retrieveAll(),
+            )
+        }
 }

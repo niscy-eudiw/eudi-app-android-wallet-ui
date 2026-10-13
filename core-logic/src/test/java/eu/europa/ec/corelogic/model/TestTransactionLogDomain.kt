@@ -93,14 +93,21 @@ class TestTransactionLogDomain {
         assertTrue(
             mockedPresentation.copy(
                 party = mockedPresentation.party.copy(
-                    identifier = QualifiedIdentifierDomain(schemeUri = "urn:example:register", value = "42"),
+                    identifier = QualifiedIdentifierDomain(
+                        schemeUri = "urn:example:register",
+                        value = "42"
+                    ),
                 ),
                 registrationCheck = RecordedRegistrationCheckDomain.Unknown,
             ).hasUnverifiedRegistration
         )
         assertTrue(
             mockedPresentation.copy(
-                intermediary = InteractingPartyDomain(name = null, identifier = null, contacts = emptyList()),
+                intermediary = InteractingPartyDomain(
+                    name = null,
+                    identifier = null,
+                    contacts = emptyList()
+                ),
                 registrationCheck = RecordedRegistrationCheckDomain.Unknown,
             ).hasUnverifiedRegistration
         )

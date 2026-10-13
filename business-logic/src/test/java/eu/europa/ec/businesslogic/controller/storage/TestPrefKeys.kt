@@ -30,19 +30,21 @@ class TestPrefKeys {
     private val prefKeys = PrefKeysImpl(prefsController = prefsController)
 
     @Test
-    fun `Given a factory reset, When the preferences are cleared, Then only the session id and the database key are kept`() = runBlocking {
-        prefKeys.clearAllExceptSessionIdAndDbKey()
+    fun `Given a factory reset, When the preferences are cleared, Then only the session id and the database key are kept`() =
+        runBlocking {
+            prefKeys.clearAllExceptSessionIdAndDbKey()
 
-        verify(prefsController).clearExcept(keys = setOf("SessionId", "dbKey"))
-    }
+            verify(prefsController).clearExcept(keys = setOf("SessionId", "dbKey"))
+        }
 
     @Test
-    fun `Given an opened launch link, When it is recorded and read, Then the same preference holds it`() = runBlocking {
-        whenever(prefsController.getString("OpenedLaunchLink", "")).thenReturn("12:abc")
+    fun `Given an opened launch link, When it is recorded and read, Then the same preference holds it`() =
+        runBlocking {
+            whenever(prefsController.getString("OpenedLaunchLink", "")).thenReturn("12:abc")
 
-        prefKeys.setOpenedLaunchLink("12:abc")
+            prefKeys.setOpenedLaunchLink("12:abc")
 
-        verify(prefsController).setString("OpenedLaunchLink", "12:abc")
-        assertEquals("12:abc", prefKeys.getOpenedLaunchLink())
-    }
+            verify(prefsController).setString("OpenedLaunchLink", "12:abc")
+            assertEquals("12:abc", prefKeys.getOpenedLaunchLink())
+        }
 }

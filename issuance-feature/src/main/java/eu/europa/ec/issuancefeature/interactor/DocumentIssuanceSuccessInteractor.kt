@@ -104,9 +104,10 @@ class DocumentIssuanceSuccessInteractorImpl(
                         issuerName = safeIssuerName
                     }
 
-                    walletCoreDocumentsController.getIssuerLogo(document, userLocale)?.let { safeIssuerLogo ->
-                        issuerLogo = safeIssuerLogo
-                    }
+                    walletCoreDocumentsController.getIssuerLogo(document, userLocale)
+                        ?.let { safeIssuerLogo ->
+                            issuerLogo = safeIssuerLogo
+                        }
 
                     val claimsPaths = document.data.claims.flatMap { claim ->
                         claim.toClaimPaths()

@@ -132,7 +132,12 @@ class TestDocumentHelper {
         // When / Then
         assertTrue(keyIsUserImage(key = "portrait", userImageClaimKeys = mockedUserImageClaimKeys))
         assertTrue(keyIsUserImage(key = "picture", userImageClaimKeys = mockedUserImageClaimKeys))
-        assertFalse(keyIsUserImage(key = "family_name", userImageClaimKeys = mockedUserImageClaimKeys))
+        assertFalse(
+            keyIsUserImage(
+                key = "family_name",
+                userImageClaimKeys = mockedUserImageClaimKeys
+            )
+        )
     }
 
     //endregion

@@ -172,7 +172,10 @@ class DocumentOfferInteractorImpl(
                         if (offerHasNoDocuments) {
                             ResolveDocumentOfferInteractorPartialState.NoDocument(
                                 issuerName = response.offer.getIssuerName(userLocale),
-                                issuerLogo = walletCoreDocumentsController.getIssuerLogo(response.offer, userLocale),
+                                issuerLogo = walletCoreDocumentsController.getIssuerLogo(
+                                    response.offer,
+                                    userLocale
+                                ),
                                 issuerRegistration = response.issuerRegistration,
                             )
                         } else {
@@ -214,7 +217,10 @@ class DocumentOfferInteractorImpl(
                                         )
                                     },
                                     issuerName = response.offer.getIssuerName(userLocale),
-                                    issuerLogo = walletCoreDocumentsController.getIssuerLogo(response.offer, userLocale),
+                                    issuerLogo = walletCoreDocumentsController.getIssuerLogo(
+                                        response.offer,
+                                        userLocale
+                                    ),
                                     txCodeLength = response.offer.txCodeSpec?.length,
                                     issuerRegistration = response.issuerRegistration,
                                 )

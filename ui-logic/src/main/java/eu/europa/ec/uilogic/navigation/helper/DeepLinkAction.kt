@@ -106,7 +106,10 @@ enum class DeepLinkType(
                 RQES
             }
 
-            RQES_DOC_RETRIEVAL.schemas.contains(scheme) && hostMatches(rqesDocRetrievalHost, host) -> {
+            RQES_DOC_RETRIEVAL.schemas.contains(scheme) && hostMatches(
+                rqesDocRetrievalHost,
+                host
+            ) -> {
                 RQES_DOC_RETRIEVAL
             }
 

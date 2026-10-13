@@ -211,7 +211,11 @@ fun DocumentPayloadDomain.userImageItemIds(userImageClaimKeys: Set<String>): Set
 
 private fun ClaimDomain.userImagePaths(userImageClaimKeys: Set<String>): List<ClaimPathDomain> =
     when (this) {
-        is ClaimDomain.Primitive -> if (keyIsUserImage(key = key, userImageClaimKeys = userImageClaimKeys)) {
+        is ClaimDomain.Primitive -> if (keyIsUserImage(
+                key = key,
+                userImageClaimKeys = userImageClaimKeys
+            )
+        ) {
             listOf(path)
         } else {
             emptyList()

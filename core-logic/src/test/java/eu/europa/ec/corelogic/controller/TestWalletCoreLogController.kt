@@ -32,7 +32,10 @@ class TestWalletCoreLogController {
 
     @Test
     fun `Given the release level, When Wallet Core logs a debug record, Then it is dropped`() {
-        WalletCoreLogControllerImpl(logController, Logger.LEVEL_INFO).log(record(Logger.LEVEL_DEBUG))
+        WalletCoreLogControllerImpl(
+            logController,
+            Logger.LEVEL_INFO
+        ).log(record(Logger.LEVEL_DEBUG))
 
         verify(logController, never()).d(any<() -> String>())
     }
@@ -50,7 +53,10 @@ class TestWalletCoreLogController {
 
     @Test
     fun `Given the debug level, When Wallet Core logs a debug record, Then it is forwarded`() {
-        WalletCoreLogControllerImpl(logController, Logger.LEVEL_DEBUG).log(record(Logger.LEVEL_DEBUG))
+        WalletCoreLogControllerImpl(
+            logController,
+            Logger.LEVEL_DEBUG
+        ).log(record(Logger.LEVEL_DEBUG))
 
         verify(logController).d(any<() -> String>())
     }

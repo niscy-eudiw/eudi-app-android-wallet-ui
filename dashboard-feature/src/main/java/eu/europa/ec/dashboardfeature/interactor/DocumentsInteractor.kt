@@ -400,7 +400,10 @@ class DocumentsInteractorImpl(
                                         overlineText = issuerName,
                                         supportingContentData = supportingContentData,
                                         leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
-                                            imageUrl = walletCoreDocumentsController.getIssuerLogo(document, userLocale)?.toString().orEmpty(),
+                                            imageUrl = walletCoreDocumentsController.getIssuerLogo(
+                                                document,
+                                                userLocale
+                                            )?.toString().orEmpty(),
                                             contentDescription = resourceProvider.getString(R.string.content_description_issuer_logo_icon),
                                             errorImage = AppIcons.Id,
                                         ),
@@ -455,7 +458,10 @@ class DocumentsInteractorImpl(
                                             textColorKey = ThemeColorKey.Warning,
                                         ),
                                         leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
-                                            imageUrl = walletCoreDocumentsController.getIssuerLogo(document, userLocale)?.toString().orEmpty(),
+                                            imageUrl = walletCoreDocumentsController.getIssuerLogo(
+                                                document,
+                                                userLocale
+                                            )?.toString().orEmpty(),
                                             contentDescription = resourceProvider.getString(R.string.content_description_issuer_logo_icon),
                                             errorImage = AppIcons.Id,
                                         ),

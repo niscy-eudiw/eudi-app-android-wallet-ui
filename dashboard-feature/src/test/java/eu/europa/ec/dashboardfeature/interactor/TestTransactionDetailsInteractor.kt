@@ -3131,7 +3131,8 @@ class TestTransactionDetailsInteractor {
     fun `Given no recorded registration check, When the details are opened, Then the card warns and a verified one does not`() =
         coroutineRule.runTest {
             mockRegistrationWarnings()
-            val unknown = mockedActionPresentation.copy(registrationCheck = RecordedRegistrationCheckDomain.Unknown)
+            val unknown =
+                mockedActionPresentation.copy(registrationCheck = RecordedRegistrationCheckDomain.Unknown)
             mockGetTransactionLogCall(unknown)
 
             interactor.getTransactionDetails(unknown.id).runFlowTest {

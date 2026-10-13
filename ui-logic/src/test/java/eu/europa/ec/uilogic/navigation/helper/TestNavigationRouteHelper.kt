@@ -86,14 +86,27 @@ class TestNavigationRouteHelper {
             config.protectedFlowScreens,
         )
         config.protectedFlowScreens.forEach { screen ->
-            assertTrue(screen.screenRoute, isProtectedRoute(screen.screenRoute, config.protectedFlowScreens))
+            assertTrue(
+                screen.screenRoute,
+                isProtectedRoute(screen.screenRoute, config.protectedFlowScreens)
+            )
         }
     }
 
     @Test
     fun `Given the dashboard or document details, When isProtectedRoute is checked, Then neither is protected`() {
-        assertFalse(isProtectedRoute(DashboardScreens.Dashboard.screenRoute, config.protectedFlowScreens))
-        assertFalse(isProtectedRoute(DashboardScreens.DocumentDetails.screenRoute, config.protectedFlowScreens))
+        assertFalse(
+            isProtectedRoute(
+                DashboardScreens.Dashboard.screenRoute,
+                config.protectedFlowScreens
+            )
+        )
+        assertFalse(
+            isProtectedRoute(
+                DashboardScreens.DocumentDetails.screenRoute,
+                config.protectedFlowScreens
+            )
+        )
     }
 
     @Test

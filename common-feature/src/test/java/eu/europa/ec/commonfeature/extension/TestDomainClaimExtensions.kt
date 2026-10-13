@@ -46,7 +46,8 @@ class TestDomainClaimExtensions {
 
     @Test
     fun `Given the default keys, When portrait is rendered, Then it is shown as the user image`() {
-        val header = primitive(key = "portrait").header(userImageClaimKeys = mockedUserImageClaimKeys)
+        val header =
+            primitive(key = "portrait").header(userImageClaimKeys = mockedUserImageClaimKeys)
 
         assertEquals(
             ListItemLeadingContentDataUi.UserImage(userBase64Image = "imageBase64"),

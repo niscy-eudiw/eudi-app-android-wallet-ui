@@ -554,7 +554,12 @@ class TestDocumentIssuanceSuccessInteractor {
 
             val mockedPidWithBasicFieldsAndMetadata = getMockedPidWithBasicFieldsAndMetadata()
             mockGetDocumentByIdCall(response = mockedPidWithBasicFieldsAndMetadata)
-            whenever(walletCoreDocumentsController.getIssuerLogo(mockedPidWithBasicFieldsAndMetadata, mockedDefaultLocale))
+            whenever(
+                walletCoreDocumentsController.getIssuerLogo(
+                    mockedPidWithBasicFieldsAndMetadata,
+                    mockedDefaultLocale
+                )
+            )
                 .thenReturn(URI.create(mockedIssuerLogo))
 
             // When
@@ -668,7 +673,8 @@ class TestDocumentIssuanceSuccessInteractor {
             interactor.getUiItems(
                 documentIds = listOf(mockedPidId, mockedSdJwtPidId)
             ).runFlowTest {
-                val success = awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
+                val success =
+                    awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
 
                 assertEquals(
                     listOf(
@@ -703,7 +709,8 @@ class TestDocumentIssuanceSuccessInteractor {
                 documentIds = listOf(),
                 notIssuedDocuments = listOf("Photo ID", "mDL"),
             ).runFlowTest {
-                val success = awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
+                val success =
+                    awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
 
                 assertEquals(mockedNotIssuedWarning, success.warningText)
             }
@@ -725,7 +732,8 @@ class TestDocumentIssuanceSuccessInteractor {
                 documentIds = listOf(),
                 notIssuedDocuments = listOf(),
             ).runFlowTest {
-                val success = awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
+                val success =
+                    awaitItem() as DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success
 
                 assertNull(success.warningText)
             }
@@ -788,7 +796,8 @@ class TestDocumentIssuanceSuccessInteractor {
 
     private val mockedIssuerNotVerifiedText = "Issuer not verified"
 
-    private val mockedNotIssuedWarning = "These documents were not added to your wallet: Photo ID, mDL."
+    private val mockedNotIssuedWarning =
+        "These documents were not added to your wallet: Photo ID, mDL."
 
     private val mockedIssuerNotVerifiedSupportingContent =
         ListItemSupportingContentDataUi.Text(

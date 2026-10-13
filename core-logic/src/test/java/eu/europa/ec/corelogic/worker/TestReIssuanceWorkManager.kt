@@ -81,7 +81,11 @@ class TestReIssuanceWorkManager {
     @Test
     fun `Given a revoked document, When the worker runs, Then it is not re-issued`() {
         coroutineRule.runTest {
-            whenever(walletCoreDocumentsController.getAllIssuedDocuments()).thenReturn(listOf(document))
+            whenever(walletCoreDocumentsController.getAllIssuedDocuments()).thenReturn(
+                listOf(
+                    document
+                )
+            )
             whenever(walletCoreDocumentsController.isDocumentRevoked(document.id)).thenReturn(true)
 
             runWorker()
@@ -101,8 +105,14 @@ class TestReIssuanceWorkManager {
                 on { getCredentials() } doReturn emptyList()
             }
             val outcome = CompletableDeferred<IssueDocumentsPartialState>()
-            whenever(walletCoreDocumentsController.getAllIssuedDocuments()).thenReturn(listOf(dueDocument))
-            whenever(walletCoreDocumentsController.isDocumentRevoked(dueDocument.id)).thenReturn(false)
+            whenever(walletCoreDocumentsController.getAllIssuedDocuments()).thenReturn(
+                listOf(
+                    dueDocument
+                )
+            )
+            whenever(walletCoreDocumentsController.isDocumentRevoked(dueDocument.id)).thenReturn(
+                false
+            )
             whenever(walletCoreDocumentsController.reIssueDocument(any(), any(), any(), any()))
                 .thenReturn(flow { emit(outcome.await()) })
 
@@ -119,20 +129,21 @@ class TestReIssuanceWorkManager {
     }
 
     private suspend fun runWorker(): ListenableWorker.Result {
-        val worker = TestListenableWorkerBuilder<ReIssuanceWorkManager>(RuntimeEnvironment.getApplication())
-            .setWorkerFactory(object : WorkerFactory() {
-                override fun createWorker(
-                    appContext: Context,
-                    workerClassName: String,
-                    workerParameters: WorkerParameters,
-                ): ListenableWorker = ReIssuanceWorkManager(
-                    appContext = appContext,
-                    workerParams = workerParameters,
-                    failedReIssuedDocumentDao = failedReIssuedDocumentDao,
-                    walletCoreDocumentsController = walletCoreDocumentsController,
-                )
-            })
-            .build()
+        val worker =
+            TestListenableWorkerBuilder<ReIssuanceWorkManager>(RuntimeEnvironment.getApplication())
+                .setWorkerFactory(object : WorkerFactory() {
+                    override fun createWorker(
+                        appContext: Context,
+                        workerClassName: String,
+                        workerParameters: WorkerParameters,
+                    ): ListenableWorker = ReIssuanceWorkManager(
+                        appContext = appContext,
+                        workerParams = workerParameters,
+                        failedReIssuedDocumentDao = failedReIssuedDocumentDao,
+                        walletCoreDocumentsController = walletCoreDocumentsController,
+                    )
+                })
+                .build()
         return worker.doWork()
     }
 }

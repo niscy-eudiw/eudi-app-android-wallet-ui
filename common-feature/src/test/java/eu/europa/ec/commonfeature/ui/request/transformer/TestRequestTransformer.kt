@@ -174,7 +174,11 @@ class TestRequestTransformer {
                 resourceProvider = resourceProvider,
                 uuidProvider = uuidProvider,
                 combinationsDomain = listOf(
-                    PresentationCombinationDomain(matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch))
+                    PresentationCombinationDomain(
+                        matches = listOf(
+                            mockedValidMdlWithBasicFieldsRequestMatch
+                        )
+                    )
                 ),
                 claimsAreSelectable = true,
                 overaskedClaims = emptyList(),
@@ -196,7 +200,11 @@ class TestRequestTransformer {
                 resourceProvider = resourceProvider,
                 uuidProvider = uuidProvider,
                 combinationsDomain = listOf(
-                    PresentationCombinationDomain(matches = listOf(mockedValidPidWithBasicFieldsRequestMatch))
+                    PresentationCombinationDomain(
+                        matches = listOf(
+                            mockedValidPidWithBasicFieldsRequestMatch
+                        )
+                    )
                 ),
                 claimsAreSelectable = false,
                 overaskedClaims = emptyList(),

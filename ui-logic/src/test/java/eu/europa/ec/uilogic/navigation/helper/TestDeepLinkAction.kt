@@ -30,21 +30,33 @@ class TestDeepLinkAction {
         assertEquals(DeepLinkType.OPENID4VP, DeepLinkType.parse(BuildConfig.EUDI_OPENID4VP_SCHEME))
         assertEquals(DeepLinkType.OPENID4VP, DeepLinkType.parse(BuildConfig.MDOC_OPENID4VP_SCHEME))
         assertEquals(DeepLinkType.OPENID4VP, DeepLinkType.parse(BuildConfig.HAIP_OPENID4VP_SCHEME))
-        assertEquals(DeepLinkType.CREDENTIAL_OFFER, DeepLinkType.parse(BuildConfig.CREDENTIAL_OFFER_SCHEME))
+        assertEquals(
+            DeepLinkType.CREDENTIAL_OFFER,
+            DeepLinkType.parse(BuildConfig.CREDENTIAL_OFFER_SCHEME)
+        )
         assertEquals(
             DeepLinkType.CREDENTIAL_OFFER,
             DeepLinkType.parse(BuildConfig.CREDENTIAL_OFFER_HAIP_SCHEME)
         )
         assertEquals(
             DeepLinkType.ISSUANCE,
-            DeepLinkType.parse(BuildConfig.ISSUE_AUTHORIZATION_SCHEME, BuildConfig.ISSUE_AUTHORIZATION_HOST)
+            DeepLinkType.parse(
+                BuildConfig.ISSUE_AUTHORIZATION_SCHEME,
+                BuildConfig.ISSUE_AUTHORIZATION_HOST
+            )
         )
-        assertEquals(DeepLinkType.RQES, DeepLinkType.parse(BuildConfig.RQES_SCHEME, BuildConfig.RQES_HOST))
+        assertEquals(
+            DeepLinkType.RQES,
+            DeepLinkType.parse(BuildConfig.RQES_SCHEME, BuildConfig.RQES_HOST)
+        )
     }
 
     @Test
     fun `Given a known scheme with the wrong host, When parsed, Then it starts no flow`() {
-        assertEquals(DeepLinkType.EXTERNAL, DeepLinkType.parse(BuildConfig.RQES_SCHEME, "attacker.example"))
+        assertEquals(
+            DeepLinkType.EXTERNAL,
+            DeepLinkType.parse(BuildConfig.RQES_SCHEME, "attacker.example")
+        )
         assertEquals(
             DeepLinkType.EXTERNAL,
             DeepLinkType.parse(BuildConfig.ISSUE_AUTHORIZATION_SCHEME, "attacker.example")
@@ -57,11 +69,19 @@ class TestDeepLinkAction {
 
         assertEquals(
             DeepLinkType.RQES_DOC_RETRIEVAL,
-            DeepLinkType.parse(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME, configured, rqesDocRetrievalHost = configured)
+            DeepLinkType.parse(
+                BuildConfig.RQES_DOC_RETRIEVAL_SCHEME,
+                configured,
+                rqesDocRetrievalHost = configured
+            )
         )
         assertEquals(
             DeepLinkType.EXTERNAL,
-            DeepLinkType.parse(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME, "attacker.example", rqesDocRetrievalHost = configured)
+            DeepLinkType.parse(
+                BuildConfig.RQES_DOC_RETRIEVAL_SCHEME,
+                "attacker.example",
+                rqesDocRetrievalHost = configured
+            )
         )
         assertEquals(
             DeepLinkType.RQES_DOC_RETRIEVAL,
@@ -77,7 +97,10 @@ class TestDeepLinkAction {
     fun `Given a known host in another case, When parsed, Then it starts its flow`() {
         assertEquals(
             DeepLinkType.ISSUANCE,
-            DeepLinkType.parse(BuildConfig.ISSUE_AUTHORIZATION_SCHEME, BuildConfig.ISSUE_AUTHORIZATION_HOST.uppercase())
+            DeepLinkType.parse(
+                BuildConfig.ISSUE_AUTHORIZATION_SCHEME,
+                BuildConfig.ISSUE_AUTHORIZATION_HOST.uppercase()
+            )
         )
         assertEquals(
             DeepLinkType.RQES,
@@ -87,16 +110,36 @@ class TestDeepLinkAction {
 
     @Test
     fun `Given a configured host, When a host is matched, Then only that host matches, in any case`() {
-        assertTrue(DeepLinkType.hostMatches(configured = "docs.qtsp.example", host = "docs.qtsp.example"))
-        assertTrue(DeepLinkType.hostMatches(configured = "docs.qtsp.example", host = "DOCS.QTSP.example"))
-        assertFalse(DeepLinkType.hostMatches(configured = "docs.qtsp.example", host = "attacker.example"))
+        assertTrue(
+            DeepLinkType.hostMatches(
+                configured = "docs.qtsp.example",
+                host = "docs.qtsp.example"
+            )
+        )
+        assertTrue(
+            DeepLinkType.hostMatches(
+                configured = "docs.qtsp.example",
+                host = "DOCS.QTSP.example"
+            )
+        )
+        assertFalse(
+            DeepLinkType.hostMatches(
+                configured = "docs.qtsp.example",
+                host = "attacker.example"
+            )
+        )
         assertFalse(DeepLinkType.hostMatches(configured = "docs.qtsp.example", host = null))
         assertFalse(DeepLinkType.hostMatches(configured = null, host = "docs.qtsp.example"))
     }
 
     @Test
     fun `Given the any-host sentinel, When a host is matched, Then every host matches`() {
-        assertTrue(DeepLinkType.hostMatches(configured = DeepLinkType.ANY_HOST, host = "attacker.example"))
+        assertTrue(
+            DeepLinkType.hostMatches(
+                configured = DeepLinkType.ANY_HOST,
+                host = "attacker.example"
+            )
+        )
         assertTrue(DeepLinkType.hostMatches(configured = DeepLinkType.ANY_HOST, host = null))
     }
 }

@@ -66,17 +66,18 @@ class TestRouterHost {
         whenever(configUILogic.protectedFlowScreens).thenReturn(listOf(signing))
         whenever(configUILogic.dashboardScreenIdentifier).thenReturn(DashboardScreens.Dashboard)
         whenever(configUILogic.issuanceScreenIdentifier).thenReturn(addDocument)
-        navController.graph = navController.createGraph(startDestination = ModuleRoute.StartupModule.route) {
-            navigation(
-                startDestination = StartupScreens.Splash.screenRoute,
-                route = ModuleRoute.StartupModule.route,
-            ) {
-                composable(StartupScreens.Splash.screenRoute) {}
+        navController.graph =
+            navController.createGraph(startDestination = ModuleRoute.StartupModule.route) {
+                navigation(
+                    startDestination = StartupScreens.Splash.screenRoute,
+                    route = ModuleRoute.StartupModule.route,
+                ) {
+                    composable(StartupScreens.Splash.screenRoute) {}
+                }
+                composable(DashboardScreens.Dashboard.screenRoute) {}
+                composable(addDocument.screenRoute) {}
+                composable(signing.screenRoute) {}
             }
-            composable(DashboardScreens.Dashboard.screenRoute) {}
-            composable(addDocument.screenRoute) {}
-            composable(signing.screenRoute) {}
-        }
         routerHost.attach(navController = navController, context = context)
     }
 
@@ -100,7 +101,10 @@ class TestRouterHost {
 
         routerHost.requireLoginIfLocked()
 
-        assertEquals(DashboardScreens.Dashboard.screenRoute, navController.currentDestination?.route)
+        assertEquals(
+            DashboardScreens.Dashboard.screenRoute,
+            navController.currentDestination?.route
+        )
     }
 
     @Test

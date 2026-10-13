@@ -156,9 +156,19 @@ class TestWalletCoreDocumentsController {
     fun `Given blocked documents, When asked whether each is suspended, Then only the suspended one is`() =
         coroutineRule.runTest {
             whenever(revokedDocumentDao.retrieve("suspended"))
-                .thenReturn(RevokedDocument(identifier = "suspended", status = RevocationStatus.SUSPENDED))
+                .thenReturn(
+                    RevokedDocument(
+                        identifier = "suspended",
+                        status = RevocationStatus.SUSPENDED
+                    )
+                )
             whenever(revokedDocumentDao.retrieve("revoked"))
-                .thenReturn(RevokedDocument(identifier = "revoked", status = RevocationStatus.INVALID))
+                .thenReturn(
+                    RevokedDocument(
+                        identifier = "revoked",
+                        status = RevocationStatus.INVALID
+                    )
+                )
 
             assertTrue(controller.isDocumentSuspended("suspended"))
             assertFalse(controller.isDocumentSuspended("revoked"))
@@ -246,7 +256,11 @@ class TestWalletCoreDocumentsController {
             )
             whenever(statusRefreshFailureDao.retrieveAll()).thenReturn(emptyList())
             whenever(bookmarkDao.retrieveAll()).thenReturn(listOf(Bookmark("oldPid")))
-            whenever(failedReIssuedDocumentDao.retrieveAll()).thenReturn(listOf(FailedReIssuedDocument("otherPid")))
+            whenever(failedReIssuedDocumentDao.retrieveAll()).thenReturn(
+                listOf(
+                    FailedReIssuedDocument("otherPid")
+                )
+            )
             whenever(eudiWallet.getDocuments(anyOrNull())).thenReturn(listOf(otherPid))
 
             implementation().deleteRecordsOfMissingDocuments()
@@ -275,12 +289,14 @@ class TestWalletCoreDocumentsController {
                 failedReIssuedDocumentDao,
             )
         }
+
     @Test
     fun `Given an offer from an issuer that is not configured, When it is resolved, Then it fails before any issuer is contacted`() =
         coroutineRule.runTest {
             givenTwoIssuers()
 
-            val result = controller.resolveDocumentOffer(offerByValue("https://attacker.example")).first()
+            val result =
+                controller.resolveDocumentOffer(offerByValue("https://attacker.example")).first()
 
             assertEquals(ResolveDocumentOfferPartialState.Failure(NOT_CONFIGURED), result)
             verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
@@ -291,7 +307,9 @@ class TestWalletCoreDocumentsController {
         coroutineRule.runTest {
             givenTwoIssuers()
 
-            val result = controller.resolveDocumentOffer("openid-credential-offer://?credential_offer=%7Bnot-json").first()
+            val result =
+                controller.resolveDocumentOffer("openid-credential-offer://?credential_offer=%7Bnot-json")
+                    .first()
 
             assertEquals(ResolveDocumentOfferPartialState.Failure(UNREADABLE), result)
             verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
@@ -303,10 +321,15 @@ class TestWalletCoreDocumentsController {
             givenTwoIssuers()
             val link = offerByValue(CONFIGURED_ISSUER)
 
-            val job = coroutineRule.testScope.launch { controller.resolveDocumentOffer(link).collect {} }
+            val job =
+                coroutineRule.testScope.launch { controller.resolveDocumentOffer(link).collect {} }
             coroutineRule.testScope.runCurrent()
 
-            verify(configuredIssuerManager, timeout(5_000)).resolveDocumentOffer(eq(link), anyOrNull(), any())
+            verify(configuredIssuerManager, timeout(5_000)).resolveDocumentOffer(
+                eq(link),
+                anyOrNull(),
+                any()
+            )
             verifyNoInteractions(firstIssuerManager)
             job.cancel()
         }
@@ -336,17 +359,24 @@ class TestWalletCoreDocumentsController {
     fun `Given a deferred document, When it is issued, Then the manager of its own issuer is used`() =
         coroutineRule.runTest {
             givenTwoIssuers()
-            val metadata: IssuerMetadata = mock { on { credentialIssuerIdentifier } doReturn CONFIGURED_ISSUER }
+            val metadata: IssuerMetadata =
+                mock { on { credentialIssuerIdentifier } doReturn CONFIGURED_ISSUER }
             val deferred: DeferredDocument = mock {
                 on { id } doReturn "deferred"
                 on { issuerMetadata } doReturn metadata
             }
             whenever(eudiWallet.getDocumentById("deferred")).thenReturn(deferred)
 
-            val job = coroutineRule.testScope.launch { controller.issueDeferredDocument("deferred").collect {} }
+            val job = coroutineRule.testScope.launch {
+                controller.issueDeferredDocument("deferred").collect {}
+            }
             coroutineRule.testScope.runCurrent()
 
-            verify(configuredIssuerManager, timeout(5_000)).issueDeferredDocument(eq(deferred), anyOrNull(), any())
+            verify(configuredIssuerManager, timeout(5_000)).issueDeferredDocument(
+                eq(deferred),
+                anyOrNull(),
+                any()
+            )
             verifyNoInteractions(firstIssuerManager)
             job.cancel()
         }
@@ -377,7 +407,12 @@ class TestWalletCoreDocumentsController {
             doAnswer { invocation ->
                 val onIssueEvent = invocation.getArgument<OpenId4VciManager.OnIssueEvent>(4)
                 onIssueEvent(IssueEvent.Started(total = 2))
-                onIssueEvent(IssueEvent.DocumentFailed(notIssued, IllegalStateException("not issued")))
+                onIssueEvent(
+                    IssueEvent.DocumentFailed(
+                        notIssued,
+                        IllegalStateException("not issued")
+                    )
+                )
                 onIssueEvent(IssueEvent.Finished(issuedDocuments = listOf("pid")))
             }.whenever(configuredIssuerManager).issueDocumentByConfigurationIdentifiers(
                 eq(CONFIGURED_ISSUER),
@@ -432,7 +467,9 @@ class TestWalletCoreDocumentsController {
             .thenReturn(NOT_CONFIGURED)
         whenever(resourceProvider.getString(R.string.issuance_document_offer_error_no_document))
             .thenReturn(UNREADABLE)
-        whenever(resourceProvider.getString(R.string.issuance_generic_error)).thenReturn(DOCUMENT_ERROR)
+        whenever(resourceProvider.getString(R.string.issuance_generic_error)).thenReturn(
+            DOCUMENT_ERROR
+        )
         whenever(resourceProvider.genericErrorMessage()).thenReturn("error")
     }
 

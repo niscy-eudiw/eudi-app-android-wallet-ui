@@ -51,9 +51,30 @@ class TestEudiComponentActivityHelper {
     fun `Given the link that started this task, When Android restarts the task with it, Then it is a replay`() {
         val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
-        assertTrue(replayed(UPDATE_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 132, recorded = recorded))
-        assertTrue(replayed(RECENTS_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 132, recorded = recorded))
-        assertTrue(replayed(FROM_HISTORY_FLAGS, LAUNCHER_PACKAGE, taskId = 132, recorded = recorded))
+        assertTrue(
+            replayed(
+                UPDATE_RESTART_FLAGS,
+                SYSTEM_UI_PACKAGE,
+                taskId = 132,
+                recorded = recorded
+            )
+        )
+        assertTrue(
+            replayed(
+                RECENTS_RESTART_FLAGS,
+                SYSTEM_UI_PACKAGE,
+                taskId = 132,
+                recorded = recorded
+            )
+        )
+        assertTrue(
+            replayed(
+                FROM_HISTORY_FLAGS,
+                LAUNCHER_PACKAGE,
+                taskId = 132,
+                recorded = recorded
+            )
+        )
     }
 
     @Test
@@ -61,30 +82,73 @@ class TestEudiComponentActivityHelper {
         val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
         assertFalse(replayed(CHROME_TAP_FLAGS, CHROME_PACKAGE, taskId = 132, recorded = recorded))
-        assertFalse(replayed(Intent.FLAG_ACTIVITY_NEW_TASK, SHELL_PACKAGE, taskId = 132, recorded = recorded))
+        assertFalse(
+            replayed(
+                Intent.FLAG_ACTIVITY_NEW_TASK,
+                SHELL_PACKAGE,
+                taskId = 132,
+                recorded = recorded
+            )
+        )
     }
 
     @Test
     fun `Given an app that sends the same link with CLEAR_TASK, When it arrives in the task, Then it is not a replay`() {
         val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
-        assertFalse(replayed(RECENTS_RESTART_FLAGS, OTHER_APP_PACKAGE, taskId = 132, recorded = recorded))
-        assertFalse(replayed(UPDATE_RESTART_FLAGS, launchedBy = null, taskId = 132, recorded = recorded))
+        assertFalse(
+            replayed(
+                RECENTS_RESTART_FLAGS,
+                OTHER_APP_PACKAGE,
+                taskId = 132,
+                recorded = recorded
+            )
+        )
+        assertFalse(
+            replayed(
+                UPDATE_RESTART_FLAGS,
+                launchedBy = null,
+                taskId = 132,
+                recorded = recorded
+            )
+        )
     }
 
     @Test
     fun `Given the system UI starts the activity without a restart flag, When the link matches, Then it is not a replay`() {
         val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
-        assertFalse(replayed(Intent.FLAG_ACTIVITY_NEW_TASK, SYSTEM_UI_PACKAGE, taskId = 132, recorded = recorded))
+        assertFalse(
+            replayed(
+                Intent.FLAG_ACTIVITY_NEW_TASK,
+                SYSTEM_UI_PACKAGE,
+                taskId = 132,
+                recorded = recorded
+            )
+        )
     }
 
     @Test
     fun `Given a restart, When the task or the link differs from the record, Then it is not a replay`() {
         val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
-        assertFalse(replayed(RECENTS_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 140, recorded = recorded))
-        assertFalse(replayed(RECENTS_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 132, link = "$LINK&x=1", recorded = recorded))
+        assertFalse(
+            replayed(
+                RECENTS_RESTART_FLAGS,
+                SYSTEM_UI_PACKAGE,
+                taskId = 140,
+                recorded = recorded
+            )
+        )
+        assertFalse(
+            replayed(
+                RECENTS_RESTART_FLAGS,
+                SYSTEM_UI_PACKAGE,
+                taskId = 132,
+                link = "$LINK&x=1",
+                recorded = recorded
+            )
+        )
         assertFalse(replayed(RECENTS_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 132, recorded = ""))
     }
 
@@ -120,7 +184,8 @@ class TestEudiComponentActivityHelper {
     }
 
     private companion object {
-        const val LINK = "haip-vp://?client_id=x509_hash%3Aabc&request_uri=https%3A%2F%2Fverifier.example%2Fr%2F1"
+        const val LINK =
+            "haip-vp://?client_id=x509_hash%3Aabc&request_uri=https%3A%2F%2Fverifier.example%2Fr%2F1"
 
         /** The flags of an intent Chrome sends when the user taps a wallet link, as seen on the emulator. */
         const val CHROME_TAP_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -129,10 +194,12 @@ class TestEudiComponentActivityHelper {
         const val UPDATE_RESTART_FLAGS = Intent.FLAG_ACTIVITY_CLEAR_TASK
 
         /** The flags of the task's first intent when Recents restarts it without saved state. */
-        const val RECENTS_RESTART_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        const val RECENTS_RESTART_FLAGS =
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
 
         /** The flags AOSP adds when a launcher restarts a task through the Recents path. */
-        const val FROM_HISTORY_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY
+        const val FROM_HISTORY_FLAGS =
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY
 
         const val CHROME_PACKAGE = "com.android.chrome"
         const val SHELL_PACKAGE = "com.android.shell"

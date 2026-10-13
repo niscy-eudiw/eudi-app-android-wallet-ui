@@ -187,7 +187,8 @@ class TestWalletCoreTransactionLogController {
                 transactionLogManager = DefaultTransactionLogManager(controller),
             )
             listeners.add(controller)
-            val event = TransferEvent.RequestReceived(processedRequest(registration = notBound), mock())
+            val event =
+                TransferEvent.RequestReceived(processedRequest(registration = notBound), mock())
 
             listeners.forEach { listener -> listener.onTransferEvent(event) }
             coroutineRule.testScope.advanceUntilIdle()
@@ -242,7 +243,8 @@ class TestWalletCoreTransactionLogController {
                 )
             )
 
-            val presentation = controller.getTransactionLogs().single() as TransactionLogDomain.Presentation
+            val presentation =
+                controller.getTransactionLogs().single() as TransactionLogDomain.Presentation
 
             assertEquals(
                 RecordedRegistrationCheckDomain.NotVerified(reason = RegistrationFailureReasonDomain.EXPIRED),

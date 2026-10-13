@@ -171,7 +171,8 @@ class WalletCoreTransactionLogControllerImpl(
 
     override fun onTransferEvent(event: TransferEvent) {
         if (event !is TransferEvent.RequestReceived) return
-        val pending = (pendingPresentation.getAndSet(null) as? PendingPresentation.Entry)?.entry ?: return
+        val pending =
+            (pendingPresentation.getAndSet(null) as? PendingPresentation.Entry)?.entry ?: return
         val request = event.processedRequest.getOrNull() ?: return
         if (pending.relyingPartyFields() != event.processedRequest.loggedRelyingPartyFields()) return
         val check = request.wrpRegistration
@@ -196,7 +197,8 @@ class WalletCoreTransactionLogControllerImpl(
     /** The relying-party fields Wallet Core records for [this] request. */
     private fun RequestProcessor.ProcessedRequest.loggedRelyingPartyFields(): List<Any?> {
         val builder = PresentationLogBuilder()
-        return builder.withRelyingParty(builder.createEmptyPresentationLog(), this).relyingPartyFields()
+        return builder.withRelyingParty(builder.createEmptyPresentationLog(), this)
+            .relyingPartyFields()
     }
 
     private fun TransactionEntry.Presentation.relyingPartyFields(): List<Any?> = listOf(
