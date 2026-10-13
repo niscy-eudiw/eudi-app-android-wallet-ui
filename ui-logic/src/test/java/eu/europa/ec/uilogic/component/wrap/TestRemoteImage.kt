@@ -27,8 +27,10 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
 import okio.BufferedSource
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
@@ -106,6 +108,7 @@ class TestRemoteImage {
             "https://cdn.example/logo",
             "https://issuer.example:8443/logo",
             "http://issuer.example/logo",
+            "http://issuer.example:443/logo",
         ).forEach { current ->
             assertThrows(current, IOException::class.java) {
                 SameOriginRedirects().intercept(
@@ -113,6 +116,15 @@ class TestRemoteImage {
                 )
             }
         }
+    }
+
+    @Test
+    fun `Given the image client, When it is built, Then it limits responses and checks every redirect`() {
+        assertFalse(remoteImageHttpClient.followSslRedirects)
+        assertTrue(remoteImageHttpClient.interceptors.any { interceptor -> interceptor is ResponseSizeLimit })
+        assertTrue(
+            remoteImageHttpClient.networkInterceptors.any { interceptor -> interceptor is SameOriginRedirects }
+        )
     }
 
     private fun redirectChain(requested: String, current: String): Interceptor.Chain {

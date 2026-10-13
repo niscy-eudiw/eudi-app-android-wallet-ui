@@ -17,8 +17,9 @@
 package eu.europa.ec.corelogic.controller
 
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
-import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.config.VciConfig
+import eu.europa.ec.corelogic.config.WalletCoreConfig
+import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -27,6 +28,8 @@ import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.issue.openid4vci.IssueEvent
+import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
+import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -66,6 +69,7 @@ import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
+import java.net.URL
 import java.net.URLEncoder
 
 class TestWalletCoreDocumentsController {
@@ -311,6 +315,27 @@ class TestWalletCoreDocumentsController {
             verify(configuredIssuerManager, timeout(5_000)).resolveDocumentOffer(eq(link), anyOrNull(), any())
             verifyNoInteractions(firstIssuerManager)
             job.cancel()
+        }
+
+    @Test
+    fun `Given an offer that resolves to an issuer that is not configured, When it is resolved, Then it is refused`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+            val link = offerByValue(CONFIGURED_ISSUER)
+            val resolvedOffer: CredentialOffer = mock()
+            whenever(resolvedOffer.credentialIssuerIdentifier).thenAnswer { URL("https://other.example") }
+            val offer: Offer = mock {
+                on { credentialOffer } doReturn resolvedOffer
+            }
+            whenever(configuredIssuerManager.resolveDocumentOffer(eq(link), anyOrNull(), any()))
+                .thenAnswer { invocation ->
+                    invocation.getArgument<OpenId4VciManager.OnResolvedOffer>(2)
+                        .onResult(OfferResult.Success(offer))
+                }
+
+            val result = controller.resolveDocumentOffer(link).first()
+
+            assertEquals(ResolveDocumentOfferPartialState.Failure(NOT_CONFIGURED), result)
         }
 
     @Test

@@ -982,15 +982,19 @@ Trust is evaluated on two independent layers, and passing one says nothing about
 The two layers are not interchangeable: an authenticated issuer that is not registered for what it
 offers is refused, and a registered issuer that fails authentication is refused too.
 
-**This layer is off by default and must be switched on.** Access-certificate trust is enforced
-where the protocol and trust policy allow it (where it does not, the user is warned; see below),
+**This layer is off by default and must be switched on.** A relying party's access-certificate
+trust is enforced where the protocol and trust policy allow it (where it does not, the user is
+warned before sharing; see below), and an issuer is shown as verified only when Wallet Core
+reports it trusted, so one accepted under `INFORM` without that verdict is shown as not verified,
 but registration-certificate checking is governed by the *Check Registration Certificates*
 setting, which the reference build ships **off**. One setting drives both the issuer policy
 (`configureIssuerRegistrationPolicy`) and the verifier policy (`configureWrpRegistrationPolicy`).
 While it is off, nothing is evaluated on registration grounds: nothing is refused or warned about
 over a registration, and the verified indicator falls back to the access certificate alone.
 **A production deployment must turn it on** — and should decide whether to keep the switch
-reachable by users at all, since it turns a trust check off.
+reachable by users at all, since it turns a trust check off. Wallet Core reads the setting when it
+creates its managers, so a change, including the return to off by **Reset wallet**, takes effect
+at the next app start.
 
 Everything below describes behavior with the setting on, except where noted. The app treats the
 two directions differently, and the asymmetry is intentional:
@@ -1842,8 +1846,7 @@ values; this is the rule the ARF and the Implementing Acts set for it. Since rel
   (valid signature, trusted signer), the entry records the relying party's registered name,
   identifier, contacts, intermediary, purpose, privacy policy, registrar and supervisory
   authority, even if the certificate then fails its binding, validity or revocation checks.
-  Otherwise only the relying party's name is recorded. The app records beside the entry whether
-  the registration was verified (see Transaction history);
+  Otherwise only the relying party's name is recorded;
 * the entry also records the `transaction_data` the request carried, decoded from base64url and
   otherwise unchanged. For a signing request this includes document names, document locations,
   hashes, any one-time password for document access and the whole content of a document carried
@@ -1852,9 +1855,18 @@ values; this is the rule the ARF and the Implementing Acts set for it. Since rel
   and the issuer. Signing entries record the QTSP, the signing certificate's serial number, the
   document's name and size, and the DTBSR.
 
+Beside each presentation entry, the app records whether the relying party's registration was
+verified (`registrationCheck` and `registrationFailureReason`; see Transaction history). Wallet
+Core does not keep it in the entry.
+
 Entries have no time or count limit. They are removed only when the user deletes an entry, when
 the last document of an attestation type is removed (see
-[Data Deletion And Factory Reset](#data-deletion-and-factory-reset)), and by **Reset wallet**.
+[Data Deletion And Factory Reset](#data-deletion-and-factory-reset)), by **Reset wallet**, and
+when an app update raises the database version: the destructive fallback below recreates every
+table, so the transaction history, bookmarks, data-deletion and DPA-report attempts, failed
+re-issuance records and issuer-trust records are lost; every document then shows its issuer as
+not verified until it is issued again. State this in the release notes of an update that changes
+the schema.
 
 Current risk:
 

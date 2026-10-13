@@ -40,7 +40,6 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
             val config =
                 extensions.create<LibraryPluginConfig>("moduleConfig", LibraryModule.Unspecified)
 
-
             val eudiOpenId4VpScheme = "eudi-openid4vp"
             val eudiOpenid4VpHost = "*"
 

@@ -210,7 +210,7 @@ checked, for example while offline, the document's details say so.
    registered for, a warning appears and "Share" stays disabled until you acknowledge it. With the
    setting off — the default — the name comes from the Verifier's access certificate alone.
    Whatever the setting, a Verifier whose access certificate cannot be verified is refused before
-   this screen, on a "Request blocked" sheet.
+   this screen, on a "Presentation blocked" sheet.
    If the request includes your portrait, a notice says that it can be used as biometric data, and
    "Share" first asks you to confirm on a "Share your portrait?" sheet.
 8. Tap "Share".

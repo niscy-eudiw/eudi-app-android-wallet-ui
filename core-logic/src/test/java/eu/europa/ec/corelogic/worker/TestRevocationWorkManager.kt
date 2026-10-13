@@ -313,6 +313,7 @@ class TestRevocationWorkManager {
     fun `Given a cancelled resolution, When the worker runs, Then the cancellation is not recorded as a failure`() {
         coroutineRule.runTest {
             givenStoredStatus(null)
+            whenever(walletCoreDocumentsController.hasStatusReference(document)).thenReturn(true)
             whenever(walletCoreDocumentsController.resolveDocumentStatus(document))
                 .thenReturn(Result.failure(CancellationException("stopped")))
 

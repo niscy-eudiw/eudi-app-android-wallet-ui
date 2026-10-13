@@ -202,9 +202,12 @@ overridden by a flavor when needed.
    is unverified or untrusted. Other configured checks still apply.
 
    **Two trust layers.** An access certificate answers *who is this party*, a registration
-   certificate answers *what is it registered to do*. They are checked independently. Access-
-   certificate trust is enforced where the protocol and trust policy allow it, and otherwise the
-   user is warned; the registration layer is governed by a single runtime setting described below.
+   certificate answers *what is it registered to do*. They are checked independently. A relying
+   party's access-certificate trust is enforced where the protocol and trust policy allow it, and
+   otherwise the user is warned before sharing; an issuer is shown as verified only when Wallet Core
+   reports it trusted, so one accepted under `INFORM` without that verdict is shown as not verified.
+   The registration layer is governed by a single runtime setting described
+   below.
 
    With the registration check **on**, both layers are needed on the issuance path: a document is
    only stored when the issuer authenticates **and** its registration is verified and covers the
@@ -445,12 +448,16 @@ EudiWallet(
     withLogger(walletCoreLogController)
     withTransactionLogger(walletCoreTransactionLogController)
     withKtorHttpClientFactory { httpClient }
+    withDCAPIRegistration(walletCoreDCAPIRegistrationController)
 }
 ```
 
-To change the Trust Mark settings for a build flavor, override `trustMarkSource` in its
-`WalletCoreConfigImpl`. Use `TrustMarkSource.Static` for predefined information, or
-`TrustMarkSource.Dynamic` with a `TrustMarkProvider` that supplies the information at runtime.
+To change the Trust Mark settings for a build flavor, override `trustMarkSource`,
+`trustMarkResource` and `isWalletCertified` in its `WalletCoreConfigImpl`. Use
+`TrustMarkSource.Static` for predefined information, or `TrustMarkSource.Dynamic` with a
+`TrustMarkProvider` that supplies the information at runtime. To fetch the resource instead of
+bundling it, set `trustMarkResource` to `TrustMarkResourceSource.Remote` and give its address as
+`trustMarkResourceURL`.
 
 The Trust Mark screen displays the image from `image.url` above the localized text from the
 resource. The image must be an `https` URL; any other address is not loaded. In the reference
@@ -803,7 +810,8 @@ encrypted preferences use Jetpack DataStore with Google Tink AEAD and an Android
 key. For production, confirm the iteration count, lockout behavior, device binding, migration,
 backup exclusion, and recovery policy against your security requirements.
 
-The factory reset clears the PIN through `PrefsController.clear()`. A provider that keeps its data
+The factory reset clears the PIN, with every other preference except the session id and the
+database key, through `PrefKeys.clearAllExceptSessionIdAndDbKey()`. A provider that keeps its data
 anywhere else must be cleared by `WalletResetController` as well; see
 [GO_LIVE.md](GO_LIVE.md#data-deletion-and-factory-reset).
 
