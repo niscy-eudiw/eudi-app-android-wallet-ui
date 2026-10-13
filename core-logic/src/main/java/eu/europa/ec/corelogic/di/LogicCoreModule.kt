@@ -222,7 +222,6 @@ fun provideWalletCoreDocumentsController(
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     issuerTrustDao: IssuerTrustDao,
     statusRefreshFailureDao: StatusRefreshFailureDao,
-    walletCoreTransactionLogController: WalletCoreTransactionLogController,
     prefKeys: PrefKeys
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
@@ -233,7 +232,6 @@ fun provideWalletCoreDocumentsController(
         failedReIssuedDocumentDao,
         issuerTrustDao,
         statusRefreshFailureDao,
-        walletCoreTransactionLogController,
         prefKeys
     )
 
@@ -249,6 +247,7 @@ fun provideWalletResetController(
     walletWorkScheduler: WalletWorkScheduler,
     databaseEraser: DatabaseEraser,
     logController: LogController,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
 ): WalletResetController = WalletResetControllerImpl(
     walletCoreDocumentsController = walletCoreDocumentsController,
     walletCoreDCAPIRegistrationController = walletCoreDCAPIRegistrationController,
@@ -258,6 +257,7 @@ fun provideWalletResetController(
     resetStatus = walletResetStatus,
     stopBackgroundWork = { walletWorkScheduler.stop() },
     scheduleBackgroundWork = { walletWorkScheduler.schedule() },
+    clearTransactionLogs = { walletCoreTransactionLogController.deleteAllTransactionLogs() },
     clearDatabase = { databaseEraser.clearAllTables() },
     deleteLogFiles = { logController.deleteLogFiles() },
     deleteCacheFiles = { context.cacheDir.listFiles()?.forEach { it.deleteRecursively() } },

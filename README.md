@@ -275,9 +275,9 @@ documents from the picker and declines such requests.
 
 ### Removing a document and resetting the Wallet
 
-To remove one document, open it from the "Documents" tab and tap "Remove from wallet". Its stored
-details go with it, and so does the transaction history of its document type once no other document
-of that type is left.
+To remove one document, open it from the "Documents" tab and tap "Remove from wallet". The document,
+its keys and the Wallet's records about it are deleted. The transaction history stays: you can delete
+single entries from it, and **Reset wallet** deletes it all.
 
 To erase everything:
 

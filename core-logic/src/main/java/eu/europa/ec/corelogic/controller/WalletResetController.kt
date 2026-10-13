@@ -80,6 +80,7 @@ class WalletResetControllerImpl(
     private val resetStatus: WalletResetStatus,
     private val stopBackgroundWork: suspend () -> Boolean,
     private val scheduleBackgroundWork: () -> Unit,
+    private val clearTransactionLogs: suspend () -> Unit,
     private val clearDatabase: () -> Unit,
     private val deleteLogFiles: () -> Unit,
     private val deleteCacheFiles: () -> Unit,
@@ -92,7 +93,9 @@ class WalletResetControllerImpl(
 
     /**
      * Inside [NonCancellable] a cancellation can only come from a step itself, so it counts as a
-     * failed step like any other exception.
+     * failed step like any other exception. The transaction history is cleared through its own
+     * queue before the tables are, so that a deletion entry Wallet Core logged for a removed
+     * document cannot be written after the tables are empty.
      */
     override suspend fun resetWallet(): WalletResetPartialState = withContext(dispatcher + NonCancellable) {
         resetStatus.setResetting(true)
@@ -104,6 +107,7 @@ class WalletResetControllerImpl(
             if (!documentsDeleted) {
                 return@withContext failure()
             }
+            clearTransactionLogs()
             clearDatabase()
             prefKeys.clearAllExceptSessionIdAndDbKey()
             deleteLogFiles()

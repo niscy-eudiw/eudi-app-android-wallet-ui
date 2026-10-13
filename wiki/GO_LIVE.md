@@ -1866,14 +1866,16 @@ Beside each presentation entry, the app records whether the relying party's regi
 verified (`registrationCheck` and `registrationFailureReason`; see Transaction history). Wallet
 Core does not keep it in the entry.
 
-Entries have no time or count limit. They are removed only when the user deletes an entry, when
-the last document of an attestation type is removed (see
-[Data Deletion And Factory Reset](#data-deletion-and-factory-reset)), by **Reset wallet**, and
-when an app update raises the database version: the destructive fallback below recreates every
-table, so the transaction history, bookmarks, data-deletion and DPA-report attempts, failed
-re-issuance records and issuer-trust records are lost; every document then shows its issuer as
-not verified until it is issued again. State this in the release notes of an update that changes
-the schema.
+Entries have no time or count limit, and removing a document leaves them in place (see
+[Data Deletion And Factory Reset](#data-deletion-and-factory-reset)). Entries are removed only
+when the user deletes one, by **Reset wallet**, when the history is read and an entry cannot be
+decoded, for example after a Wallet Core update changed its format, when the database key is
+missing at start-up and the database file is deleted, and when an app update raises the database
+version. In the last case the destructive fallback below recreates every table, so the transaction
+history, bookmarks, data-deletion and DPA-report attempts, failed re-issuance records, issuer-trust
+records, revocation records and failed status refreshes are lost. Every document then shows its
+issuer as not verified until it is issued again, and the next status check rebuilds the revocation
+records. State this in the release notes of an update that changes the schema.
 
 Current risk:
 
@@ -1883,13 +1885,16 @@ Current risk:
 
 Production guidance:
 
-* Replace destructive migration with explicit Room migrations.
+* Replace destructive migration with explicit Room migrations. The transaction history is a legal
+  record and must survive an update.
 * Add migration tests.
-* The reference app sets no retention limit on transaction logs and has no purge; this is left to
-  implementers. Choose a retention period in the DPIA and implement the deletion that applies it,
-  for example at app start in `WalletCoreTransactionLogController`; a period that nothing enforces
-  has no effect. The controller offers `deleteAllTransactionLogs()` for a "clear history" action,
-  which the reference UI does not expose, and history is read without paging.
+* The transaction history is a legal record, meant to stay until the wallet is reset or
+  uninstalled. The reference app therefore sets no retention limit and keeps it when a document is
+  removed, but still loses it in the cases listed above, including an update that changes the
+  schema. The user can delete single entries, and **Reset wallet** deletes them all. Do not add a retention purge,
+  deletion with a document or a bulk "clear history" action. An entry that can no longer be decoded
+  is deleted when the history is read, so check that a Wallet Core update still reads the stored
+  entries. History is read without paging.
 * Minimize transaction log content. Decide whether the raw `transaction_data`, and one-time
   passwords in particular, belong in the log.
 * The log is personal data: it shows which relying parties the user dealt with, when, and which
@@ -1915,17 +1920,13 @@ Room.databaseBuilder(
 Removing a document deletes, besides the credential and its keys in Wallet Core:
 
 * its revocation record, issuer-trust verdict and last failed status refresh;
-* its bookmark and its failed re-issuance record;
-* the transaction history of its attestation type, once no other document of that type is left.
+* its bookmark and its failed re-issuance record.
 
-Wallet Core records the attestation type (the mdoc `docType` or the SD-JWT VC `vct`) in each
-history entry, not the document. While another document of the same type remains, the history may
-be that document's and is kept. An entry that covers several types, such as an issuance of the PID
-in both formats or a presentation of a PID and an mDL, is deleted when the last document of any of
-them goes, and with a presentation go the data-deletion request and DPA-report attempts linked to
-it. Wallet Core's own record of the deletion is kept. These deletions are best effort: a storage
-error leaves records behind rather than reporting a completed removal as failed, and the factory
-reset removes what is left.
+These deletions are best effort: a storage error leaves records behind rather than reporting a
+completed removal as failed, and the factory reset removes what is left.
+
+The transaction history stays, and Wallet Core adds its own record of the deletion. The user can
+delete single entries, and **Reset wallet** deletes them all.
 
 A re-issuance replaces the original document. Wallet Core deletes the original once a new
 credential has been issued, and for a deferred re-issuance only when the deferred credential
@@ -2050,7 +2051,7 @@ a request was sent, received, or fulfilled. Deleting a presentation also deletes
 Deleting a pending issuance log removes its current entry. When issuance later completes, a log
 can appear again. Log deletion does not cancel issuance.
 
-Removing the last document of an attestation type also removes that type's history; see
+Removing a document keeps its history; see
 [Data Deletion And Factory Reset](#data-deletion-and-factory-reset).
 
 ### Diagnostic logging
@@ -2665,7 +2666,8 @@ Controls to evidence:
 * The purpose shown for a presentation request comes from the verifier's registration certificate
   rather than being self-asserted, and a request beyond the registered scope is visible as such.
 * Analytics avoids personal data.
-* Retention is defined.
+* Retention is defined for diagnostic logs and analytics; the transaction history is kept until reset or
+  uninstall.
 * Logs and transaction history are privacy-reviewed.
 * Permissions are justified.
 * Privacy notice is accurate.

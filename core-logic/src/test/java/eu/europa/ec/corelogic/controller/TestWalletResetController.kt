@@ -106,7 +106,7 @@ class TestWalletResetController {
             assertEquals(
                 listOf(
                     "stop work", "hold registry", "delete mdl", "delete pid", "clear registry",
-                    "clear database", "clear prefs", "delete logs", "delete cache", "lock",
+                    "clear history", "clear database", "clear prefs", "delete logs", "delete cache", "lock",
                     "schedule work",
                 ),
                 steps
@@ -203,7 +203,7 @@ class TestWalletResetController {
                 .resetWallet()
 
             assertEquals(WalletResetPartialState.Failure(errorMessage = "error"), result)
-            assertEquals(listOf("stop work", "hold registry", "clear registry", "schedule work"), steps)
+            assertEquals(listOf("stop work", "hold registry", "clear registry", "clear history", "schedule work"), steps)
         }
     }
 
@@ -262,6 +262,7 @@ class TestWalletResetController {
 
     private fun buildController(
         stopBackgroundWork: suspend () -> Boolean = { steps.add("stop work"); true },
+        clearTransactionLogs: suspend () -> Unit = { steps.add("clear history") },
         clearDatabase: () -> Unit = { steps.add("clear database") },
         deleteLogFiles: () -> Unit = { steps.add("delete logs") },
         deleteCacheFiles: () -> Unit = { steps.add("delete cache") },
@@ -274,6 +275,7 @@ class TestWalletResetController {
         resetStatus = resetStatus,
         stopBackgroundWork = stopBackgroundWork,
         scheduleBackgroundWork = { steps.add("schedule work") },
+        clearTransactionLogs = clearTransactionLogs,
         clearDatabase = clearDatabase,
         deleteLogFiles = deleteLogFiles,
         deleteCacheFiles = deleteCacheFiles,

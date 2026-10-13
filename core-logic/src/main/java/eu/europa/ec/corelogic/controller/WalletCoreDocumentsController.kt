@@ -316,7 +316,6 @@ class WalletCoreDocumentsControllerImpl(
     private val failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     private val issuerTrustDao: IssuerTrustDao,
     private val statusRefreshFailureDao: StatusRefreshFailureDao,
-    private val walletCoreTransactionLogController: WalletCoreTransactionLogController,
     private val prefKeys: PrefKeys,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     walletCore: EudiWallet? = null,
@@ -671,13 +670,11 @@ class WalletCoreDocumentsControllerImpl(
         }
 
     override fun deleteDocument(documentId: String): Flow<DeleteDocumentPartialState> = flow {
-        val attestationType = getDocumentById(documentId)?.attestationType()
         eudiWallet.deleteDocumentById(documentId = documentId)
             .kotlinResult
             .onSuccess {
                 cleanUpRecords {
                     deleteDocumentRecords(documentId)
-                    attestationType?.let { deleteHistoryIfNoneLeft(it) }
                 }
                 emit(DeleteDocumentPartialState.Success)
             }
@@ -969,24 +966,11 @@ class WalletCoreDocumentsControllerImpl(
     }
 
     /**
-     * Deletes the transaction history of [attestationType] once no document of that type is left.
-     * Wallet Core logs the attestation type, not the document, so while another document of the same
-     * type remains, the history may be its own and is kept. An entry that also covers another type
-     * goes as well, and with a presentation go the data-deletion request and DPA-report attempts
-     * linked to it.
-     */
-    private suspend fun deleteHistoryIfNoneLeft(attestationType: String) {
-        if (getAllDocuments().none { it.attestationType() == attestationType }) {
-            walletCoreTransactionLogController.deleteTransactionLogsForAttestationType(attestationType)
-        }
-    }
-
-    /**
      * Wallet Core deletes the original document once a re-issuance has issued a new credential; when
      * the new credential is deferred, only once it arrives (see [deleteRecordsOfMissingDocuments]).
      * Copies the original's bookmark to the new documents, which keep their ids when a deferred
      * credential arrives, and deletes the rest of what the app stored about the original once Wallet
-     * Core has deleted it. The history stays, since the new documents are of the same type.
+     * Core has deleted it. The history stays.
      */
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal suspend fun cleanUpAfterReIssuance(originalId: DocumentId, state: IssueDocumentsPartialState) {
@@ -1042,11 +1026,6 @@ class WalletCoreDocumentsControllerImpl(
             } catch (_: Exception) {
             }
         }
-    }
-
-    private fun Document.attestationType(): String = when (val documentFormat = format) {
-        is MsoMdocFormat -> documentFormat.docType
-        is SdJwtVcFormat -> documentFormat.vct
     }
 
     override suspend fun isDocumentRevoked(id: String): Boolean =

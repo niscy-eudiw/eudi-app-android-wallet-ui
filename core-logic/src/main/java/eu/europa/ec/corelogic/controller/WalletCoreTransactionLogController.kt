@@ -17,7 +17,6 @@
 package eu.europa.ec.corelogic.controller
 
 import eu.europa.ec.corelogic.extension.recordedRegistrationCheckOf
-import eu.europa.ec.corelogic.extension.referencesAttestationType
 import eu.europa.ec.corelogic.extension.toCommunicationMethodDomainOrNull
 import eu.europa.ec.corelogic.extension.toCoreTransactionLog
 import eu.europa.ec.corelogic.extension.toRecordedRegistrationCheck
@@ -78,13 +77,11 @@ interface WalletCoreTransactionLogController : TransactionLogger, TransferEvent.
 
     suspend fun deleteTransactionLog(id: String)
 
-    suspend fun deleteAllTransactionLogs()
-
     /**
-     * Deletes the entries that concern attestations of [attestationType], with the deletion
-     * requests and reports linked to them. Used when the last document of that type is deleted.
+     * Deletes every entry, after the writes already queued by [log]. Only the factory reset calls it:
+     * the history is a legal record, so the app offers no other way to clear it.
      */
-    suspend fun deleteTransactionLogsForAttestationType(attestationType: String)
+    suspend fun deleteAllTransactionLogs()
 }
 
 /**
@@ -153,11 +150,6 @@ class WalletCoreTransactionLogControllerImpl(
 
                     is StorageOperation.DeleteAll -> completeOperation(operation.completion) {
                         transactionLogDao.deleteAll()
-                        true
-                    }
-
-                    is StorageOperation.DeleteForAttestationType -> completeOperation(operation.completion) {
-                        deleteForAttestationType(operation.attestationType)
                         true
                     }
                 }
@@ -300,25 +292,6 @@ class WalletCoreTransactionLogControllerImpl(
         )
     }
 
-    override suspend fun deleteTransactionLogsForAttestationType(attestationType: String) {
-        enqueueAndAwait(
-            StorageOperation.DeleteForAttestationType(
-                attestationType = attestationType,
-                completion = CompletableDeferred()
-            )
-        )
-    }
-
-    /**
-     * Deletes the stored entries that concern [attestationType]. Their deletion requests and reports
-     * go with them through the parent foreign key.
-     */
-    private suspend fun deleteForAttestationType(attestationType: String) {
-        transactionLogDao.retrieveAll()
-            .filter { it.toCoreTransactionLog()?.referencesAttestationType(attestationType) == true }
-            .forEach { transactionLogDao.delete(it.identifier) }
-    }
-
     private suspend fun enqueueAndAwait(operation: StorageOperation.Awaited): Boolean {
         currentCoroutineContext().ensureActive()
         operations.send(operation)
@@ -448,11 +421,6 @@ class WalletCoreTransactionLogControllerImpl(
         ) : Awaited
 
         data class DeleteAll(
-            override val completion: CompletableDeferred<Boolean>
-        ) : Awaited
-
-        data class DeleteForAttestationType(
-            val attestationType: String,
             override val completion: CompletableDeferred<Boolean>
         ) : Awaited
     }

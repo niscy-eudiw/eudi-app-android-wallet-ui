@@ -101,9 +101,6 @@ class TestWalletCoreDocumentsController {
     private lateinit var statusRefreshFailureDao: StatusRefreshFailureDao
 
     @Mock
-    private lateinit var walletCoreTransactionLogController: WalletCoreTransactionLogController
-
-    @Mock
     private lateinit var prefKeys: PrefKeys
 
     @Mock
@@ -142,7 +139,6 @@ class TestWalletCoreDocumentsController {
             failedReIssuedDocumentDao = failedReIssuedDocumentDao,
             issuerTrustDao = issuerTrustDao,
             statusRefreshFailureDao = statusRefreshFailureDao,
-            walletCoreTransactionLogController = walletCoreTransactionLogController,
             prefKeys = prefKeys,
             dispatcher = coroutineRule.testDispatcher,
             walletCore = eudiWallet,
@@ -170,10 +166,9 @@ class TestWalletCoreDocumentsController {
         }
 
     @Test
-    fun `Given the last document of its type, When it is deleted, Then its records and the history of its type go`() =
+    fun `Given a stored document, When it is deleted, Then its own records go`() =
         coroutineRule.runTest {
             whenever(eudiWallet.deleteDocumentById("pid")).thenReturn(Outcome.success(null))
-            whenever(eudiWallet.getDocuments(anyOrNull())).thenReturn(emptyList())
 
             val result = controller.deleteDocument("pid").first()
 
@@ -183,27 +178,12 @@ class TestWalletCoreDocumentsController {
             verify(statusRefreshFailureDao).delete("pid")
             verify(bookmarkDao).delete("pid")
             verify(failedReIssuedDocumentDao).delete("pid")
-            verify(walletCoreTransactionLogController).deleteTransactionLogsForAttestationType(pidType)
-        }
-
-    @Test
-    fun `Given another document of the same type remains, When one is deleted, Then the history is kept`() =
-        coroutineRule.runTest {
-            whenever(eudiWallet.deleteDocumentById("pid")).thenReturn(Outcome.success(null))
-            whenever(eudiWallet.getDocuments(anyOrNull())).thenReturn(listOf(otherPid))
-
-            val result = controller.deleteDocument("pid").first()
-
-            assertEquals(DeleteDocumentPartialState.Success, result)
-            verify(bookmarkDao).delete("pid")
-            verify(walletCoreTransactionLogController, never()).deleteTransactionLogsForAttestationType(any())
         }
 
     @Test
     fun `Given a storage error after Wallet Core deleted the document, When it is deleted, Then the deletion is still reported`() =
         coroutineRule.runTest {
             whenever(eudiWallet.deleteDocumentById("pid")).thenReturn(Outcome.success(null))
-            whenever(eudiWallet.getDocuments(anyOrNull())).thenReturn(emptyList())
             whenever(bookmarkDao.delete("pid")).doThrow(IllegalStateException("database closed"))
 
             val result = controller.deleteDocument("pid").first()
@@ -293,7 +273,6 @@ class TestWalletCoreDocumentsController {
                 statusRefreshFailureDao,
                 bookmarkDao,
                 failedReIssuedDocumentDao,
-                walletCoreTransactionLogController,
             )
         }
     @Test

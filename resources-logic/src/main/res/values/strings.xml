@@ -460,7 +460,7 @@
     <string name="document_details_boolean_item_false_readable_value">no</string>
 
     <string name="document_details_bottom_sheet_delete_title">@string/generic_bottom_sheet_delete_title</string>
-    <string name="document_details_bottom_sheet_delete_subtitle">This document will be removed from your wallet and may affect access to services. If no other document of the same type is left, its transaction history is deleted too.</string>
+    <string name="document_details_bottom_sheet_delete_subtitle">@string/generic_bottom_sheet_delete_subtitle</string>
     <string name="document_details_bottom_sheet_delete_primary_button_text">@string/generic_bottom_sheet_delete_primary_button_text</string>
     <string name="document_details_bottom_sheet_delete_secondary_button_text">@string/generic_bottom_sheet_delete_secondary_button_text</string>
 
