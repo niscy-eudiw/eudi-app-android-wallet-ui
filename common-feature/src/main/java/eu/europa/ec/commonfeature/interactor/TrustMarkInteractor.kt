@@ -22,7 +22,6 @@ import eu.europa.ec.commonfeature.ui.trustmark.model.TrustMarkUi
 import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.uilogic.component.wrap.remoteImageSourceOrNull
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,31 +56,20 @@ class TrustMarkInteractorImpl(
         withContext(dispatcher) {
             runCatching<LoadTrustMarkPartialState> {
                 val trustMark = walletCoreTrustMarkController.getTrustMark().getOrThrow()
-                val certified = trustMark.isCertified
                 LoadTrustMarkPartialState.Success(
                     trustMark = TrustMarkUi(
                         imageUrl = resolveImageUrl(trustMark.imageUrl, trustMark.resourceUrl),
                         text = trustMark.localisedText,
-                        certifiedWalletsUrl = usableWebUrl(trustMark.certifiedWalletsUrl)
-                            ?.takeIf { certified },
-                        walletSolutionUrl = usableWebUrl(trustMark.walletSolutionUrl)
-                            ?.takeIf { certified },
-                        certificationDescription = if (certified) {
-                            linkedParagraph(
-                                textRes = R.string.trust_mark_certification_description,
-                                linkRes = R.string.trust_mark_certified_wallets_link,
-                            )
-                        } else {
-                            null
-                        },
-                        certificationInformationDescription = if (certified) {
-                            linkedParagraph(
-                                textRes = R.string.trust_mark_certification_information_description,
-                                linkRes = R.string.trust_mark_certification_information_link,
-                            )
-                        } else {
-                            null
-                        }
+                        certifiedWalletsUrl = usableWebUrl(trustMark.certifiedWalletsUrl),
+                        walletSolutionUrl = usableWebUrl(trustMark.walletSolutionUrl),
+                        certificationDescription = linkedParagraph(
+                            textRes = R.string.trust_mark_certification_description,
+                            linkRes = R.string.trust_mark_certified_wallets_link,
+                        ),
+                        certificationInformationDescription = linkedParagraph(
+                            textRes = R.string.trust_mark_certification_information_description,
+                            linkRes = R.string.trust_mark_certification_information_link,
+                        )
                     )
                 )
             }.getOrElse {
@@ -117,16 +105,12 @@ class TrustMarkInteractorImpl(
         )
     }
 
-    /**
-     * The Trust Mark image, [imageUrl] resolved against [resourceUrl], when the wallet may load it:
-     * an `https` URL, as for every remote image (see [remoteImageSourceOrNull]).
-     */
     private fun resolveImageUrl(imageUrl: String, resourceUrl: String): String? {
         if (imageUrl.isBlank()) return null
         val resolved = runCatching {
             URI(resourceUrl).resolve(imageUrl).toString()
         }.getOrNull()
-        return resolved?.let { url -> usableWebUrl(value = url)?.let(::remoteImageSourceOrNull) }
+        return resolved?.let { url -> usableWebUrl(value = url) }
     }
 
     private fun usableWebUrl(value: String): String? {

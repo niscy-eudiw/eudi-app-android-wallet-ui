@@ -402,37 +402,20 @@ history. See [Transaction history](GO_LIVE.md#transaction-history) for the displ
 
 ## Trust Mark configuration
 
-Three properties of
-[`WalletCoreConfig`](../core-logic/src/main/java/eu/europa/ec/corelogic/config/WalletCoreConfig.kt)
-configure the Trust Mark. Both reference flavors inherit these defaults:
+[`WalletCoreConfig.trustMarkSource`](../core-logic/src/main/java/eu/europa/ec/corelogic/config/WalletCoreConfig.kt)
+selects how Trust Mark information is supplied. Both reference flavors inherit this shared static
+default:
 
 ```kotlin
 val trustMarkSource: TrustMarkSource
     get() = TrustMarkSource.Static(
         information = TrustMarkInformation(
-            trustMarkResourceURL = "",
+            trustMarkResourceURL = "https://gist.githubusercontent.com/sraptis-scy/025334375fe26177d9a7bcb60fd8a93f/raw/TrustMarkResource.json",
             listOfCertifiedWalletsURL = "https://eidas.ec.europa.eu/efda/wallet/certified",
             walletSolutionInfoPageURL = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_SOLUTION_ID",
         )
     )
-
-val trustMarkResource: TrustMarkResourceSource
-    get() = TrustMarkResourceSource.Bundled(resId = R.raw.trust_mark_resource)
-
-val isWalletCertified: Boolean
-    get() = false
 ```
-
-* `trustMarkSource` gives the Trust Mark information: the resource URL and the two certification
-  links.
-* `trustMarkResource` says where the image and text come from. `Bundled` reads a JSON raw resource
-  from the app, in the same format as the published resource (`text.localisations` and
-  `image.url`, which must be absolute); nothing is fetched, and `trustMarkResourceURL` is not used.
-  `Remote` lets Wallet Core fetch the resource from `trustMarkResourceURL`. The reference build
-  bundles a sample, `resources-logic/src/main/res/raw/trust_mark_resource.json`.
-* `isWalletCertified` says whether the wallet solution is certified. Only then does the Trust Mark
-  screen show the sentence stating certification and the two certification links. The reference
-  build is not certified.
 
 `provideEudiWallet` in
 [`LogicCoreModule`](../core-logic/src/main/java/eu/europa/ec/corelogic/di/LogicCoreModule.kt)
@@ -452,22 +435,20 @@ EudiWallet(
 }
 ```
 
-To change the Trust Mark settings for a build flavor, override `trustMarkSource`,
-`trustMarkResource` and `isWalletCertified` in its `WalletCoreConfigImpl`. Use
-`TrustMarkSource.Static` for predefined information, or `TrustMarkSource.Dynamic` with a
-`TrustMarkProvider` that supplies the information at runtime. To fetch the resource instead of
-bundling it, set `trustMarkResource` to `TrustMarkResourceSource.Remote` and give its address as
-`trustMarkResourceURL`.
+To change the Trust Mark settings for a build flavor, override `trustMarkSource` in its
+`WalletCoreConfigImpl`. Use `TrustMarkSource.Static` for predefined information, or
+`TrustMarkSource.Dynamic` with a `TrustMarkProvider` that supplies the information at runtime.
 
-The Trust Mark screen displays the image from `image.url` above the localized text from the
-resource. The image must be an `https` URL; any other address is not loaded. In the reference
-sample it is the Commission's logo on `eidas.ec.europa.eu`.
+The SDK fetches JSON from `trustMarkResourceURL` with a plain GET; neither the resource nor its image is
+signed. The Trust Mark screen displays the image from `image.url` above the localized text from the
+resource. The image must be an `https` URL; any other address is not loaded.
 
-In a certified build, "EUDI Wallet Provider Trusted List" opens `listOfCertifiedWalletsURL` and
-"Certification information page" opens `walletSolutionInfoPageURL` in the browser. Both links
-include an external-link icon and are available in the introduction and About views.
+"EUDI Wallet Provider Trusted List" opens `listOfCertifiedWalletsURL` in the browser.
+"Certification information page" opens `walletSolutionInfoPageURL` in the browser.
+Both links include an external-link icon and are available in the introduction and About views.
 
-The bundled resource is a sample, and `WALLET_SOLUTION_ID` is a literal placeholder. Displaying the
+Static configuration does not bundle the resource or make it available offline. The configured
+Gist is a development sample and `WALLET_SOLUTION_ID` is a literal placeholder. Displaying the
 information does not verify certification, recognition, expiry, revocation or wallet instance
 attestation. See [Trust Mark deployment](GO_LIVE.md#trust-mark-deployment) before using a production
 configuration.

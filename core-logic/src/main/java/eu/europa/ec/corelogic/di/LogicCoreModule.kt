@@ -131,11 +131,9 @@ fun provideWalletCoreDCAPIRegistrationController(
 fun provideWalletCoreTrustMarkController(
     prefKeys: PrefKeys,
     resourceProvider: ResourceProvider,
-    walletCoreConfig: WalletCoreConfig,
 ): WalletCoreTrustMarkController = WalletCoreTrustMarkControllerImpl(
     prefKeys = prefKeys,
     resourceProvider = resourceProvider,
-    walletCoreConfig = walletCoreConfig,
 )
 
 @Single

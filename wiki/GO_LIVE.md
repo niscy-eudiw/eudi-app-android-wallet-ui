@@ -1200,35 +1200,26 @@ Do not point production builds to EUDI demo wallet-provider services.
 
 ## Trust Mark Deployment
 
-Set `WalletCoreConfig.trustMarkSource` to the Trust Mark information for your wallet solution,
-`trustMarkResource` to where its image and text come from, and `isWalletCertified` to whether
-the solution is certified. The reference build bundles a sample resource in the app
-(`res/raw/trust_mark_resource.json`), so a new install fetches no Trust Mark resource; its image
-is the Commission's logo, loaded from `eidas.ec.europa.eu`, and its text is the original sample's
-placeholder, "Officially Certified And Trusted EUDI Wallet" in English. That text is not true of
-a build that is not certified, so replace it. The reference build is not certified, so the Trust Mark
-screen shows no sentence claiming certification and no certification links. Replace the
-resource with your own. The certification-page URL still contains the `WALLET_SOLUTION_ID`
-placeholder. See [Trust Mark configuration](CONFIGURATION.md#trust-mark-configuration).
-
-With `TrustMarkResourceSource.Remote`, Wallet Core fetches the resource from
-`trustMarkResourceURL` with a plain GET; neither the resource nor its image is signed. Use a
-location your organisation or the Commission controls, never an individual's account.
+Set `WalletCoreConfig.trustMarkSource` to the Trust Mark configuration for your wallet solution.
+The default uses a sample Gist resource and a certification-page URL containing
+`WALLET_SOLUTION_ID`. Replace the sample values in your production flavor with the correct
+resource and certification URLs. See
+[Trust Mark configuration](CONFIGURATION.md#trust-mark-configuration) for instructions. The SDK
+fetches the resource with a plain GET, and neither the resource nor its image is signed: host it
+where your organisation or the Commission controls it, never on an individual's account.
 
 The app does not check certification, recognition, expiry, revocation or wallet instance
-attestation, or automatically remove the mark when certification changes. Set
-`isWalletCertified` only for a certified build, and check that the displayed image, text and
-links match your wallet's actual certification status before release.
+attestation, or automatically remove the mark when certification changes. Check that the
+displayed image, text and links match your wallet's actual certification status before release.
 
 Test the following:
 
 * On a clean install, the introduction appears after splash, Continue proceeds to PIN setup,
   and later launches skip the completed introduction.
 * "About EUDI Wallet" opens from the side menu.
-* In a certified build, in both the introduction and About views, "EUDI Wallet Provider Trusted
-  List" opens the list of certified wallets and "Certification information page" opens your
-  wallet's certification page in the browser. Both links display an external-link icon. In a
-  build that is not certified, neither paragraph appears.
+* In both the introduction and About views, "EUDI Wallet Provider Trusted List" opens the
+  list of certified wallets and "Certification information page" opens your wallet's
+  certification page in the browser. Both links display an external-link icon.
 * The Trust Mark image is centered above its localized text and keeps its original proportions.
   Check long text and larger fonts: the text should use the available width, wrap fully and
   scroll with the screen while Welcome's Continue remains available. Resource and image
