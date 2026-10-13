@@ -185,8 +185,8 @@ nothing is added to the Wallet. The same applies to re-issuance, where the docum
 is left untouched. With the setting off — the default — no registration is checked and none of this
 applies.
 
-The Wallet checks each document's status list in the background, every 15 minutes and each time the
-app starts. A revoked document can no longer be presented, and stays blocked even if its status later
+The Wallet checks each document's status list in the background, every 15 minutes and once each time
+the app starts. A revoked document can no longer be presented, and stays blocked even if its status later
 reads valid; a suspended document is blocked until the issuer reinstates it. If the status could not be
 checked, for example while offline, the document's details say so.
 

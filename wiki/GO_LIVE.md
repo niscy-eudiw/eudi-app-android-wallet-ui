@@ -1350,9 +1350,15 @@ The app enqueues `RevocationWorkManager`, which:
   for a document that has a status reference, and clears it on the next successful check. Document
   details then open the issuer card and say the status could not be refreshed. The document keeps
   its last known state; a failed refresh does not block it.
-* Runs once at every app start as well as on its interval, so records lost when the database is
-  recreated after a schema change are rebuilt at the next start that has network access. Until then a
-  document revoked before the upgrade is not blocked.
+* Runs once each time the wallet opens in a new process as well as on its interval, so records lost
+  when the database is recreated after a schema change are rebuilt at the next start that has network
+  access. Until then a document revoked before the upgrade is not blocked. The host activity schedules
+  that run (`WalletWorkScheduler.scheduleStartupCheck`) only after it has set the session id, so the
+  check uses the same Wallet Core instance as the screens; keep that order if you move it. Periodic
+  runs are not ordered this way. One that WorkManager starts as the process starts, such as overdue
+  work after a force-stop, or one already running when the user opens the wallet, reads the previous
+  run's session id and opens a second Wallet Core instance on the same storage, as in earlier
+  releases. Removing that needs one session id shared by the process's workers and screens.
 * Treats a document whose status reference Wallet Core cannot extract (no `status` claim, or a
   mechanism other than a status list) as having no status, and records no failure for it.
 * Status-list trust follows `configureDocumentStatusResolver { configureTrust { … } }`. Under
@@ -1527,7 +1533,10 @@ Production rules:
   manifest filter and the check in `DeepLinkType`.
 * Keep verifier redirects out of the wallet's link handling. If you add `https` App Links to the
   wallet, keep relying parties' domains out of them: a redirect that only the wallet can open is
-  not opened, and one that the wallet shares with another app shows Android's app chooser.
+  not opened, and one that the wallet shares with another app shows Android's app chooser. A link
+  that arrives and matches no `DeepLinkType` is dropped, so an App Link you add needs a type of its
+  own. The main activity is exported, so any installed app can send it any link directly, whatever
+  the manifest filters say.
 * Expect any link to arrive out of turn: a scheme exported to browsers can be opened by any web page. The
   app ignores an RQES callback or document link that the RQES SDK refuses (for example a callback with no
   signing session in progress) rather than letting the SDK's exception end the process.
@@ -1908,9 +1917,10 @@ records of every document Wallet Core no longer holds.
 deleted, and requires the PIN or a biometric. `WalletResetController` then, while the app keeps
 running:
 
-1. stops the revocation and re-issuance workers and waits, for 30 seconds at most, until neither is
-   still working (`WalletWorkScheduler`). Wallet Core finishes a re-issuance it has started even when
-   its worker is cancelled, so the worker follows it to its outcome first. If a worker is still
+1. stops the revocation and re-issuance workers and waits, for `WalletCoreConfig.workerStopTimeout`
+   at most (30 seconds by default), until neither is still working (`WalletWorkScheduler`). Wallet
+   Core finishes a re-issuance it has started even when its worker is cancelled, so the worker
+   follows it to its outcome first. If a worker is still
    working when the wait ends, the reset fails before anything is deleted;
 2. deletes every document Wallet Core stores, the main PID last, so that their keys are removed as
    Wallet Core intends. Meanwhile it holds the Digital Credential API registration, and then clears
@@ -2134,7 +2144,7 @@ Production decisions:
 | Biometric strength | Prefer `BIOMETRIC_STRONG` for sensitive operations. |
 | Device credential fallback | Decide whether fallback is allowed for each operation. For highest assurance, do not silently weaken biometric-only requirements. |
 | Key invalidation | Keep invalidation on new biometric enrollment. |
-| Session duration | The wallet locks after `AuthenticationConfig.backgroundLockTimeout` in the background (default 60 seconds) and after `idleLockTimeout` without interaction on any screen (default 5 minutes). While an issuance, presentation or signing is in progress, the background limit is `protectedFlowLockTimeout` instead (default 10 minutes), because issuance and signing send the user to a website and back. Tune all three for your assurance level; production wallets usually lock sooner. Every credential release already asks for the PIN or a biometric. |
+| Session duration | The wallet locks after `AuthenticationConfig.backgroundLockTimeout` in the background (default 60 seconds) and after `idleLockTimeout` without interaction on any of the wallet's screens (default 5 minutes). The RQES SDK's signing screens are a separate activity whose interaction the wallet cannot see: while they are in front the idle lock gives way to `protectedFlowLockTimeout`, and returning to the wallet after that long requires login. While an issuance, presentation or signing is in progress, the background limit is `protectedFlowLockTimeout` instead (default 10 minutes), because issuance and signing send the user to a website and back. Tune all three for your assurance level; production wallets usually lock sooner. Every credential release already asks for the PIN or a biometric. |
 | PIN length | Current UI defaults to 6 digits. Confirm policy. |
 | PIN strength | A new PIN is refused when it is one digit repeated (`000000`), an ascending or descending run (`123456`, `654321`), or on `AuthenticationConfig.commonPins`, a short list of common PINs. The check applies when the PIN is created and when it is changed. Extend the list to match your policy. |
 | Device screen lock | During setup the PIN screen checks `KeyguardManager.isDeviceSecure()`. On a device without a screen lock it shows a warning and setup continues; with `AuthenticationConfig.requireDeviceSecure = true` setup stops until a lock is set, and the check runs again when the user returns from the device settings. Changing the PIN of a wallet already set up is not affected. Keys that require user authentication (`userAuthenticationRequired = true`) need a screen lock in any case. |
@@ -2164,7 +2174,14 @@ Session lock:
   background timeout, and a login screen left off it sends the user back to login.
 * A flow that leaves the app from a screen that is not on the protected list, such as a re-issuance from
   document details, is marked with `SessionController.beginExternalFlow()` and `endExternalFlow()` so
-  that the same limit applies. Mark any such flow you add.
+  that the same limit applies. Mark any such flow you add. Another activity of the app, such as the RQES
+  SDK's, needs no marking: `registerSessionLockObservers` reports it, and the same limit applies
+  from the moment it covers the wallet's screen until the wallet's screen is back. The idle timeout
+  does not run meanwhile, since the wallet cannot see interaction there. The window follows the
+  wallet's screen, not the signing session. If the SDK ends by opening a browser, the longer limit
+  holds until the user next returns to the wallet. Once the wallet has shown a presentation the SDK
+  asked for, a later visit to the signing service from a screen off the protected list has the
+  normal background limit, so a login can come before the signing resumes.
 * The prompt before each credential release is a screen in the app. With
   `userAuthenticationRequired = false` the keys themselves do not require user authentication, so a route to
   the send step that skipped that screen would be unprotected. Keep internal screens unexported (see Deep

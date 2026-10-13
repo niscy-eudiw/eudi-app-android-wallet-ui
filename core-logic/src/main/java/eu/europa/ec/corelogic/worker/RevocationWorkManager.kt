@@ -62,8 +62,8 @@ import org.koin.android.annotation.KoinWorker
  *    or refresh-failure state changed, in `REVOCATION_IDS_DETAILS_EXTRA`.
  *  - `CoreActions.REVOCATION_WORK_REFRESH_ACTION`: a general refresh when any record changed.
  *
- * Runs one at a time within the process, since the periodic run and the run at app start can
- * overlap.
+ * Runs one at a time within the process, since the periodic run and the run when the wallet opens
+ * can overlap.
  *
  * The worker returns [Result.success] after a full pass, and [Result.failure] if an
  * [IllegalArgumentException] occurred, which indicates a configuration or data issue.

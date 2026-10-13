@@ -38,8 +38,10 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.WalletResetStatus
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.corelogic.provider.DCAPISettingProvider
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
+import eu.europa.ec.uilogic.extension.reportAccessibilityInteraction
 import eu.europa.ec.uilogic.navigation.DashboardScreens
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.RouterHost
@@ -64,8 +66,10 @@ import kotlin.time.Duration.Companion.seconds
  * The wallet's host activity. Besides hosting the navigation graph, it drives the session lock:
  * when the app returns to the foreground an expired session is sent to login, and an idle check
  * runs while the activity is visible. The app counts as in the background only when the whole
- * process is (another in-app activity, such as the RQES screens, does not count); the background
- * itself is recorded by [registerSessionBackgroundObserver], registered once for the process.
+ * process is. Another activity of the app, such as the RQES SDK's signing screens, is tracked
+ * apart: the wallet cannot see interaction there, so returning from it after the protected-flow
+ * timeout requires login. Both are recorded by [registerSessionLockObservers], registered
+ * once for the process.
  */
 open class EudiComponentActivity : FragmentActivity() {
 
@@ -76,16 +80,39 @@ open class EudiComponentActivity : FragmentActivity() {
 
     private var idleLockJob: Job? = null
 
+    private var opensItsLaunchIntent: Boolean = true
+
+    private companion object {
+
+        /** How often [runWhenNavigationReady] looks for the navigation controller, and how many times. */
+        val NAVIGATION_READY_POLL_INTERVAL = 100.milliseconds
+        const val NAVIGATION_READY_ATTEMPTS = 50
+
+        /** The shortest wait between two idle checks. */
+        val MIN_IDLE_CHECK_INTERVAL = 1.seconds
+
+        /** Whether a host activity has started its navigation in this process. */
+        @Volatile
+        var navigationStartedInProcess: Boolean = false
+    }
+
     private val processLifecycleObserver = object : DefaultLifecycleObserver {
         override fun onStart(owner: LifecycleOwner) {
             checkSessionOnForeground()
         }
     }
 
+    /**
+     * Restores the saved screens only as [stateToRestore] allows, and opens the launch intent only
+     * as [opensLaunchIntent] allows. Screen-reader actions in the activity's window count as
+     * interaction for the idle lock ([reportAccessibilityInteraction]).
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super.onCreate(stateToRestore(savedInstanceState, navigationStartedInProcess))
+        opensItsLaunchIntent = opensLaunchIntent(savedInstanceState)
         viewModel.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
+        window.decorView.reportAccessibilityInteraction { onUserInteraction() }
         forgetKeptLinkOnReset()
     }
 
@@ -93,7 +120,7 @@ open class EudiComponentActivity : FragmentActivity() {
     private fun forgetKeptLinkOnReset() {
         lifecycleScope.launch {
             walletResetStatus.isResetting.collect { resetting ->
-                if (resetting) viewModel.cacheIntent(null)
+                if (resetting) viewModel.forgetCachedIntent()
             }
         }
     }
@@ -108,7 +135,6 @@ open class EudiComponentActivity : FragmentActivity() {
      * is not cleared, so that it survives until the user has logged in.
      */
     internal fun cacheIntent(intent: Intent?) {
-        if (intent == null && !sessionController.isUnlocked) return
         viewModel.cacheIntent(intent)
     }
 
@@ -116,8 +142,7 @@ open class EudiComponentActivity : FragmentActivity() {
      * The kept link, or null while the wallet is locked: a screen restored before login, such as
      * the dashboard after the activity is recreated, must not open it.
      */
-    internal fun getCachedIntent(): Intent? =
-        if (sessionController.isUnlocked) viewModel.getCachedIntent() else null
+    internal fun getCachedIntent(): Intent? = viewModel.getCachedIntent()
 
     @Composable
     protected fun Content(
@@ -135,9 +160,12 @@ open class EudiComponentActivity : FragmentActivity() {
                     builder(it)
                 }
                 LaunchedEffect(Unit) {
+                    navigationStartedInProcess = true
                     viewModel.onFlowStart()
                     routerHost.requireLoginIfLocked()
-                    handleDeepLink(intent, coldBoot = true)
+                    if (opensItsLaunchIntent) {
+                        handleDeepLink(intent, coldBoot = true)
+                    }
                 }
             }
         }
@@ -146,6 +174,17 @@ open class EudiComponentActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.onResume()
+        checkSessionAfterCover()
+    }
+
+    /**
+     * Sends a locked wallet to login when it returns from another activity of the app after the
+     * protected-flow timeout. Runs before a new intent is handled, and again on resume.
+     */
+    private fun checkSessionAfterCover() {
+        if (sessionController.onWalletScreenShown() && viewModel.hasFlowStarted()) {
+            routerHost.requireLoginIfLocked()
+        }
     }
 
     override fun onStart() {
@@ -181,7 +220,7 @@ open class EudiComponentActivity : FragmentActivity() {
         idleLockJob?.cancel()
         idleLockJob = lifecycleScope.launch {
             while (true) {
-                delay(sessionController.timeUntilIdleLock().coerceAtLeast(1.seconds))
+                delay(sessionController.timeUntilIdleLock().coerceAtLeast(MIN_IDLE_CHECK_INTERVAL))
                 if (viewModel.hasFlowStarted() && sessionController.lockIfIdle()) {
                     routerHost.requireLoginIfLocked()
                 }
@@ -192,6 +231,7 @@ open class EudiComponentActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         checkSessionOnForeground()
+        checkSessionAfterCover()
         if (viewModel.hasFlowStarted()) {
             handleDeepLink(intent)
         } else {
@@ -207,7 +247,7 @@ open class EudiComponentActivity : FragmentActivity() {
                 delay(500.milliseconds)
             }
             if (count <= 10) {
-                handleDeepLink(intent)
+                handleDeepLink(intent, walletWasShown = false)
             }
         }
     }
@@ -225,9 +265,9 @@ open class EudiComponentActivity : FragmentActivity() {
         }
         lifecycleScope.launch {
             var attempts = 0
-            while (!routerHost.isNavigationReady() && attempts < 50) {
+            while (!routerHost.isNavigationReady() && attempts < NAVIGATION_READY_ATTEMPTS) {
                 attempts++
-                delay(100.milliseconds)
+                delay(NAVIGATION_READY_POLL_INTERVAL)
             }
             if (routerHost.isNavigationReady()) {
                 block()
@@ -239,13 +279,30 @@ open class EudiComponentActivity : FragmentActivity() {
      * Opens or keeps the link or Digital Credential API request in [intent]. One that arrives during
      * a factory reset is dropped: the documents it would use are being deleted, and opening it would
      * take the user away from the reset screen.
+     *
+     * A link that starts no wallet flow ([DeepLinkType.EXTERNAL]) is dropped too. The manifest admits
+     * none, so it can only come from an app that addressed the wallet directly, and keeping it would
+     * let that app have the wallet open any link once the user logs in.
+     *
+     * A Digital Credential API request is declined while the setting is off. When the request itself
+     * brought the wallet up ([coldBoot], or a task restored after its process ended, which
+     * [walletWasShown] false marks), the activity also finishes, so the wallet does not stay in front.
      */
-    private fun handleDeepLink(intent: Intent?, coldBoot: Boolean = false) {
+    private fun handleDeepLink(
+        intent: Intent?,
+        coldBoot: Boolean = false,
+        walletWasShown: Boolean = true,
+    ) {
         if (walletResetStatus.isResetting.value) {
             setIntent(Intent())
             return
         }
-        hasDeepLink(intent?.data)?.let {
+        val deepLink = hasDeepLink(intent?.data)
+        if (deepLink != null && dropsIncomingLink(deepLink.type)) {
+            setIntent(Intent())
+            return
+        }
+        deepLink?.let {
             if (it.type == DeepLinkType.ISSUANCE && !coldBoot) {
                 val link = it.link
                 runWhenNavigationReady {
@@ -283,7 +340,7 @@ open class EudiComponentActivity : FragmentActivity() {
                 IntentType.DC_API -> {
                     if (!viewModel.isDCAPIEnabled()) {
                         setIntent(Intent())
-                        if (coldBoot) finish()
+                        if (finishesOnDeclinedRequest(coldBoot, walletWasShown)) finish()
                         return
                     }
                     cacheIntent(it.intent)
@@ -301,6 +358,8 @@ open class EudiComponentActivity : FragmentActivity() {
 internal class EudiComponentActivityViewModel(
     private val prefKeys: PrefKeys,
     private val dcapiSettingProvider: DCAPISettingProvider,
+    private val sessionController: SessionController,
+    private val walletWorkScheduler: WalletWorkScheduler,
     uuidProvider: UuidProvider
 ) : ViewModel() {
 
@@ -313,8 +372,10 @@ internal class EudiComponentActivityViewModel(
         getOrNullKoinScope(sessionId)?.close()
     }
 
+    /** Sets the session id, then starts the revocation check that runs once per process. */
     fun onCreate() {
         setSessionId()
+        walletWorkScheduler.scheduleStartupCheck()
     }
 
     fun onResume() {
@@ -325,11 +386,25 @@ internal class EudiComponentActivityViewModel(
         flowStarted = true
     }
 
+    /**
+     * Keeps [intent] until a screen opens it after login. While the wallet is locked a kept link
+     * is not cleared, so that it survives until the user has logged in.
+     */
     fun cacheIntent(intent: Intent?) {
+        if (intent == null && !sessionController.isUnlocked) return
         pendingIntent = intent
     }
 
-    fun getCachedIntent(): Intent? = pendingIntent
+    /**
+     * The kept link, or null while the wallet is locked: a screen restored before login, such as
+     * the dashboard after the activity is recreated, must not open it.
+     */
+    fun getCachedIntent(): Intent? = if (sessionController.isUnlocked) pendingIntent else null
+
+    /** Forgets the kept link whether or not the wallet is locked, as a factory reset does. */
+    fun forgetCachedIntent() {
+        pendingIntent = null
+    }
 
     /**
      * Whether the user allows the Digital Credential API. A request that arrives while it is off is

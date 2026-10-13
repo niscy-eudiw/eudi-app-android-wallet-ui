@@ -23,7 +23,7 @@ import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
-import eu.europa.ec.uilogic.container.registerSessionBackgroundObserver
+import eu.europa.ec.uilogic.container.registerSessionLockObservers
 import org.koin.android.ext.android.inject
 import org.koin.core.KoinApplication
 
@@ -37,7 +37,7 @@ class Application : Application() {
     override fun onCreate() {
         super.onCreate()
         initializeKoin().initializeRqes()
-        registerSessionBackgroundObserver(sessionController)
+        registerSessionLockObservers(this, sessionController)
         initializeReporting()
         walletWorkScheduler.schedule()
     }

@@ -46,6 +46,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.process)
 
     testImplementation(project(LibraryModule.TestLogic.path))
+    testImplementation(libs.androidx.navigation.testing)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test)
+    testImplementation(libs.androidx.test.espresso.core)
 }
 
 excludeFromKoverReport(

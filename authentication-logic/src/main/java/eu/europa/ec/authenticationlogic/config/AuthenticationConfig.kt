@@ -42,7 +42,9 @@ interface AuthenticationConfig {
 
     /**
      * How long the app may stay in the foreground without user interaction before the wallet locks.
-     * It applies on every screen, including those of an issuance or presentation.
+     * It applies on every screen of the wallet, including those of an issuance or presentation. The
+     * RQES SDK's signing screens are a separate activity whose interaction the wallet cannot see;
+     * while they are in front, [protectedFlowLockTimeout] applies instead.
      */
     val idleLockTimeout: Duration
 
@@ -52,6 +54,8 @@ interface AuthenticationConfig {
      * website and back. A flow is in progress while the screen in front is one of
      * `ConfigUILogic.protectedFlowScreens`, or while a flow started elsewhere, such as a
      * re-issuance from document details, is marked with `SessionController.beginExternalFlow`.
+     * It is also the longest time another screen of the app, such as the RQES SDK's, may stay in
+     * front of the wallet's before returning to the wallet requires login again.
      * [Duration.INFINITE] never locks during such a flow.
      */
     val protectedFlowLockTimeout: Duration

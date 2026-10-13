@@ -86,11 +86,16 @@ class RouterHostImpl(
     override fun getNavController(): NavHostController = navController
     override fun getNavContext(): Context = context
 
+    /** Binds the router to [navController]. [StartFlow] calls it when it composes; tests call it directly. */
+    internal fun attach(navController: NavHostController, context: Context) {
+        this.navController = navController
+        this.context = context
+    }
+
     @Composable
     override fun StartFlow(builder: NavGraphBuilder.(NavController) -> Unit) {
 
-        navController = rememberNavController()
-        context = LocalContext.current
+        attach(navController = rememberNavController(), context = LocalContext.current)
 
         NavHost(
             navController = navController,

@@ -16,18 +16,24 @@
 
 package eu.europa.ec.uilogic.container
 
+import android.app.Activity
+import android.app.Application
+import android.os.Bundle
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 
 /**
- * Records, for the session lock, when the whole app goes to the background. Call it once, from
- * `Application.onCreate`. `ProcessLifecycleOwner` reports the stop about 700 ms after the last
- * activity stops, by which time that activity may already be destroyed, so the observer must not
- * belong to an activity.
+ * Records, for the session lock, when the whole app goes to the background, and when another
+ * screen of the app covers the wallet's own. Call it once, from `Application.onCreate`.
+ * `ProcessLifecycleOwner` reports the stop about 700 ms after the last activity stops, by which
+ * time that activity may already be destroyed, so the observer must not belong to an activity.
  */
-fun registerSessionBackgroundObserver(sessionController: SessionController) {
+fun registerSessionLockObservers(
+    application: Application,
+    sessionController: SessionController,
+) {
     ProcessLifecycleOwner.get().lifecycle.addObserver(
         object : DefaultLifecycleObserver {
             override fun onStop(owner: LifecycleOwner) {
@@ -35,4 +41,32 @@ fun registerSessionBackgroundObserver(sessionController: SessionController) {
             }
         }
     )
+    application.registerActivityLifecycleCallbacks(OtherScreenObserver(sessionController))
+}
+
+/**
+ * Tells [sessionController] when an activity other than the wallet's own, such as the RQES SDK's
+ * signing screens, comes to the front. The wallet's activity reports its own return.
+ */
+internal class OtherScreenObserver(
+    private val sessionController: SessionController,
+) : Application.ActivityLifecycleCallbacks {
+
+    override fun onActivityResumed(activity: Activity) {
+        if (activity !is EudiComponentActivity) {
+            sessionController.onCoveredByOtherScreen()
+        }
+    }
+
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+
+    override fun onActivityStarted(activity: Activity) = Unit
+
+    override fun onActivityPaused(activity: Activity) = Unit
+
+    override fun onActivityStopped(activity: Activity) = Unit
+
+    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+
+    override fun onActivityDestroyed(activity: Activity) = Unit
 }

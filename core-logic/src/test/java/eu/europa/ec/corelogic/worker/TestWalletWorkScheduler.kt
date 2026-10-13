@@ -18,6 +18,7 @@ package eu.europa.ec.corelogic.worker
 
 import android.content.Context
 import androidx.work.Configuration
+import androidx.work.WorkManager
 import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
 import eu.europa.ec.corelogic.config.WalletCoreConfig
@@ -27,15 +28,19 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.Mockito.RETURNS_DEEP_STUBS
 import org.mockito.kotlin.mock
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import java.util.UUID
+import kotlin.time.Duration.Companion.seconds
 
 @RunWith(RobolectricTestRunner::class)
 class TestWalletWorkScheduler {
@@ -45,7 +50,7 @@ class TestWalletWorkScheduler {
 
     private val context: Context = RuntimeEnvironment.getApplication()
 
-    private val walletCoreConfig: WalletCoreConfig = mock()
+    private val walletCoreConfig: WalletCoreConfig = mock(defaultAnswer = RETURNS_DEEP_STUBS)
 
     @Before
     fun before() {
@@ -93,9 +98,36 @@ class TestWalletWorkScheduler {
         }
     }
 
+    @Test
+    fun `Given the periodic work is scheduled, When nothing else is called, Then no start-up check is queued`() {
+        buildScheduler(workerLocks = emptyList()).schedule()
+
+        assertEquals(0, startupCheckCount())
+    }
+
+    @Test
+    fun `Given the start-up check is asked for twice in a process, When it is scheduled, Then it is queued once`() {
+        val scheduler = buildScheduler(workerLocks = emptyList())
+
+        scheduler.scheduleStartupCheck()
+        val queued = startupCheckIds()
+        scheduler.scheduleStartupCheck()
+
+        assertEquals(1, queued.size)
+        assertEquals(queued, startupCheckIds())
+    }
+
+    private fun startupCheckCount(): Int = startupCheckIds().size
+
+    private fun startupCheckIds(): List<UUID> = WorkManager.getInstance(context)
+        .getWorkInfosForUniqueWork(RevocationWorkManager.REVOCATION_ON_START_WORK_NAME)
+        .get()
+        .map { it.id }
+
     private fun buildScheduler(workerLocks: List<Mutex>) = WalletWorkSchedulerImpl(
         context = context,
         walletCoreConfig = walletCoreConfig,
+        stopTimeout = 30.seconds,
         workerLocks = workerLocks,
     )
 }

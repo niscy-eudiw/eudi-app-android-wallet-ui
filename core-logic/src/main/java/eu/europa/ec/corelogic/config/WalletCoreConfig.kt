@@ -27,6 +27,7 @@ import eu.europa.ec.eudi.wallet.trustmark.TrustMarkSource
 import eu.europa.ec.resourceslogic.R
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 interface WalletCoreConfig {
 
@@ -180,6 +181,12 @@ interface WalletCoreConfig {
      * It is currently set to 15 minutes.
      */
     val revocationInterval: Duration get() = 15.minutes
+
+    /**
+     * How long a factory reset waits for a running revocation or re-issuance worker to finish
+     * before it gives up and reports that the wallet could not be reset.
+     */
+    val workerStopTimeout: Duration get() = 30.seconds
 
     /**
      * Configuration for document issuance, including the default policy and specific overrides.

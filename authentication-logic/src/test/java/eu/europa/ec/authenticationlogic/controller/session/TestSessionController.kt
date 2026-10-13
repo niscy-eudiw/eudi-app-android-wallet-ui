@@ -215,6 +215,81 @@ class TestSessionController {
     }
 
     @Test
+    fun `returning from another screen before the protected-flow timeout keeps the session`() {
+        controller.unlock()
+        controller.onCoveredByOtherScreen()
+        advance(9.minutes)
+
+        assertFalse(controller.onWalletScreenShown())
+        assertTrue(controller.isUnlocked)
+        advance(4.minutes)
+        assertFalse(controller.lockIfIdle())
+    }
+
+    @Test
+    fun `returning from another screen at the protected-flow timeout locks`() {
+        controller.unlock()
+        controller.onCoveredByOtherScreen()
+        advance(4.minutes)
+        controller.onCoveredByOtherScreen()
+        advance(6.minutes)
+
+        assertTrue(controller.onWalletScreenShown())
+        assertFalse(controller.isUnlocked)
+    }
+
+    @Test
+    fun `the background from another screen uses the protected-flow timeout`() {
+        controller.unlock()
+        controller.onCoveredByOtherScreen()
+        controller.onBackground()
+        advance(9.minutes)
+
+        assertFalse(controller.onForeground())
+        assertTrue(controller.isUnlocked)
+    }
+
+    @Test
+    fun `once the wallet screen is shown again the background timeout applies`() {
+        controller.unlock()
+        controller.onCoveredByOtherScreen()
+        controller.onWalletScreenShown()
+        controller.onBackground()
+        advance(60.seconds)
+
+        assertTrue(controller.onForeground())
+    }
+
+    @Test
+    fun `showing the wallet screen without a cover leaves the idle timeout running`() {
+        controller.unlock()
+        advance(5.minutes)
+
+        assertFalse(controller.onWalletScreenShown())
+        assertTrue(controller.lockIfIdle())
+    }
+
+    @Test
+    fun `the idle timeout does not run while another screen covers the wallet`() {
+        controller.unlock()
+        controller.onCoveredByOtherScreen()
+        advance(6.minutes)
+
+        assertFalse(controller.lockIfIdle())
+        assertEquals(5.minutes, controller.timeUntilIdleLock())
+        assertTrue(controller.isUnlocked)
+    }
+
+    @Test
+    fun `returning from another screen while locked reports no new lock`() {
+        controller.onCoveredByOtherScreen()
+        advance(30.minutes)
+
+        assertFalse(controller.onWalletScreenShown())
+        assertFalse(controller.isUnlocked)
+    }
+
+    @Test
     fun `a protected flow recorded when hidden is replaced by the next recording`() {
         controller.unlock()
         controller.recordProtectedFlow(inProtectedFlow = true)

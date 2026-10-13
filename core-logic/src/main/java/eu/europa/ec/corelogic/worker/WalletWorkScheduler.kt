@@ -28,23 +28,29 @@ import eu.europa.ec.corelogic.config.WalletCoreConfig
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 /** Schedules the wallet's background workers, and stops them for the factory reset. */
 interface WalletWorkScheduler {
 
-    /**
-     * Schedules the revocation check, once now and then periodically, and the periodic re-issuance
-     * check. Work already scheduled is kept. The revocation check also runs once at every app start, so
-     * that a status change, or revocation records lost when the database is recreated after a schema
-     * change, is picked up without waiting for the periodic interval.
-     */
+    /** Schedules the periodic revocation and re-issuance checks. Work already scheduled is kept. */
     fun schedule()
 
     /**
-     * Cancels the wallet's workers and waits until none is still working, for 30 seconds at most.
+     * Runs the revocation check once, the first time it is called in the process, so that a status
+     * change, or revocation records lost when the database is recreated after a schema change, is
+     * picked up without waiting for the periodic interval. Call it once the wallet's session id is
+     * set: a check that started earlier would open Wallet Core under the previous run's session id,
+     * and the wallet's screens would then open a second instance on the same storage. The periodic
+     * runs are not ordered this way; see the Go-Live guide on revocation checks.
+     */
+    fun scheduleStartupCheck()
+
+    /**
+     * Cancels the wallet's workers and waits until none is still working, for
+     * [WalletCoreConfig.workerStopTimeout] at most.
      * WorkManager marks a running worker cancelled at once, and Wallet Core finishes a re-issuance it
      * has started even when its worker is cancelled, so the wait is on the locks the workers hold
      * while they work. Returns false if a worker is still working when the time is up.
@@ -55,6 +61,7 @@ interface WalletWorkScheduler {
 class WalletWorkSchedulerImpl(
     private val context: Context,
     private val walletCoreConfig: WalletCoreConfig,
+    private val stopTimeout: Duration = walletCoreConfig.workerStopTimeout,
     private val workerLocks: List<Mutex> = listOf(
         RevocationWorkManager.runLock,
         ReIssuanceWorkManager.runLock,
@@ -62,7 +69,6 @@ class WalletWorkSchedulerImpl(
 ) : WalletWorkScheduler {
 
     private companion object {
-        val STOP_TIMEOUT = 30.seconds
         val WORK_NAMES = listOf(
             RevocationWorkManager.REVOCATION_ON_START_WORK_NAME,
             RevocationWorkManager.REVOCATION_WORK_NAME,
@@ -73,12 +79,9 @@ class WalletWorkSchedulerImpl(
     private val workManager: WorkManager
         get() = WorkManager.getInstance(context)
 
+    private val startupCheckScheduled = AtomicBoolean(false)
+
     override fun schedule() {
-        workManager.enqueueUniqueWork(
-            RevocationWorkManager.REVOCATION_ON_START_WORK_NAME,
-            ExistingWorkPolicy.KEEP,
-            OneTimeWorkRequest.from(RevocationWorkManager::class.java)
-        )
         enqueuePeriodicWorker(
             RevocationWorkManager.REVOCATION_WORK_NAME,
             walletCoreConfig.revocationInterval,
@@ -91,9 +94,18 @@ class WalletWorkSchedulerImpl(
         )
     }
 
+    override fun scheduleStartupCheck() {
+        if (!startupCheckScheduled.compareAndSet(false, true)) return
+        workManager.enqueueUniqueWork(
+            RevocationWorkManager.REVOCATION_ON_START_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequest.from(RevocationWorkManager::class.java)
+        )
+    }
+
     override suspend fun stop(): Boolean {
         WORK_NAMES.forEach { name -> workManager.cancelUniqueWork(name).await() }
-        return withTimeoutOrNull(STOP_TIMEOUT) {
+        return withTimeoutOrNull(stopTimeout) {
             workerLocks.forEach { lock -> lock.withLock {} }
             true
         } ?: false

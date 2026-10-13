@@ -17,6 +17,7 @@
 package eu.europa.ec.uilogic.navigation
 
 import eu.europa.ec.uilogic.config.ConfigUILogicImpl
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -62,7 +63,22 @@ class TestRouterHost {
     }
 
     @Test
-    fun `Given every protected-flow screen, When isProtectedRoute is checked, Then each is protected`() {
+    fun `Given the reference configuration, When its protected-flow screens are read, Then they are the issuance, presentation, proximity and signing screens`() {
+        assertEquals(
+            listOf(
+                IssuanceScreens.AddDocument,
+                IssuanceScreens.DocumentOffer,
+                IssuanceScreens.DocumentOfferCode,
+                PresentationScreens.PresentationRequest,
+                PresentationScreens.PresentationLoading,
+                ProximityScreens.QR,
+                ProximityScreens.Request,
+                ProximityScreens.Loading,
+                DashboardScreens.DocumentSign,
+                CommonScreens.Biometric,
+            ),
+            config.protectedFlowScreens,
+        )
         config.protectedFlowScreens.forEach { screen ->
             assertTrue(screen.screenRoute, isProtectedRoute(screen.screenRoute, config.protectedFlowScreens))
         }

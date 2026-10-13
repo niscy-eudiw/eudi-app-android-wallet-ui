@@ -32,6 +32,10 @@ import kotlin.time.Duration.Companion.milliseconds
  * [AuthenticationConfig.protectedFlowLockTimeout] instead, so that a visit to the issuer's website
  * does not end the session.
  *
+ * Another screen of the app, such as the RQES SDK's, can cover the wallet's own. The wallet cannot
+ * see interaction there, so the idle timeout gives way to the protected-flow timeout until the
+ * wallet's screen is shown again (see [onCoveredByOtherScreen]).
+ *
  * Time is measured with a monotonic clock, so changing the device clock does not extend a session.
  */
 interface SessionController {
@@ -66,10 +70,16 @@ interface SessionController {
      */
     fun onForeground(): Boolean
 
-    /** Locks the wallet, and returns true, if the idle timeout has expired. */
+    /**
+     * Locks the wallet, and returns true, if the idle timeout has expired. Does nothing while
+     * another screen of the app covers the wallet's, since interaction there cannot be seen.
+     */
     fun lockIfIdle(): Boolean
 
-    /** Time left before the idle timeout expires, for scheduling the next [lockIfIdle] check. */
+    /**
+     * Time left before the idle timeout expires, for scheduling the next [lockIfIdle] check: the
+     * full timeout while the wallet is locked or covered by another screen of the app.
+     */
     fun timeUntilIdleLock(): Duration
 
     /**
@@ -80,6 +90,20 @@ interface SessionController {
 
     /** Ends the flow marked by [beginExternalFlow]. */
     fun endExternalFlow()
+
+    /**
+     * Records that another screen of the app, such as the RQES SDK's, has come to the front over
+     * the wallet's own. Until [onWalletScreenShown], going to the background counts as a
+     * protected flow.
+     */
+    fun onCoveredByOtherScreen()
+
+    /**
+     * Called when the wallet's own screen is in front again. Locks the wallet, and returns true, if
+     * another screen of the app covered it for at least the protected-flow timeout; otherwise the
+     * idle timeout restarts. Does nothing when no other screen covered it.
+     */
+    fun onWalletScreenShown(): Boolean
 }
 
 class SessionControllerImpl(
@@ -101,6 +125,9 @@ class SessionControllerImpl(
 
     @Volatile
     private var protectedFlowWhenHidden: Boolean = false
+
+    @Volatile
+    private var coveredSince: Long? = null
 
     override val isUnlocked: Boolean
         get() = unlocked
@@ -134,7 +161,7 @@ class SessionControllerImpl(
         if (!unlocked) return false
 
         val now = elapsedRealtime()
-        val limit = if (protectedFlowWhenHidden || externalFlowInProgress) {
+        val limit = if (protectedFlowWhenHidden || externalFlowInProgress || coveredSince != null) {
             authenticationConfig.protectedFlowLockTimeout
         } else {
             authenticationConfig.backgroundLockTimeout
@@ -148,7 +175,7 @@ class SessionControllerImpl(
     }
 
     override fun lockIfIdle(): Boolean {
-        if (!unlocked) return false
+        if (!unlocked || coveredSince != null) return false
         if ((elapsedRealtime() - lastInteractionAt).milliseconds >= authenticationConfig.idleLockTimeout) {
             lock()
             return true
@@ -157,7 +184,7 @@ class SessionControllerImpl(
     }
 
     override fun timeUntilIdleLock(): Duration {
-        if (!unlocked) return authenticationConfig.idleLockTimeout
+        if (!unlocked || coveredSince != null) return authenticationConfig.idleLockTimeout
         val idle = (elapsedRealtime() - lastInteractionAt).milliseconds
         return (authenticationConfig.idleLockTimeout - idle).coerceAtLeast(Duration.ZERO)
     }
@@ -168,5 +195,25 @@ class SessionControllerImpl(
 
     override fun endExternalFlow() {
         externalFlowInProgress = false
+    }
+
+    override fun onCoveredByOtherScreen() {
+        if (coveredSince == null) {
+            coveredSince = elapsedRealtime()
+        }
+    }
+
+    override fun onWalletScreenShown(): Boolean {
+        val since = coveredSince ?: return false
+        coveredSince = null
+        if (!unlocked) return false
+
+        val now = elapsedRealtime()
+        if ((now - since).milliseconds >= authenticationConfig.protectedFlowLockTimeout) {
+            lock()
+            return true
+        }
+        lastInteractionAt = now
+        return false
     }
 }
