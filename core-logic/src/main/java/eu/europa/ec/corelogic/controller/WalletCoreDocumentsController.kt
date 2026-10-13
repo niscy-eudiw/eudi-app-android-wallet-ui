@@ -77,6 +77,7 @@ import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
 import eu.europa.ec.storagelogic.model.IssuerTrustRecord
 import eu.europa.ec.storagelogic.model.IssuerTrustVerdict
+import eu.europa.ec.storagelogic.model.RevocationStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineStart
@@ -266,6 +267,12 @@ interface WalletCoreDocumentsController {
     fun getAllDocumentCategories(): DocumentCategories
 
     suspend fun isDocumentRevoked(id: String): Boolean
+
+    /**
+     * Whether the document is blocked because its issuer suspended it. A suspension can be lifted,
+     * unlike a revocation; [isDocumentRevoked] is true for both.
+     */
+    suspend fun isDocumentSuspended(id: String): Boolean
 
     /**
      * Whether Wallet Core found the issuer of [documentId] trusted when the document was issued.
@@ -1044,6 +1051,9 @@ class WalletCoreDocumentsControllerImpl(
 
     override suspend fun isDocumentRevoked(id: String): Boolean =
         revokedDocumentDao.retrieve(id) != null
+
+    override suspend fun isDocumentSuspended(id: String): Boolean =
+        revokedDocumentDao.retrieve(id)?.status == RevocationStatus.SUSPENDED
 
     override suspend fun isIssuerTrusted(documentId: DocumentId): Boolean =
         issuerTrustDao.retrieve(documentId)?.verdict == IssuerTrustVerdict.TRUSTED

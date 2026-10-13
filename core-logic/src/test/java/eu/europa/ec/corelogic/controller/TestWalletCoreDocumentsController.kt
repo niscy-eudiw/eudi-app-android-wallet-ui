@@ -42,6 +42,8 @@ import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
 import eu.europa.ec.storagelogic.model.IssuerTrustRecord
 import eu.europa.ec.storagelogic.model.IssuerTrustVerdict
+import eu.europa.ec.storagelogic.model.RevocationStatus
+import eu.europa.ec.storagelogic.model.RevokedDocument
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import kotlinx.coroutines.flow.first
@@ -153,6 +155,19 @@ class TestWalletCoreDocumentsController {
     }
 
     private fun implementation() = controller as WalletCoreDocumentsControllerImpl
+
+    @Test
+    fun `Given blocked documents, When asked whether each is suspended, Then only the suspended one is`() =
+        coroutineRule.runTest {
+            whenever(revokedDocumentDao.retrieve("suspended"))
+                .thenReturn(RevokedDocument(identifier = "suspended", status = RevocationStatus.SUSPENDED))
+            whenever(revokedDocumentDao.retrieve("revoked"))
+                .thenReturn(RevokedDocument(identifier = "revoked", status = RevocationStatus.INVALID))
+
+            assertTrue(controller.isDocumentSuspended("suspended"))
+            assertFalse(controller.isDocumentSuspended("revoked"))
+            assertFalse(controller.isDocumentSuspended("valid"))
+        }
 
     @Test
     fun `Given the last document of its type, When it is deleted, Then its records and the history of its type go`() =

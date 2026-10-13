@@ -718,6 +718,30 @@ class TestDocumentDetailsInteractor {
     // Case 11 Expected Result:
     // DocumentDetailsInteractorPartialState.Success state, with document credentials info hidden.
     @Test
+    fun `Given a suspended document, When getDocumentDetails is called, Then the issuer card says it is suspended`() {
+        coroutineRule.runTest {
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentDetailsStrings(resourceProvider = resourceProvider)
+            mockGetDocumentByIdCall(response = getMockedPidWithBasicFields())
+            mockIsDocumentLowOnCredentialsCall(response = false)
+            mockRetrieveBookmarkCall(response = false)
+            mockIsDocumentRevoked(isRevoked = true, isSuspended = true)
+
+            interactor.getDocumentDetails(
+                documentId = mockedPidId,
+                wasIssuerDetailsExpanded = null,
+            ).runFlowTest {
+                val result = awaitItem()
+                kotlin.test.assertTrue(result is DocumentDetailsInteractorPartialState.Success)
+                assertEquals(
+                    IssuerDetailsCardDataUi.DocumentState.Suspended,
+                    result.issuerDetails.documentState
+                )
+            }
+        }
+    }
+
+    @Test
     fun `Given show batch issuance counter preference is false, When getDocumentDetails is called, Then credentials info is hidden`() {
         coroutineRule.runTest {
             // Given
@@ -1785,8 +1809,9 @@ class TestDocumentDetailsInteractor {
             .thenReturn(response)
     }
 
-    private suspend fun mockIsDocumentRevoked(isRevoked: Boolean) {
+    private suspend fun mockIsDocumentRevoked(isRevoked: Boolean, isSuspended: Boolean = false) {
         whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
+        whenever(walletCoreDocumentsController.isDocumentSuspended(any())).thenReturn(isSuspended)
     }
 
     private suspend fun mockIsIssuerTrusted(isTrusted: Boolean) {

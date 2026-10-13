@@ -90,6 +90,9 @@ data class IssuerDetailsCardDataUi(
         ) : DocumentState()
 
         data object Revoked : DocumentState()
+
+        /** Blocked because the issuer suspended it; unlike [Revoked], the issuer can lift it. */
+        data object Suspended : DocumentState()
     }
 
     /**
@@ -128,6 +131,10 @@ data class IssuerDetailsCardDataUi(
                 is DocumentState.Revoked -> {
                     R.string.document_details_issuer_card_revoked_message_text
                 }
+
+                is DocumentState.Suspended -> {
+                    R.string.document_details_issuer_card_suspended_message_text
+                }
             }
         }
 
@@ -147,7 +154,8 @@ data class IssuerDetailsCardDataUi(
                     R.string.document_details_issuer_card_expired_action_btn_text
                 }
 
-                is DocumentState.Revoked -> {
+                is DocumentState.Revoked,
+                is DocumentState.Suspended -> {
                     null
                 }
             }
@@ -256,6 +264,13 @@ fun IssuerDetailsCard(
                                 textColorKey = ThemeColorKey.Error,
                             )
                         }
+
+                        is IssuerDetailsCardDataUi.DocumentState.Suspended -> {
+                            ListItemSupportingContentDataUi.Text(
+                                text = stringResource(R.string.document_details_issuer_card_suspended_text),
+                                textColorKey = ThemeColorKey.Error,
+                            )
+                        }
                     }
 
                 WrapListItem(
@@ -359,7 +374,8 @@ private fun IssuerDetailsCardExpanded(
                 )
             }
 
-            is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
+            is IssuerDetailsCardDataUi.DocumentState.Revoked,
+            is IssuerDetailsCardDataUi.DocumentState.Suspended -> {
                 // Nothing to show
             }
         }

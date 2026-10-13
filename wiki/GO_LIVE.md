@@ -1350,7 +1350,9 @@ The app enqueues `RevocationWorkManager`, which:
   application-specific or reserved status value the wallet cannot interpret. Every record blocks
   presentation.
 * Treats `INVALID` as permanent: a later Valid does not clear it, and a later Suspended does not
-  downgrade it. A later Valid clears `SUSPENDED` and `UNRECOGNISED`.
+  downgrade it. A later Valid clears `SUSPENDED` and `UNRECOGNISED`. The document list and the
+  document's details show a `SUSPENDED` document as suspended and the others as revoked; all three
+  are blocked and counted under the Revoked filter.
 * Records a failed refresh (status list unreachable, malformed, or rejected by its signature check)
   for a document that has a status reference, and clears it on the next successful check. Document
   details then open the issuer card and say the status could not be refreshed. The document keeps

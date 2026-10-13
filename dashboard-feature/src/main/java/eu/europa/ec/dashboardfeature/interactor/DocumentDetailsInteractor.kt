@@ -178,6 +178,8 @@ class DocumentDetailsInteractorImpl(
                     walletCoreDocumentsController.isDocumentBookmarked(documentId)
 
                 val documentIsRevoked = walletCoreDocumentsController.isDocumentRevoked(documentId)
+                val documentIsSuspended = documentIsRevoked &&
+                        walletCoreDocumentsController.isDocumentSuspended(documentId)
                 val statusRefreshFailed =
                     walletCoreDocumentsController.hasStatusRefreshFailed(documentId)
                 val reIssuanceFailed = walletCoreDocumentsController.hasReIssuanceFailed(documentId)
@@ -185,6 +187,8 @@ class DocumentDetailsInteractorImpl(
                     issuerName = issuerName,
                     issuerLogo = issuerLogo,
                     documentState = when {
+                        documentIsSuspended -> IssuerDetailsCardDataUi.DocumentState.Suspended
+
                         documentIsRevoked -> IssuerDetailsCardDataUi.DocumentState.Revoked
 
                         safeIssuedDocument.isExpired() -> IssuerDetailsCardDataUi.DocumentState.Expired(

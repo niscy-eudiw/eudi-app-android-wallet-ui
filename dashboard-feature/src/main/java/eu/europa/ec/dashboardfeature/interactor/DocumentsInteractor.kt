@@ -300,6 +300,8 @@ class DocumentsInteractorImpl(
 
                     val documentIsRevoked =
                         walletCoreDocumentsController.isDocumentRevoked(document.id)
+                    val documentIsSuspended = documentIsRevoked &&
+                            walletCoreDocumentsController.isDocumentSuspended(document.id)
 
                     when (document) {
                         is IssuedDocument -> {
@@ -335,7 +337,13 @@ class DocumentsInteractorImpl(
 
                             val supportingContentData = when {
                                 documentIsRevoked -> ListItemSupportingContentDataUi.Text(
-                                    text = resourceProvider.getString(R.string.dashboard_document_revoked),
+                                    text = resourceProvider.getString(
+                                        if (documentIsSuspended) {
+                                            R.string.dashboard_document_suspended
+                                        } else {
+                                            R.string.dashboard_document_revoked
+                                        }
+                                    ),
                                     textColorKey = ThemeColorKey.Error,
                                 )
 

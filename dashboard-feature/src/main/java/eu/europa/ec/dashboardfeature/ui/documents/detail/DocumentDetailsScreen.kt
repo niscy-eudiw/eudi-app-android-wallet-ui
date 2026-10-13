@@ -231,7 +231,9 @@ private fun getToolbarConfig(
                     text = stringResource(R.string.document_details_toolbar_action_reissue),
                     icon = null,
                     onClick = { onEventSend(Event.IssuerDetails.OnActionButtonClicked(context)) },
-                    enabled = !state.isLoading && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Revoked,
+                    enabled = !state.isLoading
+                            && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Revoked
+                            && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Suspended,
                     throttleClicks = true,
                 ),
                 ToolbarActionUi(
