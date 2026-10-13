@@ -1546,7 +1546,12 @@ Production rules:
   the manifest filters say.
 * Expect any link to arrive out of turn: a scheme exported to browsers can be opened by any web page. The
   app ignores an RQES callback or document link that the RQES SDK refuses (for example a callback with no
-  signing session in progress) rather than letting the SDK's exception end the process.
+  signing session in progress) rather than letting the SDK's exception end the process. A link the
+  activity was first started with is not opened again when Android recreates the activity from
+  saved state. When Android starts the task again without saved state, for example after an app
+  update, a force-stop, or once the user has left the wallet with Back and reopens it from Recents,
+  it passes that link again with nothing to mark it as old, so the wallet opens it after login. A
+  request already used then fails, and one still valid asks for consent and the PIN again.
 * Check the merged manifest for components that libraries export. The RQES SDK declares its container activity
   exported; `assembly-logic` overrides it to `exported="false"`, because the app starts it explicitly.
 * Do not export internal navigation. Screens are reached by route inside the app. An exported intent filter for an
