@@ -220,7 +220,7 @@ class PrefsControllerImpl(
         context.getSharedPreferences(KEYSET_PREFS_FILE, Context.MODE_PRIVATE)
             .edit()
             .remove(KEYSET_PREFS_KEY)
-            .commit()
+            .apply()
         return true
     }
 }

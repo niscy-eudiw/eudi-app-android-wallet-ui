@@ -138,10 +138,8 @@ class RouterHostImpl(
 
     override fun requireLoginIfLocked() {
         if (sessionController.isUnlocked || !isNavigationReady()) return
-        val backStackRoutes = navController.currentBackStack.value
-            .map { it.destination }
-            .filterNot { it is NavGraph }
-            .mapNotNull { it.route }
+        val backStackRoutes = navController.graph.destinationRoutes()
+            .filter { route -> runCatching { navController.getBackStackEntry(route) }.isSuccess }
         if (requiresLogin(backStackRoutes, configUILogic.loginScreens)) {
             lockToLogin()
         }
@@ -196,6 +194,15 @@ class RouterHostImpl(
  */
 internal fun isProtectedRoute(route: String?, protectedFlowScreens: List<Screen>): Boolean =
     route != null && protectedFlowScreens.any { it.screenRoute == route }
+
+/**
+ * The routes of every destination in [this] graph and in its nested graphs, the nested graphs left
+ * out. [RouterHostImpl.requireLoginIfLocked] looks each one up on the back stack, since the
+ * navigation library offers no public view of the whole back stack.
+ */
+internal fun NavGraph.destinationRoutes(): List<String> = flatMap { destination ->
+    if (destination is NavGraph) destination.destinationRoutes() else listOfNotNull(destination.route)
+}
 
 /**
  * True when any of [backStackRoutes] is not the route of one of [loginScreens], so a locked wallet

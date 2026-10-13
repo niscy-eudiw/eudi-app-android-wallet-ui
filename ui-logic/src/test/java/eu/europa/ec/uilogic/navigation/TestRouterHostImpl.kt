@@ -22,11 +22,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.createGraph
 import androidx.navigation.navigation
 import androidx.navigation.testing.TestNavHostController
-import eu.europa.ec.analyticslogic.controller.AnalyticsController
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.uilogic.config.ConfigUILogic
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -52,7 +52,7 @@ class TestRouterHostImpl {
 
     private val routerHost = RouterHostImpl(
         configUILogic = configUILogic,
-        analyticsController = mock<AnalyticsController>(),
+        analyticsController = mock(),
         sessionController = sessionController,
     )
 
@@ -88,9 +88,9 @@ class TestRouterHostImpl {
         routerHost.requireLoginIfLocked()
 
         assertEquals(StartupScreens.Splash.screenRoute, navController.currentDestination?.route)
-        assertFalse(navController.currentBackStack.value.any { entry ->
-            entry.destination.route == DashboardScreens.Dashboard.screenRoute
-        })
+        assertFalse(
+            runCatching { navController.getBackStackEntry(DashboardScreens.Dashboard.screenRoute) }.isSuccess
+        )
     }
 
     @Test
@@ -106,12 +106,12 @@ class TestRouterHostImpl {
     @Test
     fun `Given a locked wallet showing only login screens, When requireLoginIfLocked is called, Then nothing changes`() {
         whenever(sessionController.isUnlocked).thenReturn(false)
-        val backStackSize = navController.currentBackStack.value.size
+        val entry = navController.currentBackStackEntry
 
         routerHost.requireLoginIfLocked()
 
         assertEquals(StartupScreens.Splash.screenRoute, navController.currentDestination?.route)
-        assertEquals(backStackSize, navController.currentBackStack.value.size)
+        assertSame(entry, navController.currentBackStackEntry)
     }
 
     @Test

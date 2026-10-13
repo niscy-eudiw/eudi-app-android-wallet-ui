@@ -200,7 +200,6 @@ class ProximityQRViewModel(
      * stops it. A screen removed before its session started has nothing to stop.
      */
     override fun onCleared() {
-        super.onCleared()
         if (!sessionHandedOver && !cleanedUp && viewState.value.presentationScopeId.isNotEmpty()) {
             cleanUp()
         }

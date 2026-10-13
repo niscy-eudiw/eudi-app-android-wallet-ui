@@ -407,7 +407,7 @@ class TestProximityQRInteractor {
         verify(walletCorePresentationController, times(1))
             .setConfig(PresentationControllerConfig.Ble(initiator))
 
-        assertEquals(interactor.presentationScopeId, "ble_presentation_scope_id_session-1")
+        assertEquals("ble_presentation_scope_id_session-1", interactor.presentationScopeId)
     }
 
     @Test

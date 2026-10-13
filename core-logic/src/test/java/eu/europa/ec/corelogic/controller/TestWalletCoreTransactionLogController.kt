@@ -20,7 +20,6 @@ import eu.europa.ec.corelogic.model.RecordedRegistrationCheckDomain
 import eu.europa.ec.corelogic.model.RegistrationFailureReasonDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
-import eu.europa.ec.eudi.iso18013.transfer.response.Request
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
 import eu.europa.ec.eudi.wallet.presentation.PresentationManager
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
@@ -55,9 +54,7 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialSelection
-import org.multipaz.request.Requester
 import org.multipaz.securearea.KeyUnlockData
 import java.util.Locale
 
@@ -98,7 +95,7 @@ class TestWalletCoreTransactionLogController {
             val entry = loggedEntryFor(request)
 
             controller.log(entry)
-            controller.onTransferEvent(TransferEvent.RequestReceived(request, mock<Request>()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(request, mock()))
             coroutineRule.testScope.advanceUntilIdle()
 
             verify(transactionLogDao).recordRegistrationCheck(
@@ -115,7 +112,7 @@ class TestWalletCoreTransactionLogController {
             val entry = loggedEntryFor(request)
 
             controller.log(entry)
-            controller.onTransferEvent(TransferEvent.RequestReceived(request, mock<Request>()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(request, mock()))
             coroutineRule.testScope.advanceUntilIdle()
 
             verify(transactionLogDao).recordRegistrationCheck(
@@ -134,7 +131,7 @@ class TestWalletCoreTransactionLogController {
             )
 
             controller.log(entry)
-            controller.onTransferEvent(TransferEvent.RequestReceived(request, mock<Request>()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(request, mock()))
             coroutineRule.testScope.advanceUntilIdle()
 
             verify(transactionLogDao, never()).recordRegistrationCheck(any(), any(), anyOrNull())
@@ -146,10 +143,10 @@ class TestWalletCoreTransactionLogController {
             val first = processedRequest(registration = notBound)
             val entry = loggedEntryFor(first)
             controller.log(entry)
-            controller.onTransferEvent(TransferEvent.RequestReceived(first, mock<Request>()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(first, mock()))
 
             controller.log(entry.copy(listOfClaimsPresented = emptyList()))
-            controller.onTransferEvent(TransferEvent.RequestReceived(first, mock<Request>()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(first, mock()))
             coroutineRule.testScope.advanceUntilIdle()
 
             verify(transactionLogDao).recordRegistrationCheck(any(), any(), anyOrNull())
@@ -164,11 +161,11 @@ class TestWalletCoreTransactionLogController {
             controller.onTransferEvent(
                 TransferEvent.RequestReceived(
                     RequestProcessor.ProcessedRequest.Failure(IllegalStateException("unreadable")),
-                    mock<Request>(),
+                    mock(),
                 )
             )
             controller.onTransferEvent(
-                TransferEvent.RequestReceived(processedRequest(registration = notBound), mock<Request>())
+                TransferEvent.RequestReceived(processedRequest(registration = notBound), mock())
             )
             coroutineRule.testScope.advanceUntilIdle()
 
@@ -190,7 +187,7 @@ class TestWalletCoreTransactionLogController {
                 transactionLogManager = DefaultTransactionLogManager(controller),
             )
             listeners.add(controller)
-            val event = TransferEvent.RequestReceived(processedRequest(registration = notBound), mock<Request>())
+            val event = TransferEvent.RequestReceived(processedRequest(registration = notBound), mock())
 
             listeners.forEach { listener -> listener.onTransferEvent(event) }
             coroutineRule.testScope.advanceUntilIdle()
@@ -212,13 +209,13 @@ class TestWalletCoreTransactionLogController {
             val second = processedRequest(registration = notBound)
             controller.log(loggedEntryFor(first))
             controller.log(loggedEntryFor(second))
-            controller.onTransferEvent(TransferEvent.RequestReceived(first, mock<Request>()))
-            controller.onTransferEvent(TransferEvent.RequestReceived(second, mock<Request>()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(first, mock()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(second, mock()))
 
             val third = processedRequest(registration = notBound)
             val entry = loggedEntryFor(third)
             controller.log(entry)
-            controller.onTransferEvent(TransferEvent.RequestReceived(third, mock<Request>()))
+            controller.onTransferEvent(TransferEvent.RequestReceived(third, mock()))
             coroutineRule.testScope.advanceUntilIdle()
 
             verify(transactionLogDao, times(1)).recordRegistrationCheck(any(), any(), anyOrNull())
@@ -262,8 +259,8 @@ class TestWalletCoreTransactionLogController {
         registration: RegistrationCertificateResult?,
     ): RequestProcessor.ProcessedRequest.Success =
         object : RequestProcessor.ProcessedRequest.Success(
-            presentmentData = mock<CredentialQueryResult>(),
-            requester = mock<Requester>(),
+            presentmentData = mock(),
+            requester = mock(),
             trustMetadata = null,
             wrpRegistration = registration,
         ) {

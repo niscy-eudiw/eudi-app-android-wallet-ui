@@ -51,7 +51,7 @@ class TestPinViewModel {
 
     @Before
     fun before() {
-        whenever(resourceProvider.getString(any<Int>())).thenReturn("text")
+        whenever(resourceProvider.getString(any())).thenReturn("text")
     }
 
     @Test

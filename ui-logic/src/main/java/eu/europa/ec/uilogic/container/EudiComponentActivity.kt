@@ -301,12 +301,12 @@ open class EudiComponentActivity : FragmentActivity() {
         walletWasShown: Boolean = true,
     ) {
         if (walletResetStatus.isResetting.value) {
-            setIntent(Intent())
+            this.intent = Intent()
             return
         }
         val deepLink = hasDeepLink(intent?.data)
         if (deepLink != null && dropsIncomingLink(deepLink.type)) {
-            setIntent(Intent())
+            this.intent = Intent()
             return
         }
         deepLink?.let {
@@ -341,12 +341,12 @@ open class EudiComponentActivity : FragmentActivity() {
                     routerHost.popToDashboardScreen()
                 }
             }
-            setIntent(Intent())
+            this.intent = Intent()
         } ?: hasIntentAction(intent)?.let {
             when (it.type) {
                 IntentType.DC_API -> {
                     if (!viewModel.isDCAPIEnabled()) {
-                        setIntent(Intent())
+                        this.intent = Intent()
                         if (finishesOnDeclinedRequest(coldBoot, walletWasShown)) finish()
                         return
                     }
@@ -356,7 +356,7 @@ open class EudiComponentActivity : FragmentActivity() {
                     }
                 }
             }
-            setIntent(Intent())
+            this.intent = Intent()
         }
     }
 }

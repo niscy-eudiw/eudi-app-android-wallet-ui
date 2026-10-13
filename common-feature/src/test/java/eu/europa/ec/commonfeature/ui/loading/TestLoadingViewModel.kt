@@ -37,7 +37,7 @@ class TestLoadingViewModel {
     @get:Rule
     val coroutineRule = CoroutineTestRule()
 
-    /** The shared loading logic, with a way to show a rejection that carries [redirect]. */
+    /** The shared loading logic, where [reject] shows a rejection that carries a redirect. */
     private class FakeLoadingViewModel : LoadingViewModel() {
         override fun getHeaderConfig() = ContentHeaderConfig(description = null)
 

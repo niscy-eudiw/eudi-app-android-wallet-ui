@@ -42,11 +42,10 @@ import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
@@ -87,12 +86,9 @@ class TestReIssuanceWorkManager {
 
             runWorker()
 
-            verify(walletCoreDocumentsController, never()).reIssueDocument(
-                any(),
-                any(),
-                any(),
-                anyOrNull(),
-            )
+            verify(walletCoreDocumentsController).getAllIssuedDocuments()
+            verify(walletCoreDocumentsController).isDocumentRevoked(document.id)
+            verifyNoMoreInteractions(walletCoreDocumentsController)
         }
     }
 
@@ -102,7 +98,7 @@ class TestReIssuanceWorkManager {
             val dueDocument: IssuedDocument = mock {
                 on { id } doReturn "due-document"
                 on { credentialPolicy } doReturn CredentialPolicy.OnceOnly()
-                onBlocking { getCredentials() } doReturn emptyList()
+                on { getCredentials() } doReturn emptyList()
             }
             val outcome = CompletableDeferred<IssueDocumentsPartialState>()
             whenever(walletCoreDocumentsController.getAllIssuedDocuments()).thenReturn(listOf(dueDocument))

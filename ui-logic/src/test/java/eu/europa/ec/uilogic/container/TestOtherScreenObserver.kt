@@ -16,7 +16,6 @@
 
 package eu.europa.ec.uilogic.container
 
-import android.app.Activity
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import org.junit.Test
 import org.mockito.kotlin.mock
@@ -31,7 +30,7 @@ class TestOtherScreenObserver {
 
     @Test
     fun `Given another activity of the app, When it comes to the front, Then the wallet counts as covered`() {
-        observer.onActivityResumed(mock<Activity>())
+        observer.onActivityResumed(mock())
 
         verify(sessionController).onCoveredByOtherScreen()
     }

@@ -81,6 +81,7 @@ import eu.europa.ec.storagelogic.model.RevocationStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -825,6 +826,11 @@ class WalletCoreDocumentsControllerImpl(
             )
         }
 
+    /**
+     * Stores a deferred document's issuer-trust verdict before reporting it as issued. The write starts
+     * atomically ([CoroutineStart.ATOMIC]), so a cancellation right after the event cannot skip it.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
     override fun issueDeferredDocument(docId: DocumentId): Flow<IssueDeferredDocumentPartialState> =
         callbackFlow {
             (getDocumentById(docId) as? DeferredDocument)?.let { deferredDoc ->
@@ -1113,8 +1119,10 @@ class WalletCoreDocumentsControllerImpl(
     /**
      * Turns Wallet Core's issuance events into [IssueDocumentsPartialState]s. Each issued document's
      * issuer-trust verdict is stored as it arrives, and the outcome is reported only after those
-     * writes finish, because the success screen reads the stored verdicts.
+     * writes finish, because the success screen reads the stored verdicts. The writes start atomically
+     * ([CoroutineStart.ATOMIC]), so a cancellation right after an event cannot skip them.
      */
+    @OptIn(DelicateCoroutinesApi::class)
     private fun ProducerScope<IssueDocumentsPartialState>.issuanceCallback(
         prioritizeDeferred: Boolean = true
     ): OpenId4VciManager.OnIssueEvent {

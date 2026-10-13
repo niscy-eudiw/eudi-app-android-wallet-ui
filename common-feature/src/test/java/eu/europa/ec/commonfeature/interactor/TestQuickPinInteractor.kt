@@ -331,7 +331,7 @@ class TestQuickPinInteractor {
                     awaitItem()
                 )
             }
-            verify(pinStorageController, never()).setPin(any<SecurePin>())
+            verify(pinStorageController, never()).setPin(any())
             verify(sessionController, never()).unlock()
         }
     }
@@ -422,7 +422,7 @@ class TestQuickPinInteractor {
                     awaitItem()
                 )
             }
-            verify(pinStorageController, never()).setPin(any<SecurePin>())
+            verify(pinStorageController, never()).setPin(any())
         }
     }
     //endregion

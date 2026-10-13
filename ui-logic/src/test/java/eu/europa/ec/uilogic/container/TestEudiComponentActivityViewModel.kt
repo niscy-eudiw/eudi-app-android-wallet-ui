@@ -20,20 +20,19 @@ import android.content.Intent
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
-import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.corelogic.worker.WalletWorkScheduler
-import org.junit.Assert.assertFalse
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertSame
-import org.mockito.kotlin.any
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
-import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 class TestEudiComponentActivityViewModel {
@@ -50,7 +49,7 @@ class TestEudiComponentActivityViewModel {
 
     private val viewModel = EudiComponentActivityViewModel(
         prefKeys = prefKeys,
-        dcapiSettingProvider = mock<DCAPISettingProvider>(),
+        dcapiSettingProvider = mock(),
         sessionController = sessionController,
         walletWorkScheduler = walletWorkScheduler,
         uuidProvider = uuidProvider,
@@ -67,6 +66,7 @@ class TestEudiComponentActivityViewModel {
             verify(walletWorkScheduler).scheduleStartupCheck()
         }
     }
+
     @Test
     fun `Given a link opened and used, When the system UI restarts the task with it, Then it is not opened again`() {
         storePrefsInMemory()
@@ -149,7 +149,6 @@ class TestEudiComponentActivityViewModel {
         const val CHROME_TAP_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         const val RESTART_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
     }
-
 
     @Test
     fun `Given a locked wallet with a kept link, When it is read or cleared, Then it is withheld and kept until login`() {

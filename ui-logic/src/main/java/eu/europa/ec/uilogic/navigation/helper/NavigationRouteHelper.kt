@@ -35,4 +35,4 @@ fun generateComposableNavigationLink(screen: Screen, arguments: String): String 
     generateComposableNavigationLink(screen.screenName, arguments)
 
 fun generateComposableNavigationLink(screen: String, arguments: String): String =
-    "${screen}$arguments"
+    "$screen$arguments"
