@@ -17,9 +17,11 @@
 package eu.europa.ec.businesslogic.controller.storage
 
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class TestPrefKeys {
 
@@ -32,5 +34,15 @@ class TestPrefKeys {
         prefKeys.clearAllExceptSessionIdAndDbKey()
 
         verify(prefsController).clearExcept(keys = setOf("SessionId", "dbKey"))
+    }
+
+    @Test
+    fun `Given an opened launch link, When it is recorded and read, Then the same preference holds it`() = runBlocking {
+        whenever(prefsController.getString("OpenedLaunchLink", "")).thenReturn("12:abc")
+
+        prefKeys.setOpenedLaunchLink("12:abc")
+
+        verify(prefsController).setString("OpenedLaunchLink", "12:abc")
+        assertEquals("12:abc", prefKeys.getOpenedLaunchLink())
     }
 }

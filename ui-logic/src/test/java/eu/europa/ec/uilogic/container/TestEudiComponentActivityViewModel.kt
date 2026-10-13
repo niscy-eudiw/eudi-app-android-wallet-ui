@@ -22,12 +22,17 @@ import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.corelogic.worker.WalletWorkScheduler
+import org.junit.Assert.assertFalse
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertSame
+import org.mockito.kotlin.any
 import org.junit.Test
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
@@ -62,6 +67,89 @@ class TestEudiComponentActivityViewModel {
             verify(walletWorkScheduler).scheduleStartupCheck()
         }
     }
+    @Test
+    fun `Given a link opened and used, When the system UI restarts the task with it, Then it is not opened again`() {
+        storePrefsInMemory()
+        whenever(sessionController.isUnlocked).thenReturn(true)
+        val tap = linkIntent(CHROME_TAP_FLAGS)
+
+        assertTrue(opens(tap, launchedBy = "com.android.chrome"))
+        viewModel.cacheIntent(tap)
+        assertSame(tap, viewModel.getCachedIntent())
+
+        assertFalse(opens(linkIntent(RESTART_FLAGS), launchedBy = SYSTEM_UI_PACKAGE))
+        assertTrue(opens(linkIntent(RESTART_FLAGS), launchedBy = SYSTEM_UI_PACKAGE, taskId = TASK + 1))
+        assertTrue(opens(linkIntent(CHROME_TAP_FLAGS), launchedBy = "com.android.chrome"))
+        assertTrue(opens(linkIntent(RESTART_FLAGS), launchedBy = "com.example.relyingparty"))
+    }
+
+    @Test
+    fun `Given a link opened but never used, When the task restarts with it, Then it opens again`() {
+        storePrefsInMemory()
+        whenever(sessionController.isUnlocked).thenReturn(false)
+        val tap = linkIntent(CHROME_TAP_FLAGS)
+
+        assertTrue(opens(tap, launchedBy = "com.android.chrome"))
+        viewModel.cacheIntent(tap)
+        assertNull(viewModel.getCachedIntent())
+
+        assertTrue(opens(linkIntent(RESTART_FLAGS), launchedBy = SYSTEM_UI_PACKAGE))
+        runBlocking { verify(prefKeys, never()).setOpenedLaunchLink(any()) }
+    }
+
+    @Test
+    fun `Given a launch link replaced by a newer link before a screen used it, When the task restarts with it, Then it opens again`() {
+        storePrefsInMemory()
+        whenever(sessionController.isUnlocked).thenReturn(true)
+
+        assertTrue(opens(linkIntent(CHROME_TAP_FLAGS), launchedBy = "com.android.chrome"))
+        viewModel.cacheIntent(linkIntent(CHROME_TAP_FLAGS, link = NEWER_LINK))
+        viewModel.getCachedIntent()
+
+        assertTrue(opens(linkIntent(RESTART_FLAGS), launchedBy = SYSTEM_UI_PACKAGE))
+        runBlocking { verify(prefKeys, never()).setOpenedLaunchLink(any()) }
+    }
+
+    @Test
+    fun `Given an activity that is not its task's root or has no link, When it starts, Then it opens and records nothing`() {
+        storePrefsInMemory()
+        whenever(sessionController.isUnlocked).thenReturn(true)
+        val tap = linkIntent(CHROME_TAP_FLAGS)
+
+        assertTrue(viewModel.opensLaunchLink(tap, TASK, isTaskRoot = false, launchedBy = SYSTEM_UI_PACKAGE))
+        assertTrue(viewModel.opensLaunchLink(mock(), TASK, isTaskRoot = true, launchedBy = null))
+        viewModel.cacheIntent(tap)
+        viewModel.getCachedIntent()
+
+        runBlocking { verify(prefKeys, never()).setOpenedLaunchLink(any()) }
+    }
+
+    private var storedLaunchLink = ""
+
+    private fun storePrefsInMemory() = runBlocking {
+        whenever(prefKeys.getOpenedLaunchLink()).thenAnswer { storedLaunchLink }
+        whenever(prefKeys.setOpenedLaunchLink(any())).thenAnswer { call ->
+            storedLaunchLink = call.getArgument(0)
+            Unit
+        }
+    }
+
+    private fun linkIntent(launchFlags: Int, link: String = LINK): Intent = mock {
+        on { dataString } doReturn link
+        on { flags } doReturn launchFlags
+    }
+
+    private fun opens(intent: Intent, launchedBy: String, taskId: Int = TASK): Boolean =
+        viewModel.opensLaunchLink(intent, taskId, isTaskRoot = true, launchedBy = launchedBy)
+
+    private companion object {
+        const val LINK = "haip-vp://?request_uri=https%3A%2F%2Fverifier.example%2Fr%2F1"
+        const val NEWER_LINK = "haip-vp://?request_uri=https%3A%2F%2Fverifier.example%2Fr%2F2"
+        const val TASK = 132
+        const val CHROME_TAP_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        const val RESTART_FLAGS = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+
 
     @Test
     fun `Given a locked wallet with a kept link, When it is read or cleared, Then it is withheld and kept until login`() {

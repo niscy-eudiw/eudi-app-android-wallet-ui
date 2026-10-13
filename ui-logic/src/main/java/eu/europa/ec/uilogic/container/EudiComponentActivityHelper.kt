@@ -16,8 +16,10 @@
 
 package eu.europa.ec.uilogic.container
 
+import android.content.Intent
 import android.os.Bundle
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
+import java.security.MessageDigest
 
 /**
  * The saved state the host activity passes on when it is created. A configuration change keeps the
@@ -52,3 +54,43 @@ internal fun dropsIncomingLink(type: DeepLinkType): Boolean = type == DeepLinkTy
  */
 internal fun finishesOnDeclinedRequest(coldBoot: Boolean, walletWasShown: Boolean): Boolean =
     coldBoot || !walletWasShown
+
+/**
+ * What the host activity records once a screen has used the link the task was started with: the task
+ * and a SHA-256 fingerprint of the link, so that the record holds no link.
+ */
+internal fun launchLinkRecord(taskId: Int, link: String): String {
+    val digest = MessageDigest.getInstance("SHA-256").digest(link.toByteArray(Charsets.UTF_8))
+    return "$taskId:" + digest.joinToString(separator = "") { byte -> "%02x".format(byte) }
+}
+
+/** The package of the system UI, which restarts an app's task after an update and from Recents. */
+internal const val SYSTEM_UI_PACKAGE = "com.android.systemui"
+
+/**
+ * Whether a launch intent with [launchFlags] and [link], started by [launchedBy] in task [taskId], is
+ * Android restarting the wallet's task with the link that first started it, rather than a link the
+ * user has just opened.
+ *
+ * Android restarts a task without saved state after an app update, after a force-stop, and from
+ * Recents once the user has left the wallet with Back. It gives the new activity the task's first
+ * intent again, with [Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY] when it uses the Recents path, or
+ * with [Intent.FLAG_ACTIVITY_CLEAR_TASK] when the system UI starts it, as the reference emulator does.
+ * An app may send a link with CLEAR_TASK too, so that flag counts only when the system UI is the
+ * caller Android recorded ([eu.europa.ec.uilogic.extension.launchingPackage]). A replay is recognised
+ * only when, in addition,
+ * [recorded], the [launchLinkRecord] of the last launch link a screen used, names this task and
+ * this link.
+ */
+internal fun isReplayedLaunchLink(
+    launchFlags: Int,
+    launchedBy: String?,
+    taskId: Int,
+    link: String,
+    recorded: String,
+): Boolean {
+    val fromRecents = (launchFlags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
+    val restartedBySystemUi = (launchFlags and Intent.FLAG_ACTIVITY_CLEAR_TASK) != 0
+            && launchedBy == SYSTEM_UI_PACKAGE
+    return (fromRecents || restartedBySystemUi) && recorded == launchLinkRecord(taskId, link)
+}

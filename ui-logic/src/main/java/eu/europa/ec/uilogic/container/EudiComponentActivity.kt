@@ -41,6 +41,7 @@ import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
+import eu.europa.ec.uilogic.extension.launchingPackage
 import eu.europa.ec.uilogic.extension.reportAccessibilityInteraction
 import eu.europa.ec.uilogic.navigation.DashboardScreens
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
@@ -104,12 +105,18 @@ open class EudiComponentActivity : FragmentActivity() {
 
     /**
      * Restores the saved screens only as [stateToRestore] allows, and opens the launch intent only
-     * as [opensLaunchIntent] allows. Screen-reader actions in the activity's window count as
-     * interaction for the idle lock ([reportAccessibilityInteraction]).
+     * as [opensLaunchIntent] allows and unless it replays the link that first started this task
+     * (see [EudiComponentActivityViewModel.opensLaunchLink]). Screen-reader actions in the
+     * activity's window count as interaction for the idle lock ([reportAccessibilityInteraction]).
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(stateToRestore(savedInstanceState, navigationStartedInProcess))
-        opensItsLaunchIntent = opensLaunchIntent(savedInstanceState)
+        opensItsLaunchIntent = opensLaunchIntent(savedInstanceState) && viewModel.opensLaunchLink(
+            intent = intent,
+            taskId = taskId,
+            isTaskRoot = isTaskRoot,
+            launchedBy = launchingPackage(),
+        )
         viewModel.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycleObserver)
         window.decorView.reportAccessibilityInteraction { onUserInteraction() }
@@ -368,6 +375,9 @@ internal class EudiComponentActivityViewModel(
     private var flowStarted: Boolean = false
     private var pendingIntent: Intent? = null
 
+    /** The launch intent the activity opened, and its record, until a screen uses it. */
+    private var launchLinkToRecord: Pair<Intent, String>? = null
+
     override fun onCleared() {
         getOrNullKoinScope(sessionId)?.close()
     }
@@ -399,11 +409,43 @@ internal class EudiComponentActivityViewModel(
      * The kept link, or null while the wallet is locked: a screen restored before login, such as
      * the dashboard after the activity is recreated, must not open it.
      */
-    fun getCachedIntent(): Intent? = if (sessionController.isUnlocked) pendingIntent else null
+    fun getCachedIntent(): Intent? {
+        if (!sessionController.isUnlocked) return null
+        val intent = pendingIntent
+        launchLinkToRecord?.let { (launch, record) ->
+            if (intent === launch) {
+                launchLinkToRecord = null
+                runBlocking(Dispatchers.IO) { prefKeys.setOpenedLaunchLink(record) }
+            }
+        }
+        return intent
+    }
 
     /** Forgets the kept link whether or not the wallet is locked, as a factory reset does. */
     fun forgetCachedIntent() {
         pendingIntent = null
+    }
+
+    /**
+     * Whether the activity opens the link of its launch [intent], started by [launchedBy] in task
+     * [taskId]. It does not when that is Android replaying the link that first started the task (see
+     * [isReplayedLaunchLink]). Only the task's root activity is checked, since only its intent is
+     * replayed. When the link opens, its record is written once a screen uses it after login
+     * ([getCachedIntent]), so that a link never used is not taken for used. Nor is a launch link
+     * that a newer link replaced before a screen used it.
+     */
+    fun opensLaunchLink(
+        intent: Intent?,
+        taskId: Int,
+        isTaskRoot: Boolean,
+        launchedBy: String?,
+    ): Boolean {
+        val link = intent?.dataString ?: return true
+        if (!isTaskRoot) return true
+        val recorded = runBlocking(Dispatchers.IO) { prefKeys.getOpenedLaunchLink() }
+        if (isReplayedLaunchLink(intent.flags, launchedBy, taskId, link, recorded)) return false
+        launchLinkToRecord = intent to launchLinkRecord(taskId, link)
+        return true
     }
 
     /**

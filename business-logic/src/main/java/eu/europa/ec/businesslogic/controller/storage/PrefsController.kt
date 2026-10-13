@@ -268,6 +268,13 @@ interface PrefKeys {
     suspend fun getDbKey(): ByteArray?
 
     /**
+     * The task and link fingerprint the host activity recorded when a screen last used the link the
+     * task was started with, or empty. It holds no link, only a SHA-256 fingerprint.
+     */
+    suspend fun getOpenedLaunchLink(): String
+    suspend fun setOpenedLaunchLink(value: String)
+
+    /**
      * Clears every preference except the session id and the database key, in a single edit, for the
      * factory reset: the running app still needs both, and a reader never sees them missing.
      */
@@ -339,6 +346,14 @@ class PrefKeysImpl(
     override suspend fun getDbKey(): ByteArray? {
         val encoded = prefsController.getString(DB_KEY, "").ifBlank { return null }
         return encoded.decodeFromBase64(flags = Base64.NO_WRAP)
+    }
+
+    override suspend fun getOpenedLaunchLink(): String {
+        return prefsController.getString("OpenedLaunchLink", "")
+    }
+
+    override suspend fun setOpenedLaunchLink(value: String) {
+        prefsController.setString("OpenedLaunchLink", value)
     }
 
     override suspend fun clearAllExceptSessionIdAndDbKey() {

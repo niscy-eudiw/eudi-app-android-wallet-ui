@@ -1546,12 +1546,22 @@ Production rules:
   the manifest filters say.
 * Expect any link to arrive out of turn: a scheme exported to browsers can be opened by any web page. The
   app ignores an RQES callback or document link that the RQES SDK refuses (for example a callback with no
-  signing session in progress) rather than letting the SDK's exception end the process. A link the
-  activity was first started with is not opened again when Android recreates the activity from
-  saved state. When Android starts the task again without saved state, for example after an app
+  signing session in progress) rather than letting the SDK's exception end the process.
+* A link the activity was first started with is not opened again when Android recreates the
+  activity from saved state. When Android starts the task again without saved state, for example after an app
   update, a force-stop, or once the user has left the wallet with Back and reopens it from Recents,
-  it passes that link again with nothing to mark it as old, so the wallet opens it after login. A
-  request already used then fails, and one still valid asks for consent and the PIN again.
+  it passes that link again, and nothing in the link marks it as old. The activity recognises such a
+  restart by `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`, which a relaunch from Recents carries, or by
+  `FLAG_ACTIVITY_CLEAR_TASK` when the system UI is the caller Android recorded, as after an update
+  on the reference emulator; a referrer the sender put in the intent is ignored. It then skips the
+  link if a screen has already used it in this task after login. For that the app keeps one record,
+  the task id and a SHA-256 fingerprint of the last launch link used, never the link itself;
+  **Reset wallet** clears it. A link the user never got to use, such as one left on the login
+  screen, still opens after login, and so does the same link sent again by a browser or another
+  app. The check only ever skips a link. Where a device restarts the task in a way it does not
+  recognise, the wallet opens the link again: a request already used then fails, and one still
+  valid asks for consent and the PIN again. A change to the host activity's launch mode or task
+  handling needs this re-tested on the target devices.
 * Check the merged manifest for components that libraries export. The RQES SDK declares its container activity
   exported; `assembly-logic` overrides it to `exported="false"`, because the app starts it explicitly.
 * Do not export internal navigation. Screens are reached by route inside the app. An exported intent filter for an
