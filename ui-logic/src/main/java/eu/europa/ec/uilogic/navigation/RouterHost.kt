@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -31,6 +30,9 @@ import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.extension.firstPart
 import eu.europa.ec.businesslogic.extension.toMapOrEmpty
 import eu.europa.ec.uilogic.config.ConfigUILogic
+import eu.europa.ec.uilogic.extension.destinationRoutes
+import eu.europa.ec.uilogic.navigation.helper.isProtectedRoute
+import eu.europa.ec.uilogic.navigation.helper.requiresLogin
 
 interface RouterHost {
     fun getNavController(): NavHostController
@@ -188,25 +190,3 @@ class RouterHostImpl(
         return configUILogic.issuanceScreenIdentifier
     }
 }
-
-/**
- * True when [route] is the route of one of [protectedFlowScreens].
- */
-internal fun isProtectedRoute(route: String?, protectedFlowScreens: List<Screen>): Boolean =
-    route != null && protectedFlowScreens.any { it.screenRoute == route }
-
-/**
- * The routes of every destination in [this] graph and in its nested graphs, the nested graphs left
- * out. [RouterHostImpl.requireLoginIfLocked] looks each one up on the back stack, since the
- * navigation library offers no public view of the whole back stack.
- */
-internal fun NavGraph.destinationRoutes(): List<String> = flatMap { destination ->
-    if (destination is NavGraph) destination.destinationRoutes() else listOfNotNull(destination.route)
-}
-
-/**
- * True when any of [backStackRoutes] is not the route of one of [loginScreens], so a locked wallet
- * showing this back stack must return to login.
- */
-internal fun requiresLogin(backStackRoutes: List<String>, loginScreens: List<Screen>): Boolean =
-    backStackRoutes.any { route -> loginScreens.none { it.screenRoute == route } }

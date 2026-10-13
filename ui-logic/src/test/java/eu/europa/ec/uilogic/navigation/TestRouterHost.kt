@@ -16,82 +16,133 @@
 
 package eu.europa.ec.uilogic.navigation
 
-import eu.europa.ec.uilogic.config.ConfigUILogicImpl
+import androidx.activity.ComponentActivity
+import androidx.navigation.compose.ComposeNavigator
+import androidx.navigation.compose.composable
+import androidx.navigation.createGraph
+import androidx.navigation.navigation
+import androidx.navigation.testing.TestNavHostController
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
+import eu.europa.ec.uilogic.config.ConfigUILogic
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
+import org.robolectric.Robolectric
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class TestRouterHost {
 
-    private val config = ConfigUILogicImpl()
+    private val context: ComponentActivity =
+        Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
 
-    @Test
-    fun `Given only login screens on the back stack, When requiresLogin is checked, Then no login is required`() {
-        val backStack = listOf(
-            StartupScreens.Splash.screenRoute,
-            CommonScreens.Biometric.screenRoute,
-        )
+    private val sessionController: SessionController = mock()
 
-        assertFalse(requiresLogin(backStack, config.loginScreens))
+    private val configUILogic: ConfigUILogic = mock()
+
+    private val navController = TestNavHostController(context).apply {
+        navigatorProvider.addNavigator(ComposeNavigator())
     }
 
-    @Test
-    fun `Given a login screen opened on top of the dashboard, When requiresLogin is checked, Then login is required`() {
-        val backStack = listOf(
-            DashboardScreens.Dashboard.screenRoute,
-            CommonScreens.TrustMark.screenRoute,
-        )
+    private val routerHost = RouterHostImpl(
+        configUILogic = configUILogic,
+        analyticsController = mock(),
+        sessionController = sessionController,
+    )
 
-        assertTrue(requiresLogin(backStack, config.loginScreens))
-    }
+    private val addDocument = Screen(name = "ADD_DOCUMENT")
 
-    @Test
-    fun `Given the PIN confirmation of a presentation in front, When requiresLogin is checked, Then login is required`() {
-        val backStack = listOf(
-            DashboardScreens.Dashboard.screenRoute,
-            PresentationScreens.PresentationRequest.screenRoute,
-            CommonScreens.Biometric.screenRoute,
-        )
+    private val signing = Screen(name = "SIGNING")
 
-        assertTrue(requiresLogin(backStack, config.loginScreens))
-    }
-
-    @Test
-    fun `Given an empty back stack, When requiresLogin is checked, Then no login is required`() {
-        assertFalse(requiresLogin(emptyList(), config.loginScreens))
-    }
-
-    @Test
-    fun `Given the reference configuration, When its protected-flow screens are read, Then they are the issuance, presentation, proximity and signing screens`() {
-        assertEquals(
-            listOf(
-                IssuanceScreens.AddDocument,
-                IssuanceScreens.DocumentOffer,
-                IssuanceScreens.DocumentOfferCode,
-                PresentationScreens.PresentationRequest,
-                PresentationScreens.PresentationLoading,
-                ProximityScreens.QR,
-                ProximityScreens.Request,
-                ProximityScreens.Loading,
-                DashboardScreens.DocumentSign,
-                CommonScreens.Biometric,
-            ),
-            config.protectedFlowScreens,
-        )
-        config.protectedFlowScreens.forEach { screen ->
-            assertTrue(screen.screenRoute, isProtectedRoute(screen.screenRoute, config.protectedFlowScreens))
+    @Before
+    fun before() {
+        whenever(configUILogic.loginScreens).thenReturn(listOf(StartupScreens.Splash))
+        whenever(configUILogic.protectedFlowScreens).thenReturn(listOf(signing))
+        whenever(configUILogic.dashboardScreenIdentifier).thenReturn(DashboardScreens.Dashboard)
+        whenever(configUILogic.issuanceScreenIdentifier).thenReturn(addDocument)
+        navController.graph = navController.createGraph(startDestination = ModuleRoute.StartupModule.route) {
+            navigation(
+                startDestination = StartupScreens.Splash.screenRoute,
+                route = ModuleRoute.StartupModule.route,
+            ) {
+                composable(StartupScreens.Splash.screenRoute) {}
+            }
+            composable(DashboardScreens.Dashboard.screenRoute) {}
+            composable(addDocument.screenRoute) {}
+            composable(signing.screenRoute) {}
         }
+        routerHost.attach(navController = navController, context = context)
     }
 
     @Test
-    fun `Given the dashboard or document details, When isProtectedRoute is checked, Then neither is protected`() {
-        assertFalse(isProtectedRoute(DashboardScreens.Dashboard.screenRoute, config.protectedFlowScreens))
-        assertFalse(isProtectedRoute(DashboardScreens.DocumentDetails.screenRoute, config.protectedFlowScreens))
+    fun `Given a locked wallet showing the dashboard, When requireLoginIfLocked is called, Then only the login flow is left`() {
+        whenever(sessionController.isUnlocked).thenReturn(false)
+        navController.navigate(DashboardScreens.Dashboard.screenRoute)
+
+        routerHost.requireLoginIfLocked()
+
+        assertEquals(StartupScreens.Splash.screenRoute, navController.currentDestination?.route)
+        assertFalse(
+            runCatching { navController.getBackStackEntry(DashboardScreens.Dashboard.screenRoute) }.isSuccess
+        )
     }
 
     @Test
-    fun `Given no destination, When isProtectedRoute is checked, Then it is not protected`() {
-        assertFalse(isProtectedRoute(null, config.protectedFlowScreens))
+    fun `Given an unlocked wallet showing the dashboard, When requireLoginIfLocked is called, Then the dashboard stays`() {
+        whenever(sessionController.isUnlocked).thenReturn(true)
+        navController.navigate(DashboardScreens.Dashboard.screenRoute)
+
+        routerHost.requireLoginIfLocked()
+
+        assertEquals(DashboardScreens.Dashboard.screenRoute, navController.currentDestination?.route)
+    }
+
+    @Test
+    fun `Given a locked wallet showing only login screens, When requireLoginIfLocked is called, Then nothing changes`() {
+        whenever(sessionController.isUnlocked).thenReturn(false)
+        val entry = navController.currentBackStackEntry
+
+        routerHost.requireLoginIfLocked()
+
+        assertEquals(StartupScreens.Splash.screenRoute, navController.currentDestination?.route)
+        assertSame(entry, navController.currentBackStackEntry)
+    }
+
+    @Test
+    fun `Given the dashboard on the back stack, When the login state is read, Then the wallet counts as logged in only while unlocked`() {
+        navController.navigate(DashboardScreens.Dashboard.screenRoute)
+
+        whenever(sessionController.isUnlocked).thenReturn(true)
+        assertTrue(routerHost.userIsLoggedInWithDocuments())
+
+        whenever(sessionController.isUnlocked).thenReturn(false)
+        assertFalse(routerHost.userIsLoggedInWithDocuments())
+    }
+
+    @Test
+    fun `Given the add-document screen on the back stack, When the login state is read, Then the wallet counts as logged in only while unlocked`() {
+        navController.navigate(addDocument.screenRoute)
+
+        whenever(sessionController.isUnlocked).thenReturn(true)
+        assertTrue(routerHost.userIsLoggedInWithNoDocuments())
+        assertFalse(routerHost.userIsLoggedInWithDocuments())
+
+        whenever(sessionController.isUnlocked).thenReturn(false)
+        assertFalse(routerHost.userIsLoggedInWithNoDocuments())
+    }
+
+    @Test
+    fun `Given a protected-flow screen in front, When isInProtectedFlow is read, Then it is true only there`() {
+        navController.navigate(DashboardScreens.Dashboard.screenRoute)
+        assertFalse(routerHost.isInProtectedFlow())
+
+        navController.navigate(signing.screenRoute)
+        assertTrue(routerHost.isInProtectedFlow())
     }
 }

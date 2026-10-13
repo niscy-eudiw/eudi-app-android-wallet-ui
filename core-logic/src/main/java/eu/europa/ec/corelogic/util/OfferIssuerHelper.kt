@@ -16,25 +16,14 @@
 
 package eu.europa.ec.corelogic.util
 
+import eu.europa.ec.corelogic.extension.hasSameOriginAs
+import eu.europa.ec.corelogic.extension.httpsUriOrNull
 import eu.europa.ec.eudi.openid4vci.CredentialOfferRequest
 import io.ktor.http.URLBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-
-/** Which issuer a credential offer link comes from, as [offerIssuerOf] reads it. */
-sealed interface OfferIssuer {
-
-    /** The link names the configured issuer [issuerId]. */
-    data class Configured(val issuerId: String) : OfferIssuer
-
-    /** The link is a valid offer, but from an issuer that is not configured. */
-    data object NotConfigured : OfferIssuer
-
-    /** The link is not a usable credential offer. */
-    data object Unreadable : OfferIssuer
-}
 
 /**
  * The issuer that a credential offer link comes from, read from the link alone, before anything is

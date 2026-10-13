@@ -21,7 +21,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import java.net.URI
 
-class TestIssuerLogo {
+class TestIssuerLogoHelper {
 
     private val issuer = "https://issuer.example"
 

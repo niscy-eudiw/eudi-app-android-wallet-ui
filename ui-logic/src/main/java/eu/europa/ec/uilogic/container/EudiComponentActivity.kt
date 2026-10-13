@@ -104,14 +104,14 @@ open class EudiComponentActivity : FragmentActivity() {
     }
 
     /**
-     * Restores the saved screens only as [stateToRestore] allows, and opens the launch intent only
-     * as [opensLaunchIntent] allows and unless it replays the link that first started this task
-     * (see [EudiComponentActivityViewModel.opensLaunchLink]). Screen-reader actions in the
+     * Restores the saved screens only as [getStateToRestore] allows, and opens the launch intent only
+     * as [shouldOpenLaunchIntent] allows and unless it replays the link that first started this task
+     * (see [EudiComponentActivityViewModel.shouldOpenLaunchLink]). Screen-reader actions in the
      * activity's window count as interaction for the idle lock ([reportAccessibilityInteraction]).
      */
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(stateToRestore(savedInstanceState, navigationStartedInProcess))
-        opensItsLaunchIntent = opensLaunchIntent(savedInstanceState) && viewModel.opensLaunchLink(
+        super.onCreate(getStateToRestore(savedInstanceState, navigationStartedInProcess))
+        opensItsLaunchIntent = shouldOpenLaunchIntent(savedInstanceState) && viewModel.shouldOpenLaunchLink(
             intent = intent,
             taskId = taskId,
             isTaskRoot = isTaskRoot,
@@ -127,7 +127,7 @@ open class EudiComponentActivity : FragmentActivity() {
     private fun forgetKeptLinkOnReset() {
         lifecycleScope.launch {
             walletResetStatus.isResetting.collect { resetting ->
-                if (resetting) viewModel.forgetCachedIntent()
+                if (resetting) viewModel.clearCachedIntent()
             }
         }
     }
@@ -305,7 +305,7 @@ open class EudiComponentActivity : FragmentActivity() {
             return
         }
         val deepLink = hasDeepLink(intent?.data)
-        if (deepLink != null && dropsIncomingLink(deepLink.type)) {
+        if (deepLink != null && shouldDropIncomingLink(deepLink.type)) {
             this.intent = Intent()
             return
         }
@@ -347,7 +347,7 @@ open class EudiComponentActivity : FragmentActivity() {
                 IntentType.DC_API -> {
                     if (!viewModel.isDCAPIEnabled()) {
                         this.intent = Intent()
-                        if (finishesOnDeclinedRequest(coldBoot, walletWasShown)) finish()
+                        if (shouldFinishOnDeclinedRequest(coldBoot, walletWasShown)) finish()
                         return
                     }
                     cacheIntent(it.intent)
@@ -422,7 +422,7 @@ internal class EudiComponentActivityViewModel(
     }
 
     /** Forgets the kept link whether or not the wallet is locked, as a factory reset does. */
-    fun forgetCachedIntent() {
+    fun clearCachedIntent() {
         pendingIntent = null
     }
 
@@ -434,7 +434,7 @@ internal class EudiComponentActivityViewModel(
      * ([getCachedIntent]), so that a link never used is not taken for used. Nor is a launch link
      * that a newer link replaced before a screen used it.
      */
-    fun opensLaunchLink(
+    fun shouldOpenLaunchLink(
         intent: Intent?,
         taskId: Int,
         isTaskRoot: Boolean,
@@ -444,7 +444,7 @@ internal class EudiComponentActivityViewModel(
         if (!isTaskRoot) return true
         val recorded = runBlocking(Dispatchers.IO) { prefKeys.getOpenedLaunchLink() }
         if (isReplayedLaunchLink(intent.flags, launchedBy, taskId, link, recorded)) return false
-        launchLinkToRecord = intent to launchLinkRecord(taskId, link)
+        launchLinkToRecord = intent to createLaunchLinkRecord(taskId, link)
         return true
     }
 

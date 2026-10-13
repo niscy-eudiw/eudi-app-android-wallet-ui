@@ -16,6 +16,7 @@
 
 package eu.europa.ec.uilogic.extension
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.ContextWrapper
@@ -60,6 +61,12 @@ fun Context.findActivity(): ComponentActivity {
     }
     throw IllegalStateException("No Activity found.")
 }
+
+/** The activity this context belongs to, or null when there is none, as in a preview. */
+internal fun Context.findActivityOrNull(): Activity? =
+    generateSequence(this) { context -> (context as? ContextWrapper)?.baseContext }
+        .filterIsInstance<Activity>()
+        .firstOrNull()
 
 private fun Context.clearPendingIntent() {
     (this as? EudiComponentActivity)?.cacheIntent(null)

@@ -19,12 +19,12 @@ package eu.europa.ec.uilogic.config
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class TestConfigUILogicImpl {
+class TestConfigUILogic {
 
     private val config = ConfigUILogicImpl()
 
     @Test
-    fun `userImageClaimKeys lists the portrait and picture claims`() {
+    fun `Given the reference configuration, When userImageClaimKeys is read, Then it lists the portrait and picture claims`() {
         assertEquals(setOf("portrait", "picture"), config.userImageClaimKeys)
     }
 }

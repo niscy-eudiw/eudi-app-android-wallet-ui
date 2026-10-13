@@ -16,20 +16,15 @@
 
 package eu.europa.ec.corelogic.util
 
-import java.net.URI
+/** Which issuer a credential offer link comes from, as [offerIssuerOf] reads it. */
+sealed interface OfferIssuer {
 
-/** [value] as an `https` URI with a host, or null when it is anything else or cannot be parsed. */
-internal fun httpsUriOrNull(value: String): URI? = try {
-    URI(value).takeIf { it.isHttpsWithHost() }
-} catch (_: Exception) {
-    null
+    /** The link names the configured issuer [issuerId]. */
+    data class Configured(val issuerId: String) : OfferIssuer
+
+    /** The link is a valid offer, but from an issuer that is not configured. */
+    data object NotConfigured : OfferIssuer
+
+    /** The link is not a usable credential offer. */
+    data object Unreadable : OfferIssuer
 }
-
-internal fun URI.isHttpsWithHost(): Boolean =
-    scheme.equals("https", ignoreCase = true) && !host.isNullOrBlank()
-
-/** Whether this URI and [other] share host and port; hosts are compared without regard to case. */
-internal fun URI.hasSameOriginAs(other: URI): Boolean =
-    host.equals(other.host, ignoreCase = true) && effectivePort() == other.effectivePort()
-
-private fun URI.effectivePort(): Int = if (port == -1) 443 else port

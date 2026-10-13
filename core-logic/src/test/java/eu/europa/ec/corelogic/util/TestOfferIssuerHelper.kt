@@ -20,7 +20,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.net.URLEncoder
 
-class TestCredentialOfferIssuer {
+class TestOfferIssuerHelper {
 
     private val configured = listOf("https://issuer.example", "https://second.example:8443")
 

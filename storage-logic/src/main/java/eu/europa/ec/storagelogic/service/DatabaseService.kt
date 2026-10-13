@@ -26,7 +26,7 @@ import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
-import eu.europa.ec.storagelogic.model.IssuerTrustRecord
+import eu.europa.ec.storagelogic.model.IssuerTrust
 import eu.europa.ec.storagelogic.model.RevokedDocument
 import eu.europa.ec.storagelogic.model.StatusRefreshFailure
 import eu.europa.ec.storagelogic.model.TransactionLog
@@ -48,7 +48,7 @@ import eu.europa.ec.storagelogic.model.TransactionLog
         RevokedDocument::class,
         TransactionLog::class,
         FailedReIssuedDocument::class,
-        IssuerTrustRecord::class,
+        IssuerTrust::class,
         StatusRefreshFailure::class,
     ],
     version = 5

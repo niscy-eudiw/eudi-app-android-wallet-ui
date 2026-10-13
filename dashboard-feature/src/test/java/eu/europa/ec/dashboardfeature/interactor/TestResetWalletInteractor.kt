@@ -17,8 +17,8 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
-import eu.europa.ec.corelogic.controller.WalletResetController
-import eu.europa.ec.corelogic.controller.WalletResetPartialState
+import eu.europa.ec.corelogic.controller.ResetWalletPartialState
+import eu.europa.ec.corelogic.controller.WalletCoreResetController
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import org.junit.After
@@ -38,7 +38,7 @@ class TestResetWalletInteractor {
     val coroutineRule = CoroutineTestRule()
 
     @Mock
-    private lateinit var walletResetController: WalletResetController
+    private lateinit var walletCoreResetController: WalletCoreResetController
 
     @Mock
     private lateinit var sessionController: SessionController
@@ -50,7 +50,7 @@ class TestResetWalletInteractor {
     @Before
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
-        interactor = ResetWalletInteractorImpl(walletResetController, sessionController)
+        interactor = ResetWalletInteractorImpl(walletCoreResetController, sessionController)
     }
 
     @After
@@ -70,7 +70,7 @@ class TestResetWalletInteractor {
     @Test
     fun `Given the reset succeeds, When resetWallet is called, Then Success is returned`() =
         coroutineRule.runTest {
-            whenever(walletResetController.resetWallet()).thenReturn(WalletResetPartialState.Success)
+            whenever(walletCoreResetController.resetWallet()).thenReturn(ResetWalletPartialState.Success)
 
             assertEquals(ResetWalletInteractorPartialState.Success, interactor.resetWallet())
         }
@@ -78,8 +78,8 @@ class TestResetWalletInteractor {
     @Test
     fun `Given the reset fails, When resetWallet is called, Then Failure carries the message`() =
         coroutineRule.runTest {
-            whenever(walletResetController.resetWallet())
-                .thenReturn(WalletResetPartialState.Failure(errorMessage = "error"))
+            whenever(walletCoreResetController.resetWallet())
+                .thenReturn(ResetWalletPartialState.Failure(errorMessage = "error"))
 
             assertEquals(
                 ResetWalletInteractorPartialState.Failure(errorMessage = "error"),

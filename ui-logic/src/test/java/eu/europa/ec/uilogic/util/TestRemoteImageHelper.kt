@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.uilogic.component.wrap
+package eu.europa.ec.uilogic.util
 
 import okhttp3.Call
 import okhttp3.Interceptor
@@ -37,7 +37,7 @@ import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import java.io.IOException
 
-class TestRemoteImage {
+class TestRemoteImageHelper {
 
     private val request = Request.Builder().url("https://issuer.example/logo.png").build()
 

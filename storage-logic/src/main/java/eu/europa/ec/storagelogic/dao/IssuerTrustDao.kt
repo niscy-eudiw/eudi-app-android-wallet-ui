@@ -22,25 +22,25 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import eu.europa.ec.storagelogic.dao.type.StorageDao
-import eu.europa.ec.storagelogic.model.IssuerTrustRecord
+import eu.europa.ec.storagelogic.model.IssuerTrust
 
 @Dao
-interface IssuerTrustDao : StorageDao<IssuerTrustRecord> {
+interface IssuerTrustDao : StorageDao<IssuerTrust> {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    override suspend fun store(value: IssuerTrustRecord)
+    override suspend fun store(value: IssuerTrust)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    override suspend fun storeAll(values: List<IssuerTrustRecord>)
+    override suspend fun storeAll(values: List<IssuerTrust>)
 
     @Query("SELECT * FROM issuerTrustRecords WHERE identifier = :identifier")
-    override suspend fun retrieve(identifier: String): IssuerTrustRecord?
+    override suspend fun retrieve(identifier: String): IssuerTrust?
 
     @Query("SELECT * FROM issuerTrustRecords")
-    override suspend fun retrieveAll(): List<IssuerTrustRecord>
+    override suspend fun retrieveAll(): List<IssuerTrust>
 
     @Update
-    override suspend fun update(value: IssuerTrustRecord)
+    override suspend fun update(value: IssuerTrust)
 
     @Query("DELETE FROM issuerTrustRecords WHERE identifier = :identifier")
     override suspend fun delete(identifier: String)

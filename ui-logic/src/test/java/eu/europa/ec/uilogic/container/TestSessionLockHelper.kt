@@ -27,7 +27,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 
 @RunWith(RobolectricTestRunner::class)
-class TestSessionLockObservers {
+class TestSessionLockHelper {
 
     private val sessionController: SessionController = mock()
 

@@ -52,12 +52,12 @@ class TestSessionController {
     }
 
     @Test
-    fun `starts locked`() {
+    fun `Given a new session, When nothing has happened, Then it is locked`() {
         assertFalse(controller.isUnlocked)
     }
 
     @Test
-    fun `unlock then lock`() {
+    fun `Given a locked session, When it is unlocked and then locked, Then isUnlocked follows each call`() {
         controller.unlock()
         assertTrue(controller.isUnlocked)
 
@@ -66,7 +66,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `returning before the background timeout keeps the session`() {
+    fun `Given an unlocked session in the background, When it returns before the background timeout, Then it stays unlocked`() {
         controller.unlock()
         controller.onBackground()
         advance(59.seconds)
@@ -76,7 +76,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `returning at the background timeout locks`() {
+    fun `Given an unlocked session in the background, When it returns at the background timeout, Then it locks`() {
         controller.unlock()
         controller.onBackground()
         advance(60.seconds)
@@ -86,7 +86,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `a protected flow keeps the session beyond the background timeout`() {
+    fun `Given a protected flow in the background, When it returns after the background timeout, Then it stays unlocked`() {
         controller.unlock()
         controller.recordProtectedFlow(inProtectedFlow = true)
         controller.onBackground()
@@ -97,7 +97,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `a protected flow locks at the protected-flow timeout`() {
+    fun `Given a protected flow in the background, When it returns at the protected-flow timeout, Then it locks`() {
         controller.unlock()
         controller.recordProtectedFlow(inProtectedFlow = true)
         controller.onBackground()
@@ -108,7 +108,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `an external flow uses the protected-flow timeout on any screen`() {
+    fun `Given an external flow on any screen, When it returns before the protected-flow timeout, Then it stays unlocked`() {
         controller.unlock()
         controller.beginExternalFlow()
         controller.onBackground()
@@ -119,7 +119,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `an ended external flow uses the background timeout again`() {
+    fun `Given an ended external flow, When it returns at the background timeout, Then it locks`() {
         controller.unlock()
         controller.beginExternalFlow()
         controller.endExternalFlow()
@@ -130,7 +130,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `a lock ends the external flow`() {
+    fun `Given an external flow, When the session is locked and unlocked again, Then the background timeout applies`() {
         controller.unlock()
         controller.beginExternalFlow()
         controller.lock()
@@ -142,7 +142,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `foreground without a prior background does nothing`() {
+    fun `Given an unlocked session never in the background, When it comes to the foreground, Then nothing changes`() {
         controller.unlock()
         advance(10.minutes)
 
@@ -151,7 +151,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `foreground while locked reports no new lock`() {
+    fun `Given a locked session in the background, When it comes to the foreground, Then no new lock is reported`() {
         controller.onBackground()
         advance(10.minutes)
 
@@ -160,7 +160,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `background time does not count towards the idle timeout`() {
+    fun `Given time spent in the background, When the idle timeout is checked, Then that time does not count`() {
         controller.unlock()
         advance(4.minutes)
         controller.onBackground()
@@ -173,7 +173,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `idle at the timeout locks`() {
+    fun `Given an unlocked session, When it is idle for the idle timeout, Then it locks`() {
         controller.unlock()
         advance(5.minutes)
 
@@ -182,7 +182,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `interaction restarts the idle timeout`() {
+    fun `Given an unlocked session, When the user interacts before the idle timeout, Then the idle timeout restarts`() {
         controller.unlock()
         advance(4.minutes)
         controller.onUserInteraction()
@@ -193,14 +193,14 @@ class TestSessionController {
     }
 
     @Test
-    fun `idle while locked reports no new lock`() {
+    fun `Given a locked session, When it is idle, Then no new lock is reported`() {
         advance(30.minutes)
 
         assertFalse(controller.lockIfIdle())
     }
 
     @Test
-    fun `time until idle lock counts down and stops at zero`() {
+    fun `Given an unlocked session, When time passes, Then the time until the idle lock counts down and stops at zero`() {
         controller.unlock()
         advance(2.minutes)
         assertEquals(3.minutes, controller.timeUntilIdleLock())
@@ -210,12 +210,12 @@ class TestSessionController {
     }
 
     @Test
-    fun `time until idle lock is the full timeout while locked`() {
+    fun `Given a locked session, When the time until the idle lock is read, Then it is the full idle timeout`() {
         assertEquals(5.minutes, controller.timeUntilIdleLock())
     }
 
     @Test
-    fun `returning from another screen before the protected-flow timeout keeps the session`() {
+    fun `Given another screen covering the wallet, When the wallet is shown again before the protected-flow timeout, Then it stays unlocked`() {
         controller.unlock()
         controller.onCoveredByOtherScreen()
         advance(9.minutes)
@@ -227,7 +227,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `returning from another screen at the protected-flow timeout locks`() {
+    fun `Given another screen covering the wallet, When the wallet is shown again at the protected-flow timeout, Then it locks`() {
         controller.unlock()
         controller.onCoveredByOtherScreen()
         advance(4.minutes)
@@ -239,7 +239,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `the background from another screen uses the protected-flow timeout`() {
+    fun `Given another screen covering the wallet, When the app returns from the background before the protected-flow timeout, Then it stays unlocked`() {
         controller.unlock()
         controller.onCoveredByOtherScreen()
         controller.onBackground()
@@ -250,7 +250,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `once the wallet screen is shown again the background timeout applies`() {
+    fun `Given the wallet shown again after another screen, When the app returns at the background timeout, Then it locks`() {
         controller.unlock()
         controller.onCoveredByOtherScreen()
         controller.onWalletScreenShown()
@@ -261,7 +261,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `showing the wallet screen without a cover leaves the idle timeout running`() {
+    fun `Given no other screen covered the wallet, When the wallet screen is shown, Then the idle timeout keeps running`() {
         controller.unlock()
         advance(5.minutes)
 
@@ -270,7 +270,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `the idle timeout does not run while another screen covers the wallet`() {
+    fun `Given another screen covering the wallet, When the idle timeout passes, Then the session does not lock`() {
         controller.unlock()
         controller.onCoveredByOtherScreen()
         advance(6.minutes)
@@ -281,7 +281,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `returning from another screen while locked reports no new lock`() {
+    fun `Given a locked session covered by another screen, When the wallet is shown again, Then no new lock is reported`() {
         controller.onCoveredByOtherScreen()
         advance(30.minutes)
 
@@ -290,7 +290,7 @@ class TestSessionController {
     }
 
     @Test
-    fun `a protected flow recorded when hidden is replaced by the next recording`() {
+    fun `Given a protected flow recorded and then cleared, When the app returns at the background timeout, Then it locks`() {
         controller.unlock()
         controller.recordProtectedFlow(inProtectedFlow = true)
         controller.recordProtectedFlow(inProtectedFlow = false)

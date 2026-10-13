@@ -354,7 +354,7 @@ class TestRevocationWorkManager {
     }
 
     @Test
-    fun `When the worker runs, Then it reports success`() {
+    fun `Given a valid document, When the worker runs, Then it reports success`() {
         coroutineRule.runTest {
             givenStoredStatus(null)
             givenObservedStatus(Status.Valid)

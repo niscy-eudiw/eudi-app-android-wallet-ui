@@ -586,33 +586,33 @@ class TestQuickPinInteractor {
     //endregion
 
     @Test
-    fun `Given repeated digits, runs and common PINs, When weakPinError is called, Then each is rejected`() {
+    fun `Given repeated digits, runs and common PINs, When getWeakPinError is called, Then each is rejected`() {
         whenever(authenticationConfig.commonPins).thenReturn(setOf("147258"))
         whenever(resourceProvider.getString(R.string.quick_pin_weak))
             .thenReturn(mockedWeakPinMessage)
 
         listOf("000000", "123456", "654321", "147258").forEach { value ->
-            assertEquals(mockedWeakPinMessage, interactor.weakPinError(securePin(value)))
+            assertEquals(mockedWeakPinMessage, interactor.getWeakPinError(securePin(value)))
         }
     }
 
     @Test
-    fun `Given a PIN that is not easy to guess, When weakPinError is called, Then it returns null`() {
+    fun `Given a PIN that is not easy to guess, When getWeakPinError is called, Then it returns null`() {
         whenever(authenticationConfig.commonPins).thenReturn(setOf("147258"))
 
-        assertNull(interactor.weakPinError(securePin("135792")))
+        assertNull(interactor.getWeakPinError(securePin("135792")))
     }
 
     @Test
-    fun `Given a device with a screen lock, When deviceLockNotice is called, Then it returns null`() {
+    fun `Given a device with a screen lock, When getDeviceLockNotice is called, Then it returns null`() {
         whenever(deviceLockController.isDeviceSecure()).thenReturn(true)
         whenever(authenticationConfig.requireDeviceSecure).thenReturn(true)
 
-        assertNull(interactor.deviceLockNotice())
+        assertNull(interactor.getDeviceLockNotice())
     }
 
     @Test
-    fun `Given no screen lock and none required, When deviceLockNotice is called, Then it returns a Warning`() {
+    fun `Given no screen lock and none required, When getDeviceLockNotice is called, Then it returns a Warning`() {
         whenever(deviceLockController.isDeviceSecure()).thenReturn(false)
         whenever(authenticationConfig.requireDeviceSecure).thenReturn(false)
         whenever(resourceProvider.getString(R.string.quick_pin_device_lock_missing))
@@ -620,12 +620,12 @@ class TestQuickPinInteractor {
 
         assertEquals(
             DeviceLockNotice.Warning(mockedDeviceLockMissingMessage),
-            interactor.deviceLockNotice()
+            interactor.getDeviceLockNotice()
         )
     }
 
     @Test
-    fun `Given no screen lock and one required, When deviceLockNotice is called, Then it returns Blocking`() {
+    fun `Given no screen lock and one required, When getDeviceLockNotice is called, Then it returns Blocking`() {
         whenever(deviceLockController.isDeviceSecure()).thenReturn(false)
         whenever(authenticationConfig.requireDeviceSecure).thenReturn(true)
         whenever(resourceProvider.getString(R.string.quick_pin_device_lock_required))
@@ -633,7 +633,7 @@ class TestQuickPinInteractor {
 
         assertEquals(
             DeviceLockNotice.Blocking(mockedDeviceLockRequiredMessage),
-            interactor.deviceLockNotice()
+            interactor.getDeviceLockNotice()
         )
     }
 

@@ -57,7 +57,7 @@ class TestPinViewModel {
     @Test
     fun `Given wallet setup, When a PIN that is easy to guess is entered, Then it is refused once the field has cleared`() =
         coroutineRule.runTest {
-            whenever(interactor.weakPinError(any())).thenReturn(WEAK)
+            whenever(interactor.getWeakPinError(any())).thenReturn(WEAK)
             val viewModel = viewModel(PinFlow.CREATE_WITHOUT_ACTIVATION)
             val pin = SecurePinImpl("123456")
 
@@ -74,7 +74,7 @@ class TestPinViewModel {
     @Test
     fun `Given wallet setup, When a PIN that is not easy to guess is entered, Then the user is asked to enter it again`() =
         coroutineRule.runTest {
-            whenever(interactor.weakPinError(any())).thenReturn(null)
+            whenever(interactor.getWeakPinError(any())).thenReturn(null)
             val viewModel = viewModel(PinFlow.CREATE_WITHOUT_ACTIVATION)
 
             viewModel.handleEvents(Event.PinEntered(SecurePinImpl("135792")))
@@ -87,10 +87,10 @@ class TestPinViewModel {
     @Test
     fun `Given no screen lock and none required, When the setup screen resumes, Then a warning is shown and entry continues`() =
         coroutineRule.runTest {
-            whenever(interactor.deviceLockNotice()).thenReturn(DeviceLockNotice.Warning(NO_LOCK))
+            whenever(interactor.getDeviceLockNotice()).thenReturn(DeviceLockNotice.Warning(NO_LOCK))
             val viewModel = viewModel(PinFlow.CREATE_WITHOUT_ACTIVATION)
 
-            viewModel.handleEvents(Event.Resumed)
+            viewModel.handleEvents(Event.OnResume)
 
             assertEquals(NO_LOCK, viewModel.viewState.value.deviceLockNotice)
             assertFalse(viewModel.viewState.value.isBlockedByDeviceLock)
@@ -99,11 +99,11 @@ class TestPinViewModel {
     @Test
     fun `Given no screen lock and one required, When the setup screen resumes, Then entered PINs are dropped`() =
         coroutineRule.runTest {
-            whenever(interactor.deviceLockNotice()).thenReturn(DeviceLockNotice.Blocking(LOCK_REQUIRED))
+            whenever(interactor.getDeviceLockNotice()).thenReturn(DeviceLockNotice.Blocking(LOCK_REQUIRED))
             val viewModel = viewModel(PinFlow.CREATE_WITH_ACTIVATION)
             val pin = SecurePinImpl("135792")
 
-            viewModel.handleEvents(Event.Resumed)
+            viewModel.handleEvents(Event.OnResume)
             viewModel.handleEvents(Event.PinEntered(pin))
             coroutineRule.testScope.advanceUntilIdle()
 
@@ -111,19 +111,19 @@ class TestPinViewModel {
             assertTrue(viewModel.viewState.value.isBlockedByDeviceLock)
             assertTrue(pin.isCleared)
             assertEquals(PinValidationState.ENTER, viewModel.viewState.value.pinState)
-            verify(interactor, never()).weakPinError(any())
+            verify(interactor, never()).getWeakPinError(any())
         }
 
     @Test
     fun `Given a screen lock is set later, When the setup screen resumes, Then the block is lifted`() =
         coroutineRule.runTest {
-            whenever(interactor.deviceLockNotice())
+            whenever(interactor.getDeviceLockNotice())
                 .thenReturn(DeviceLockNotice.Blocking(LOCK_REQUIRED))
                 .thenReturn(null)
             val viewModel = viewModel(PinFlow.CREATE_WITH_ACTIVATION)
 
-            viewModel.handleEvents(Event.Resumed)
-            viewModel.handleEvents(Event.Resumed)
+            viewModel.handleEvents(Event.OnResume)
+            viewModel.handleEvents(Event.OnResume)
 
             assertNull(viewModel.viewState.value.deviceLockNotice)
             assertFalse(viewModel.viewState.value.isBlockedByDeviceLock)
@@ -134,10 +134,10 @@ class TestPinViewModel {
         coroutineRule.runTest {
             val viewModel = viewModel(PinFlow.UPDATE)
 
-            viewModel.handleEvents(Event.Resumed)
+            viewModel.handleEvents(Event.OnResume)
 
             assertNull(viewModel.viewState.value.deviceLockNotice)
-            verify(interactor, never()).deviceLockNotice()
+            verify(interactor, never()).getDeviceLockNotice()
         }
 
     private fun viewModel(pinFlow: PinFlow) = PinViewModel(

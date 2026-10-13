@@ -29,7 +29,7 @@ interface SecurePin : AutoCloseable {
 
     /**
      * Runs [block] with the PIN's characters, without clearing them, for a check such as
-     * [isWeakPin]. The array must not be kept or changed.
+     * [eu.europa.ec.authenticationlogic.util.isWeakPin]. The array must not be kept or changed.
      */
     fun <T> readChars(block: (CharArray) -> T): T
 

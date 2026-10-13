@@ -16,6 +16,9 @@
 
 package eu.europa.ec.corelogic.util
 
+import eu.europa.ec.corelogic.extension.hasSameOriginAs
+import eu.europa.ec.corelogic.extension.httpsUriOrNull
+import eu.europa.ec.corelogic.extension.isHttpsWithHost
 import java.net.URI
 
 /**

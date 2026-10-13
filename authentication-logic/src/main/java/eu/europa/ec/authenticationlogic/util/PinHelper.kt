@@ -14,7 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.authenticationlogic.secure
+package eu.europa.ec.authenticationlogic.util
+
+import eu.europa.ec.authenticationlogic.secure.SecurePin
 
 /**
  * Whether [pin] is easy to guess: one digit repeated, such as 000000; an ascending or descending

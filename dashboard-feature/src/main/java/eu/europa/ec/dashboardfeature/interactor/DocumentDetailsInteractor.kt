@@ -172,7 +172,7 @@ class DocumentDetailsInteractorImpl(
 
                 val userLocale = resourceProvider.getLocale()
                 val issuerName = safeIssuedDocument.localizedIssuerMetadata(userLocale)?.name
-                val issuerLogo = walletCoreDocumentsController.issuerLogo(safeIssuedDocument, userLocale)
+                val issuerLogo = walletCoreDocumentsController.getIssuerLogo(safeIssuedDocument, userLocale)
 
                 val documentIsBookmarked =
                     walletCoreDocumentsController.isDocumentBookmarked(documentId)
@@ -180,9 +180,9 @@ class DocumentDetailsInteractorImpl(
                 val documentIsRevoked = walletCoreDocumentsController.isDocumentRevoked(documentId)
                 val documentIsSuspended = documentIsRevoked &&
                         walletCoreDocumentsController.isDocumentSuspended(documentId)
-                val statusRefreshFailed =
+                val hasStatusRefreshFailed =
                     walletCoreDocumentsController.hasStatusRefreshFailed(documentId)
-                val reIssuanceFailed = walletCoreDocumentsController.hasReIssuanceFailed(documentId)
+                val hasReIssuanceFailed = walletCoreDocumentsController.hasReIssuanceFailed(documentId)
                 val issuerDetails = IssuerDetailsCardDataUi(
                     issuerName = issuerName,
                     issuerLogo = issuerLogo,
@@ -201,10 +201,10 @@ class DocumentDetailsInteractorImpl(
                             expirationDate = documentDetailsDomain.documentExpirationDate
                         )
                     },
-                    isExpanded = wasIssuerDetailsExpanded == true || statusRefreshFailed || reIssuanceFailed,
-                    issuerIsVerified = walletCoreDocumentsController.isIssuerTrusted(documentId),
-                    statusRefreshFailed = statusRefreshFailed,
-                    reIssuanceFailed = reIssuanceFailed,
+                    isExpanded = wasIssuerDetailsExpanded == true || hasStatusRefreshFailed || hasReIssuanceFailed,
+                    isIssuerVerified = walletCoreDocumentsController.isIssuerTrusted(documentId),
+                    hasStatusRefreshFailed = hasStatusRefreshFailed,
+                    hasReIssuanceFailed = hasReIssuanceFailed,
                 )
 
                 emit(

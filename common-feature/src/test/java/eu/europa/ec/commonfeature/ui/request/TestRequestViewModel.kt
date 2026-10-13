@@ -18,12 +18,12 @@ package eu.europa.ec.commonfeature.ui.request
 
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.extension.toSelectiveExpandableListItems
+import eu.europa.ec.commonfeature.extension.userImageItemIds
 import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
-import eu.europa.ec.commonfeature.ui.request.model.userImageItemIds
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.corelogic.model.ClaimPathDomain
@@ -74,7 +74,7 @@ class TestRequestViewModel {
     private val viewModel = FakeRequestViewModel()
 
     @Test
-    fun `share without the portrait goes straight to the PIN`() = coroutineRule.runTest {
+    fun `Given a document without the portrait, When Share is pressed, Then the PIN screen opens straight away`() = coroutineRule.runTest {
         viewModel.show(document(keys = listOf("family_name")))
 
         viewModel.effect.runFlowTest {
@@ -85,7 +85,7 @@ class TestRequestViewModel {
     }
 
     @Test
-    fun `share with the portrait asks for confirmation first`() = coroutineRule.runTest {
+    fun `Given a document with the portrait, When Share is pressed, Then a confirmation is asked first`() = coroutineRule.runTest {
         viewModel.show(document(keys = listOf("family_name", "portrait")))
 
         viewModel.effect.runFlowTest {
@@ -101,7 +101,7 @@ class TestRequestViewModel {
     }
 
     @Test
-    fun `confirming shares once the sheet has closed`() = coroutineRule.runTest {
+    fun `Given the portrait confirmation, When Share is confirmed, Then sharing goes ahead once the sheet has closed`() = coroutineRule.runTest {
         viewModel.show(document(keys = listOf("portrait")))
 
         viewModel.effect.runFlowTest {
@@ -119,7 +119,7 @@ class TestRequestViewModel {
     }
 
     @Test
-    fun `cancelling the confirmation does not share`() = coroutineRule.runTest {
+    fun `Given the portrait confirmation, When it is cancelled, Then nothing is shared`() = coroutineRule.runTest {
         viewModel.show(document(keys = listOf("portrait")))
 
         viewModel.effect.runFlowTest {
@@ -135,7 +135,7 @@ class TestRequestViewModel {
     }
 
     @Test
-    fun `an unticked portrait needs no confirmation`() = coroutineRule.runTest {
+    fun `Given an unticked portrait, When Share is pressed, Then no confirmation is needed`() = coroutineRule.runTest {
         viewModel.show(document(keys = listOf("family_name", "portrait")).withUnchecked("portrait"))
 
         viewModel.effect.runFlowTest {

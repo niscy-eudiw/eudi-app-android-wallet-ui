@@ -40,7 +40,7 @@ import org.robolectric.RuntimeEnvironment
 import java.io.ByteArrayOutputStream
 
 @RunWith(RobolectricTestRunner::class)
-class TestKeystoreBackedKeyset {
+class TestPrefsController {
 
     private val context: Context = RuntimeEnvironment.getApplication()
 

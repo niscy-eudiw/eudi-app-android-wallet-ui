@@ -17,8 +17,8 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
-import eu.europa.ec.corelogic.controller.WalletResetController
-import eu.europa.ec.corelogic.controller.WalletResetPartialState
+import eu.europa.ec.corelogic.controller.ResetWalletPartialState
+import eu.europa.ec.corelogic.controller.WalletCoreResetController
 
 sealed class ResetWalletInteractorPartialState {
     data object Success : ResetWalletInteractorPartialState()
@@ -38,16 +38,16 @@ interface ResetWalletInteractor {
 }
 
 class ResetWalletInteractorImpl(
-    private val walletResetController: WalletResetController,
+    private val walletCoreResetController: WalletCoreResetController,
     private val sessionController: SessionController,
 ) : ResetWalletInteractor {
 
     override fun isSessionUnlocked(): Boolean = sessionController.isUnlocked
 
     override suspend fun resetWallet(): ResetWalletInteractorPartialState =
-        when (val state = walletResetController.resetWallet()) {
-            is WalletResetPartialState.Success -> ResetWalletInteractorPartialState.Success
-            is WalletResetPartialState.Failure -> ResetWalletInteractorPartialState.Failure(
+        when (val state = walletCoreResetController.resetWallet()) {
+            is ResetWalletPartialState.Success -> ResetWalletInteractorPartialState.Success
+            is ResetWalletPartialState.Failure -> ResetWalletInteractorPartialState.Failure(
                 errorMessage = state.errorMessage
             )
         }

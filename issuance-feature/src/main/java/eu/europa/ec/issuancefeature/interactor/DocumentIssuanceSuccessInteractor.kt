@@ -104,7 +104,7 @@ class DocumentIssuanceSuccessInteractorImpl(
                         issuerName = safeIssuerName
                     }
 
-                    walletCoreDocumentsController.issuerLogo(document, userLocale)?.let { safeIssuerLogo ->
+                    walletCoreDocumentsController.getIssuerLogo(document, userLocale)?.let { safeIssuerLogo ->
                         issuerLogo = safeIssuerLogo
                     }
 

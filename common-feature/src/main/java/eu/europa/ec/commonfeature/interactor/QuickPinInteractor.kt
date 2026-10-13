@@ -23,7 +23,7 @@ import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
-import eu.europa.ec.authenticationlogic.secure.isWeakPin
+import eu.europa.ec.authenticationlogic.util.isWeakPin
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -37,14 +37,14 @@ interface QuickPinInteractor {
      * The message to show when [pin] is too easy to guess (see [isWeakPin] and
      * `AuthenticationConfig.commonPins`), or null when it may be used.
      */
-    fun weakPinError(pin: SecurePin): String?
+    fun getWeakPinError(pin: SecurePin): String?
 
     /**
      * What to tell the user before the wallet is set up on a device without a screen lock, or null
      * when the device has one. Setup is blocked when `AuthenticationConfig.requireDeviceSecure` is
      * true, and only warned about otherwise.
      */
-    fun deviceLockNotice(): DeviceLockNotice?
+    fun getDeviceLockNotice(): DeviceLockNotice?
 
     /**
      * Stores [newPin] once it matches [initialPin] and is not too easy to guess. Creating the PIN
@@ -92,14 +92,14 @@ class QuickPinInteractorImpl(
 
     override suspend fun hasPin(): Boolean = pinStorageController.hasPin()
 
-    override fun weakPinError(pin: SecurePin): String? =
+    override fun getWeakPinError(pin: SecurePin): String? =
         if (isWeakPin(pin, authenticationConfig.commonPins)) {
             resourceProvider.getString(R.string.quick_pin_weak)
         } else {
             null
         }
 
-    override fun deviceLockNotice(): DeviceLockNotice? = when {
+    override fun getDeviceLockNotice(): DeviceLockNotice? = when {
         deviceLockController.isDeviceSecure() -> null
         authenticationConfig.requireDeviceSecure -> DeviceLockNotice.Blocking(
             resourceProvider.getString(R.string.quick_pin_device_lock_required)
@@ -126,7 +126,7 @@ class QuickPinInteractorImpl(
                     )
                     return@flow
                 }
-                weakPinError(newPin)?.let { error ->
+                getWeakPinError(newPin)?.let { error ->
                     emit(QuickPinInteractorSetPinPartialState.Failed(error))
                     return@flow
                 }
@@ -154,7 +154,7 @@ class QuickPinInteractorImpl(
         newPin: SecurePin
     ): Flow<QuickPinInteractorSetPinPartialState> =
         flow {
-            weakPinError(newPin)?.let { error ->
+            getWeakPinError(newPin)?.let { error ->
                 newPin.close()
                 emit(QuickPinInteractorSetPinPartialState.Failed(error))
                 return@flow

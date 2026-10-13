@@ -29,6 +29,9 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import eu.europa.ec.uilogic.component.IconDataUi
+import eu.europa.ec.uilogic.util.MAX_REMOTE_IMAGE_BYTES
+import eu.europa.ec.uilogic.util.remoteImageHttpClient
+import eu.europa.ec.uilogic.util.remoteImageSourceOrNull
 
 @Composable
 fun WrapAsyncImage(

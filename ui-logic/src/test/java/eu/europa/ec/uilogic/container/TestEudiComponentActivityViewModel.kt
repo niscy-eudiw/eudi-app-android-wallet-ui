@@ -116,8 +116,8 @@ class TestEudiComponentActivityViewModel {
         whenever(sessionController.isUnlocked).thenReturn(true)
         val tap = linkIntent(CHROME_TAP_FLAGS)
 
-        assertTrue(viewModel.opensLaunchLink(tap, TASK, isTaskRoot = false, launchedBy = SYSTEM_UI_PACKAGE))
-        assertTrue(viewModel.opensLaunchLink(mock(), TASK, isTaskRoot = true, launchedBy = null))
+        assertTrue(viewModel.shouldOpenLaunchLink(tap, TASK, isTaskRoot = false, launchedBy = SYSTEM_UI_PACKAGE))
+        assertTrue(viewModel.shouldOpenLaunchLink(mock(), TASK, isTaskRoot = true, launchedBy = null))
         viewModel.cacheIntent(tap)
         viewModel.getCachedIntent()
 
@@ -140,7 +140,7 @@ class TestEudiComponentActivityViewModel {
     }
 
     private fun opens(intent: Intent, launchedBy: String, taskId: Int = TASK): Boolean =
-        viewModel.opensLaunchLink(intent, taskId, isTaskRoot = true, launchedBy = launchedBy)
+        viewModel.shouldOpenLaunchLink(intent, taskId, isTaskRoot = true, launchedBy = launchedBy)
 
     private companion object {
         const val LINK = "haip-vp://?request_uri=https%3A%2F%2Fverifier.example%2Fr%2F1"
@@ -178,7 +178,7 @@ class TestEudiComponentActivityViewModel {
         whenever(sessionController.isUnlocked).thenReturn(false)
         viewModel.cacheIntent(link)
 
-        viewModel.forgetCachedIntent()
+        viewModel.clearCachedIntent()
 
         whenever(sessionController.isUnlocked).thenReturn(true)
         assertNull(viewModel.getCachedIntent())

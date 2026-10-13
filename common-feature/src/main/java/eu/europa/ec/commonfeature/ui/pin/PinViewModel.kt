@@ -98,7 +98,7 @@ sealed class Event : ViewEvent {
     data object OnQuickPinLengthChanged : Event()
 
     /** The screen came to the front, for example after the user set a screen lock in the settings. */
-    data object Resumed : Event()
+    data object OnResume : Event()
     data object CancelPressed : Event()
     data object Finish : Event()
     sealed class BottomSheet : Event() {
@@ -190,7 +190,7 @@ class PinViewModel(
                 handleQuickPinLengthChanged()
             }
 
-            is Event.Resumed -> checkDeviceLock()
+            is Event.OnResume -> checkDeviceLock()
 
             is Event.PinEntered -> {
                 val state = viewState.value
@@ -201,7 +201,7 @@ class PinViewModel(
 
                 when (state.pinState) {
                     PinValidationState.ENTER -> {
-                        val weakPinError = interactor.weakPinError(event.pin)
+                        val weakPinError = interactor.getWeakPinError(event.pin)
                         if (weakPinError != null) {
                             event.pin.close()
                             showWeakPinError(message = weakPinError)
@@ -324,7 +324,7 @@ class PinViewModel(
      */
     private fun checkDeviceLock() {
         if (pinFlow == PinFlow.UPDATE) return
-        val notice = interactor.deviceLockNotice()
+        val notice = interactor.getDeviceLockNotice()
         setState {
             copy(
                 deviceLockNotice = notice?.message,

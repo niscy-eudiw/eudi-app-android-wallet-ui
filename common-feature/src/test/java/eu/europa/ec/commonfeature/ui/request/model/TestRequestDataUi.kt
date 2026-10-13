@@ -18,6 +18,7 @@ package eu.europa.ec.commonfeature.ui.request.model
 
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.extension.toSelectiveExpandableListItems
+import eu.europa.ec.commonfeature.extension.userImageItemIds
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.corelogic.model.ClaimPathDomain

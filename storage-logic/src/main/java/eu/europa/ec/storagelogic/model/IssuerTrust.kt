@@ -24,7 +24,7 @@ import androidx.room.PrimaryKey
  * it only on the issuance event, so the app keeps it here for the document's lifetime.
  */
 @Entity(tableName = "issuerTrustRecords")
-data class IssuerTrustRecord(
+data class IssuerTrust(
     @PrimaryKey
     val identifier: String,
     val verdict: IssuerTrustVerdict,

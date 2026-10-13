@@ -17,8 +17,6 @@
 package eu.europa.ec.uilogic.component.wrap
 
 import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,8 +46,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -75,8 +71,10 @@ import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.utils.VSpacer
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
+import eu.europa.ec.uilogic.extension.findActivityOrNull
 import eu.europa.ec.uilogic.extension.optionalTestTag
 import eu.europa.ec.uilogic.extension.reportAccessibilityInteraction
+import eu.europa.ec.uilogic.extension.reportingUserInteractionTo
 import eu.europa.ec.uilogic.extension.throttledClickable
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.util.TestTag
@@ -133,7 +131,7 @@ fun WrapModalBottomSheet(
     dragHandle: @Composable (() -> Unit) = { BottomSheetDefaultHandle() },
     sheetContent: @Composable ColumnScope.() -> Unit,
 ) {
-    val activity = LocalContext.current.activityOrNull()
+    val activity = LocalContext.current.findActivityOrNull()
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = Modifier
@@ -163,31 +161,6 @@ private fun ReportAccessibilityInteraction(activity: Activity?) {
         onDispose { remove?.invoke() }
     }
 }
-
-/**
- * Reports every touch inside a bottom sheet to [activity] as user interaction. A sheet is drawn in
- * a window of its own, whose touches do not reach [Activity.onUserInteraction], so without this
- * the wallet's idle lock would count reading or scrolling a sheet as inactivity.
- */
-internal fun Modifier.reportingUserInteractionTo(activity: Activity?): Modifier =
-    if (activity == null) {
-        this
-    } else {
-        pointerInput(activity) {
-            awaitPointerEventScope {
-                while (true) {
-                    awaitPointerEvent(PointerEventPass.Initial)
-                    activity.onUserInteraction()
-                }
-            }
-        }
-    }
-
-/** The activity this context belongs to, or null when there is none, as in a preview. */
-private fun Context.activityOrNull(): Activity? =
-    generateSequence(this) { context -> (context as? ContextWrapper)?.baseContext }
-        .filterIsInstance<Activity>()
-        .firstOrNull()
 
 /**
  * A generic composable function for creating a bottom sheet.

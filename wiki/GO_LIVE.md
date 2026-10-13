@@ -1944,7 +1944,7 @@ other records once Wallet Core has deleted it; after a deferred credential arriv
 records of every document Wallet Core no longer holds.
 
 **Settings → Reset wallet** is the factory reset. It asks for confirmation, lists what will be
-deleted, and requires the PIN or a biometric. `WalletResetController` then, while the app keeps
+deleted, and requires the PIN or a biometric. `WalletCoreResetController` then, while the app keeps
 running:
 
 1. stops the revocation and re-issuance workers and waits, for `WalletCoreConfig.workerStopTimeout`

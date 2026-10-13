@@ -75,7 +75,7 @@ import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
 import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
-import eu.europa.ec.storagelogic.model.IssuerTrustRecord
+import eu.europa.ec.storagelogic.model.IssuerTrust
 import eu.europa.ec.storagelogic.model.IssuerTrustVerdict
 import eu.europa.ec.storagelogic.model.RevocationStatus
 import kotlinx.coroutines.CancellationException
@@ -224,10 +224,10 @@ interface WalletCoreDocumentsController {
      * The logo of [document]'s issuer for [locale], when the wallet may load it: see
      * [issuerLogoOrNull] and `VciConfig.logoOrigins`.
      */
-    fun issuerLogo(document: Document, locale: Locale): URI?
+    fun getIssuerLogo(document: Document, locale: Locale): URI?
 
     /** The logo of [offer]'s issuer for [locale], under the same rule as for a document. */
-    fun issuerLogo(offer: Offer, locale: Locale): URI?
+    fun getIssuerLogo(offer: Offer, locale: Locale): URI?
 
     fun getMainPidDocument(): IssuedDocument?
 
@@ -498,7 +498,7 @@ class WalletCoreDocumentsControllerImpl(
         return eudiWallet.getDocumentById(documentId = documentId)
     }
 
-    override fun issuerLogo(document: Document, locale: Locale): URI? {
+    override fun getIssuerLogo(document: Document, locale: Locale): URI? {
         val issuerId = document.issuerMetadata?.credentialIssuerIdentifier
         return issuerLogoOrNull(
             logo = document.localizedIssuerMetadata(locale)?.logo?.uri,
@@ -507,7 +507,7 @@ class WalletCoreDocumentsControllerImpl(
         )
     }
 
-    override fun issuerLogo(offer: Offer, locale: Locale): URI? {
+    override fun getIssuerLogo(offer: Offer, locale: Locale): URI? {
         val issuerId = offer.credentialOffer.credentialIssuerIdentifier.toString()
         return issuerLogoOrNull(
             logo = offer.getIssuerLogo(locale),
@@ -1052,7 +1052,7 @@ class WalletCoreDocumentsControllerImpl(
     private suspend fun storeIssuerTrust(documentId: DocumentId, verdict: IssuerTrustVerdict) {
         withContext(NonCancellable) {
             try {
-                issuerTrustDao.store(IssuerTrustRecord(identifier = documentId, verdict = verdict))
+                issuerTrustDao.store(IssuerTrust(identifier = documentId, verdict = verdict))
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

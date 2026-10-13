@@ -33,23 +33,23 @@ class TestEudiComponentActivityHelper {
 
     @Test
     fun `Given a process that has not started its navigation, When the activity is recreated, Then no screens are restored`() {
-        assertNull(stateToRestore(saved, navigationStartedInProcess = false))
+        assertNull(getStateToRestore(saved, navigationStartedInProcess = false))
     }
 
     @Test
     fun `Given a configuration change, When the activity is recreated, Then its screens are restored`() {
-        assertSame(saved, stateToRestore(saved, navigationStartedInProcess = true))
+        assertSame(saved, getStateToRestore(saved, navigationStartedInProcess = true))
     }
 
     @Test
     fun `Given a recreated activity, When it starts, Then its launch intent is not opened again`() {
-        assertFalse(opensLaunchIntent(saved))
-        assertTrue(opensLaunchIntent(null))
+        assertFalse(shouldOpenLaunchIntent(saved))
+        assertTrue(shouldOpenLaunchIntent(null))
     }
 
     @Test
     fun `Given the link that started this task, When Android restarts the task with it, Then it is a replay`() {
-        val recorded = launchLinkRecord(taskId = 132, link = LINK)
+        val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
         assertTrue(replayed(UPDATE_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 132, recorded = recorded))
         assertTrue(replayed(RECENTS_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 132, recorded = recorded))
@@ -58,7 +58,7 @@ class TestEudiComponentActivityHelper {
 
     @Test
     fun `Given a link the user opens, When Chrome or adb sends it, Then it is never a replay`() {
-        val recorded = launchLinkRecord(taskId = 132, link = LINK)
+        val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
         assertFalse(replayed(CHROME_TAP_FLAGS, CHROME_PACKAGE, taskId = 132, recorded = recorded))
         assertFalse(replayed(Intent.FLAG_ACTIVITY_NEW_TASK, SHELL_PACKAGE, taskId = 132, recorded = recorded))
@@ -66,7 +66,7 @@ class TestEudiComponentActivityHelper {
 
     @Test
     fun `Given an app that sends the same link with CLEAR_TASK, When it arrives in the task, Then it is not a replay`() {
-        val recorded = launchLinkRecord(taskId = 132, link = LINK)
+        val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
         assertFalse(replayed(RECENTS_RESTART_FLAGS, OTHER_APP_PACKAGE, taskId = 132, recorded = recorded))
         assertFalse(replayed(UPDATE_RESTART_FLAGS, launchedBy = null, taskId = 132, recorded = recorded))
@@ -74,14 +74,14 @@ class TestEudiComponentActivityHelper {
 
     @Test
     fun `Given the system UI starts the activity without a restart flag, When the link matches, Then it is not a replay`() {
-        val recorded = launchLinkRecord(taskId = 132, link = LINK)
+        val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
         assertFalse(replayed(Intent.FLAG_ACTIVITY_NEW_TASK, SYSTEM_UI_PACKAGE, taskId = 132, recorded = recorded))
     }
 
     @Test
     fun `Given a restart, When the task or the link differs from the record, Then it is not a replay`() {
-        val recorded = launchLinkRecord(taskId = 132, link = LINK)
+        val recorded = createLaunchLinkRecord(taskId = 132, link = LINK)
 
         assertFalse(replayed(RECENTS_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 140, recorded = recorded))
         assertFalse(replayed(RECENTS_RESTART_FLAGS, SYSTEM_UI_PACKAGE, taskId = 132, link = "$LINK&x=1", recorded = recorded))
@@ -98,25 +98,25 @@ class TestEudiComponentActivityHelper {
 
     @Test
     fun `Given a launch link, When its record is built, Then it names the task and holds no part of the link`() {
-        val record = launchLinkRecord(taskId = 132, link = LINK)
+        val record = createLaunchLinkRecord(taskId = 132, link = LINK)
 
         assertTrue(record.matches(Regex("132:[0-9a-f]{64}")))
         assertFalse(record.contains("request_uri"))
-        assertEquals(record, launchLinkRecord(taskId = 132, link = LINK))
+        assertEquals(record, createLaunchLinkRecord(taskId = 132, link = LINK))
     }
 
     @Test
     fun `Given incoming links, When one starts no wallet flow, Then only that one is dropped`() {
-        val dropped = DeepLinkType.entries.filter(::dropsIncomingLink)
+        val dropped = DeepLinkType.entries.filter(::shouldDropIncomingLink)
 
         assertEquals(listOf(DeepLinkType.EXTERNAL), dropped)
     }
 
     @Test
     fun `Given a declined request, When it brought the wallet up, Then the activity finishes, and otherwise not`() {
-        assertTrue(finishesOnDeclinedRequest(coldBoot = true, walletWasShown = true))
-        assertTrue(finishesOnDeclinedRequest(coldBoot = false, walletWasShown = false))
-        assertFalse(finishesOnDeclinedRequest(coldBoot = false, walletWasShown = true))
+        assertTrue(shouldFinishOnDeclinedRequest(coldBoot = true, walletWasShown = true))
+        assertTrue(shouldFinishOnDeclinedRequest(coldBoot = false, walletWasShown = false))
+        assertFalse(shouldFinishOnDeclinedRequest(coldBoot = false, walletWasShown = true))
     }
 
     private companion object {

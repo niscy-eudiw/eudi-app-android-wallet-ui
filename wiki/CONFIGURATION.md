@@ -805,7 +805,7 @@ backup exclusion, and recovery policy against your security requirements.
 
 The factory reset clears the PIN, with every other preference except the session id and the
 database key, through `PrefKeys.clearAllExceptSessionIdAndDbKey()`. A provider that keeps its data
-anywhere else must be cleared by `WalletResetController` as well; see
+anywhere else must be cleared by `WalletCoreResetController` as well; see
 [GO_LIVE.md](GO_LIVE.md#data-deletion-and-factory-reset).
 
 ```kotlin

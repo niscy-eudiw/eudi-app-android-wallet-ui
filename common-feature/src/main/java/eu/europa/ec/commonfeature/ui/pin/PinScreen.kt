@@ -137,7 +137,7 @@ fun PinScreen(
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        viewModel.setEvent(Event.Resumed)
+        viewModel.setEvent(Event.OnResume)
     }
 }
 

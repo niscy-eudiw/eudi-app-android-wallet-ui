@@ -21,6 +21,7 @@ import eu.europa.ec.commonfeature.util.keyIsSignature
 import eu.europa.ec.commonfeature.util.keyIsUserImage
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimItemId
+import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -191,3 +192,30 @@ private fun calculateOverlineText(displayTitle: String): String? {
         null
     }
 }
+
+/**
+ * The ids of this document's rows that hold a picture of the holder, meaning a claim named in
+ * [userImageClaimKeys]. They are the ids the rows are built with.
+ */
+fun DocumentPayloadDomain.userImageItemIds(userImageClaimKeys: Set<String>): Set<String> =
+    docClaimsDomain
+        .flatMap { claim -> claim.userImagePaths(userImageClaimKeys) }
+        .map { path ->
+            ClaimItemId.Claim(
+                docId = docId,
+                queryId = queryId,
+                path = path,
+            ).encode()
+        }
+        .toSet()
+
+private fun ClaimDomain.userImagePaths(userImageClaimKeys: Set<String>): List<ClaimPathDomain> =
+    when (this) {
+        is ClaimDomain.Primitive -> if (keyIsUserImage(key = key, userImageClaimKeys = userImageClaimKeys)) {
+            listOf(path)
+        } else {
+            emptyList()
+        }
+
+        is ClaimDomain.Group -> items.flatMap { item -> item.userImagePaths(userImageClaimKeys) }
+    }

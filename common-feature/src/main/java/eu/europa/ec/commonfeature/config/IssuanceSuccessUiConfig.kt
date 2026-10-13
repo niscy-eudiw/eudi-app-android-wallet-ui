@@ -24,7 +24,9 @@ import kotlinx.serialization.Serializable
 
 /**
  * The issuance success screen: the documents in [documentIds] were issued, and those named in
- * [notIssuedDocuments] were requested but not issued.
+ * [notIssuedDocuments] were requested but not added. That covers the documents the issuer did not
+ * issue and those refused because their issuer could not be trusted, which is why it is not named
+ * after Wallet Core's `nonIssuedDocuments`, which holds only the first kind.
  */
 @Serializable
 data class IssuanceSuccessUiConfig(

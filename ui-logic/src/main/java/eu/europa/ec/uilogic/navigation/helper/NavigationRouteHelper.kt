@@ -36,3 +36,16 @@ fun generateComposableNavigationLink(screen: Screen, arguments: String): String 
 
 fun generateComposableNavigationLink(screen: String, arguments: String): String =
     "$screen$arguments"
+
+/**
+ * True when [route] is the route of one of [protectedFlowScreens].
+ */
+internal fun isProtectedRoute(route: String?, protectedFlowScreens: List<Screen>): Boolean =
+    route != null && protectedFlowScreens.any { it.screenRoute == route }
+
+/**
+ * True when any of [backStackRoutes] is not the route of one of [loginScreens], so a locked wallet
+ * showing this back stack must return to login.
+ */
+internal fun requiresLogin(backStackRoutes: List<String>, loginScreens: List<Screen>): Boolean =
+    backStackRoutes.any { route -> loginScreens.none { it.screenRoute == route } }

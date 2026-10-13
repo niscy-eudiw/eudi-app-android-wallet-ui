@@ -83,7 +83,7 @@ class TestResetWalletViewModel {
     }
 
     @Test
-    fun `a screen restored with the wallet locked does not start the reset`() = coroutineRule.runTest {
+    fun `Given a screen restored with the wallet locked, When it starts, Then the reset does not run`() = coroutineRule.runTest {
         whenever(interactor.isSessionUnlocked()).thenReturn(false)
 
         viewModel.effect.runFlowTest {
@@ -96,7 +96,7 @@ class TestResetWalletViewModel {
     }
 
     @Test
-    fun `a successful reset starts the wallet again`() = coroutineRule.runTest {
+    fun `Given a successful reset, When the screen starts, Then the wallet starts again`() = coroutineRule.runTest {
         whenever(interactor.resetWallet()).thenReturn(ResetWalletInteractorPartialState.Success)
 
         viewModel.effect.runFlowTest {
@@ -107,7 +107,7 @@ class TestResetWalletViewModel {
     }
 
     @Test
-    fun `the reset shows loading and runs once while in progress`() = coroutineRule.runTest {
+    fun `Given a reset in progress, When Retry is sent, Then loading shows and the reset runs once`() = coroutineRule.runTest {
         val released = CompletableDeferred<Unit>()
         whenever(interactor.resetWallet()).doSuspendableAnswer {
             released.await()
@@ -127,7 +127,7 @@ class TestResetWalletViewModel {
     }
 
     @Test
-    fun `a failed reset offers retry and close`() = coroutineRule.runTest {
+    fun `Given a failed reset, When the error is shown, Then it offers retry and close`() = coroutineRule.runTest {
         whenever(interactor.resetWallet())
             .thenReturn(ResetWalletInteractorPartialState.Failure(errorMessage = "error"))
 
@@ -151,7 +151,7 @@ class TestResetWalletViewModel {
     }
 
     @Test
-    fun `closing after a failure starts the wallet again`() = coroutineRule.runTest {
+    fun `Given a failed reset, When the user closes the error, Then the wallet starts again`() = coroutineRule.runTest {
         whenever(interactor.resetWallet())
             .thenReturn(ResetWalletInteractorPartialState.Failure(errorMessage = "error"))
 

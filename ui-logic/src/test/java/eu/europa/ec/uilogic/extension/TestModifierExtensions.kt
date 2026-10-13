@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.uilogic.component.wrap
+package eu.europa.ec.uilogic.extension
 
 import android.app.Activity
 import androidx.compose.foundation.clickable
@@ -36,7 +36,7 @@ import org.mockito.kotlin.verify
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
-class TestWrapModalBottomSheet {
+class TestModifierExtensions {
 
     @get:Rule
     val composeRule = createComposeRule()

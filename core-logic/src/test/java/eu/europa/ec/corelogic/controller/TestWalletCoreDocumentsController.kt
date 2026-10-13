@@ -40,7 +40,7 @@ import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
 import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
-import eu.europa.ec.storagelogic.model.IssuerTrustRecord
+import eu.europa.ec.storagelogic.model.IssuerTrust
 import eu.europa.ec.storagelogic.model.IssuerTrustVerdict
 import eu.europa.ec.storagelogic.model.RevocationStatus
 import eu.europa.ec.storagelogic.model.RevokedDocument
@@ -240,8 +240,8 @@ class TestWalletCoreDocumentsController {
             whenever(revokedDocumentDao.retrieveAll()).thenReturn(emptyList())
             whenever(issuerTrustDao.retrieveAll()).thenReturn(
                 listOf(
-                    IssuerTrustRecord(identifier = "oldPid", verdict = IssuerTrustVerdict.TRUSTED),
-                    IssuerTrustRecord(identifier = "otherPid", verdict = IssuerTrustVerdict.TRUSTED),
+                    IssuerTrust(identifier = "oldPid", verdict = IssuerTrustVerdict.TRUSTED),
+                    IssuerTrust(identifier = "otherPid", verdict = IssuerTrustVerdict.TRUSTED),
                 )
             )
             whenever(statusRefreshFailureDao.retrieveAll()).thenReturn(emptyList())

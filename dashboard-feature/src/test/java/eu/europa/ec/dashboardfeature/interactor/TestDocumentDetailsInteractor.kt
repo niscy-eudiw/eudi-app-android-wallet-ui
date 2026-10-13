@@ -229,7 +229,7 @@ class TestDocumentDetailsInteractor {
                 val success = awaitItem() as DocumentDetailsInteractorPartialState.Success
 
                 assertEquals(
-                    getMockedIssuerDetailsCardDataUi(isExpanded = true, statusRefreshFailed = true),
+                    getMockedIssuerDetailsCardDataUi(isExpanded = true, hasStatusRefreshFailed = true),
                     success.issuerDetails
                 )
             }
@@ -259,7 +259,7 @@ class TestDocumentDetailsInteractor {
                 val success = awaitItem() as DocumentDetailsInteractorPartialState.Success
 
                 assertEquals(
-                    getMockedIssuerDetailsCardDataUi(isExpanded = true, reIssuanceFailed = true),
+                    getMockedIssuerDetailsCardDataUi(isExpanded = true, hasReIssuanceFailed = true),
                     success.issuerDetails
                 )
             }
@@ -313,7 +313,7 @@ class TestDocumentDetailsInteractor {
             ).runFlowTest {
                 assertEquals(
                     DocumentDetailsInteractorPartialState.Success(
-                        issuerDetails = getMockedIssuerDetailsCardDataUi(issuerIsVerified = true),
+                        issuerDetails = getMockedIssuerDetailsCardDataUi(isIssuerVerified = true),
                         documentDetailsDomain = mockedBasicPidDomain,
                         documentIsBookmarked = false,
                         documentCredentialsInfoUi = getMockedDocumentCredentialsInfoUi(
@@ -1859,18 +1859,18 @@ class TestDocumentDetailsInteractor {
             expirationDate = mockedFormattedExpirationDate
         ),
         isExpanded: Boolean = false,
-        issuerIsVerified: Boolean = false,
-        statusRefreshFailed: Boolean = false,
-        reIssuanceFailed: Boolean = false,
+        isIssuerVerified: Boolean = false,
+        hasStatusRefreshFailed: Boolean = false,
+        hasReIssuanceFailed: Boolean = false,
     ): IssuerDetailsCardDataUi {
         return IssuerDetailsCardDataUi(
             issuerName = issuerName,
             issuerLogo = issuerLogo,
             documentState = documentState,
             isExpanded = isExpanded,
-            issuerIsVerified = issuerIsVerified,
-            statusRefreshFailed = statusRefreshFailed,
-            reIssuanceFailed = reIssuanceFailed,
+            isIssuerVerified = isIssuerVerified,
+            hasStatusRefreshFailed = hasStatusRefreshFailed,
+            hasReIssuanceFailed = hasReIssuanceFailed,
         )
     }
 

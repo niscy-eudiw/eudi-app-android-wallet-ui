@@ -19,11 +19,11 @@ package eu.europa.ec.commonfeature.ui.request.transformer
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.extension.toSelectiveExpandableListItems
+import eu.europa.ec.commonfeature.extension.userImageItemIds
 import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
-import eu.europa.ec.commonfeature.ui.request.model.userImageItemIds
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimDomain

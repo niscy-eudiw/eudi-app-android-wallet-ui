@@ -20,7 +20,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class TestExternalLink {
+class TestExternalLinkHelper {
 
     @Test
     fun `Given an https URL with a host, Then it may be opened`() {

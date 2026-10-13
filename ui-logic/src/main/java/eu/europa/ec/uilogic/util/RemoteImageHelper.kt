@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.uilogic.component.wrap
+package eu.europa.ec.uilogic.util
 
 import eu.europa.ec.uilogic.navigation.helper.isOpenableExternalLink
 import okhttp3.Interceptor

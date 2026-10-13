@@ -34,14 +34,14 @@ import eu.europa.ec.corelogic.controller.WalletCoreLogController
 import eu.europa.ec.corelogic.controller.WalletCoreLogControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationControllerImpl
+import eu.europa.ec.corelogic.controller.WalletCoreResetController
+import eu.europa.ec.corelogic.controller.WalletCoreResetControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
 import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkControllerImpl
-import eu.europa.ec.corelogic.controller.WalletResetController
-import eu.europa.ec.corelogic.controller.WalletResetControllerImpl
 import eu.europa.ec.corelogic.controller.WalletResetStatus
 import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.corelogic.provider.DCAPISettingProviderImpl
@@ -234,7 +234,7 @@ fun provideWalletCoreDocumentsController(
     )
 
 @Factory
-fun provideWalletResetController(
+fun provideWalletCoreResetController(
     context: Context,
     walletCoreDocumentsController: WalletCoreDocumentsController,
     walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
@@ -246,7 +246,7 @@ fun provideWalletResetController(
     databaseEraser: DatabaseEraser,
     logController: LogController,
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
-): WalletResetController = WalletResetControllerImpl(
+): WalletCoreResetController = WalletCoreResetControllerImpl(
     walletCoreDocumentsController = walletCoreDocumentsController,
     walletCoreDCAPIRegistrationController = walletCoreDCAPIRegistrationController,
     prefKeys = prefKeys,

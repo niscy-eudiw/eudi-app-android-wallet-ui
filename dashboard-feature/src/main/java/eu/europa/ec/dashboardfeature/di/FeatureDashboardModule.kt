@@ -27,9 +27,9 @@ import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.controller.WalletCoreResetController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
-import eu.europa.ec.corelogic.controller.WalletResetController
 import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
@@ -90,10 +90,10 @@ fun provideSettingsInteractor(
 
 @Factory
 fun provideResetWalletInteractor(
-    walletResetController: WalletResetController,
+    walletCoreResetController: WalletCoreResetController,
     sessionController: SessionController,
 ): ResetWalletInteractor = ResetWalletInteractorImpl(
-    walletResetController,
+    walletCoreResetController,
     sessionController,
 )
 

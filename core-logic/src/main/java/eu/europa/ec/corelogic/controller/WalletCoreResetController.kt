@@ -29,9 +29,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-sealed class WalletResetPartialState {
-    data object Success : WalletResetPartialState()
-    data class Failure(val errorMessage: String) : WalletResetPartialState()
+sealed class ResetWalletPartialState {
+    data object Success : ResetWalletPartialState()
+    data class Failure(val errorMessage: String) : ResetWalletPartialState()
 }
 
 /**
@@ -40,7 +40,7 @@ sealed class WalletResetPartialState {
  * logs and the cached files, while the app keeps running, so that the wallet can start again at
  * onboarding.
  */
-interface WalletResetController {
+interface WalletCoreResetController {
 
     /**
      * Runs the reset. Background work is stopped first, and the reset fails without deleting anything
@@ -50,10 +50,10 @@ interface WalletResetController {
      * cleared, the log and cached files deleted, and the session is locked. Background work is
      * scheduled again in every case. Once started, the reset runs to the end even if its caller is
      * cancelled, and [WalletResetStatus.isResetting] is true meanwhile. A document that could not be
-     * deleted, or a failed step, returns [WalletResetPartialState.Failure]; running the reset again is
+     * deleted, or a failed step, returns [ResetWalletPartialState.Failure]; running the reset again is
      * safe.
      */
-    suspend fun resetWallet(): WalletResetPartialState
+    suspend fun resetWallet(): ResetWalletPartialState
 }
 
 /**
@@ -71,7 +71,7 @@ class WalletResetStatus {
     }
 }
 
-class WalletResetControllerImpl(
+class WalletCoreResetControllerImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
     private val prefKeys: PrefKeys,
@@ -85,7 +85,7 @@ class WalletResetControllerImpl(
     private val deleteLogFiles: () -> Unit,
     private val deleteCacheFiles: () -> Unit,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-) : WalletResetController {
+) : WalletCoreResetController {
 
     private companion object {
         const val DELETION_PASSES = 3
@@ -97,7 +97,7 @@ class WalletResetControllerImpl(
      * queue before the tables are, so that a deletion entry Wallet Core logged for a removed
      * document cannot be written after the tables are empty.
      */
-    override suspend fun resetWallet(): WalletResetPartialState = withContext(dispatcher + NonCancellable) {
+    override suspend fun resetWallet(): ResetWalletPartialState = withContext(dispatcher + NonCancellable) {
         resetStatus.setResetting(true)
         try {
             if (!stopBackgroundWork()) {
@@ -113,7 +113,7 @@ class WalletResetControllerImpl(
             deleteLogFiles()
             deleteCacheFiles()
             sessionController.lock()
-            WalletResetPartialState.Success
+            ResetWalletPartialState.Success
         } catch (_: Exception) {
             failure()
         } finally {
@@ -152,5 +152,5 @@ class WalletResetControllerImpl(
     }
 
     private fun failure() =
-        WalletResetPartialState.Failure(errorMessage = resourceProvider.genericErrorMessage())
+        ResetWalletPartialState.Failure(errorMessage = resourceProvider.genericErrorMessage())
 }

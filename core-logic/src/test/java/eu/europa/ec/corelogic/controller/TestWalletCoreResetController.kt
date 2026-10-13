@@ -39,7 +39,7 @@ import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-class TestWalletResetController {
+class TestWalletCoreResetController {
 
     @get:Rule
     val coroutineRule = CoroutineTestRule()
@@ -102,7 +102,7 @@ class TestWalletResetController {
 
             val result = buildController().resetWallet()
 
-            assertEquals(WalletResetPartialState.Success, result)
+            assertEquals(ResetWalletPartialState.Success, result)
             assertEquals(
                 listOf(
                     "stop work", "hold registry", "delete mdl", "delete pid", "clear registry",
@@ -137,7 +137,7 @@ class TestWalletResetController {
             val result = buildController(stopBackgroundWork = { steps.add("stop work"); false })
                 .resetWallet()
 
-            assertEquals(WalletResetPartialState.Failure(errorMessage = "error"), result)
+            assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
             assertEquals(listOf("stop work", "schedule work"), steps)
             assertFalse(resetStatus.isResetting.value)
         }
@@ -150,7 +150,7 @@ class TestWalletResetController {
 
             val result = buildController().resetWallet()
 
-            assertEquals(WalletResetPartialState.Success, result)
+            assertEquals(ResetWalletPartialState.Success, result)
             assertEquals(true, "delete mdl" in steps)
         }
     }
@@ -165,7 +165,7 @@ class TestWalletResetController {
 
             val result = buildController().resetWallet()
 
-            assertEquals(WalletResetPartialState.Failure(errorMessage = "error"), result)
+            assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
             assertEquals(listOf("stop work", "hold registry", "clear registry", "schedule work"), steps)
         }
     }
@@ -189,7 +189,7 @@ class TestWalletResetController {
 
             val result = buildController().resetWallet()
 
-            assertEquals(WalletResetPartialState.Success, result)
+            assertEquals(ResetWalletPartialState.Success, result)
             assertEquals(true, "delete pid" in steps)
         }
     }
@@ -202,7 +202,7 @@ class TestWalletResetController {
             val result = buildController(clearDatabase = { throw IllegalStateException("database error") })
                 .resetWallet()
 
-            assertEquals(WalletResetPartialState.Failure(errorMessage = "error"), result)
+            assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
             assertEquals(listOf("stop work", "hold registry", "clear registry", "clear history", "schedule work"), steps)
         }
     }
@@ -215,7 +215,7 @@ class TestWalletResetController {
             val result = buildController(deleteCacheFiles = { throw CancellationException("cancelled") })
                 .resetWallet()
 
-            assertEquals(WalletResetPartialState.Failure(errorMessage = "error"), result)
+            assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
             assertEquals("schedule work", steps.last())
         }
     }
@@ -239,8 +239,8 @@ class TestWalletResetController {
             steps.clear()
             val second = controller.resetWallet()
 
-            assertEquals(WalletResetPartialState.Failure(errorMessage = "error"), first)
-            assertEquals(WalletResetPartialState.Success, second)
+            assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), first)
+            assertEquals(ResetWalletPartialState.Success, second)
             assertEquals("schedule work", steps.last())
         }
     }
@@ -266,7 +266,7 @@ class TestWalletResetController {
         clearDatabase: () -> Unit = { steps.add("clear database") },
         deleteLogFiles: () -> Unit = { steps.add("delete logs") },
         deleteCacheFiles: () -> Unit = { steps.add("delete cache") },
-    ) = WalletResetControllerImpl(
+    ) = WalletCoreResetControllerImpl(
         walletCoreDocumentsController = walletCoreDocumentsController,
         walletCoreDCAPIRegistrationController = registration,
         prefKeys = prefKeys,
