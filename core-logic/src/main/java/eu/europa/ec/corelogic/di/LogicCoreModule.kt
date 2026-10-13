@@ -146,8 +146,13 @@ fun provideWalletCoreConfig(
 )
 
 @Factory
-fun provideWalletCoreLogController(logController: LogController): WalletCoreLogController =
-    WalletCoreLogControllerImpl(logController)
+fun provideWalletCoreLogController(
+    logController: LogController,
+    walletCoreConfig: WalletCoreConfig,
+): WalletCoreLogController = WalletCoreLogControllerImpl(
+    logController = logController,
+    logLevel = walletCoreConfig.config.logLevel,
+)
 
 // Single, not a factory: the controller owns the queue that keeps transaction writes in order, so
 // a second instance would be a second queue writing the same rows.

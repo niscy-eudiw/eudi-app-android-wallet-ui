@@ -1978,7 +1978,8 @@ The app has:
 
 * Logging disabled in release on the app's own HTTP client (`NetworkModule`). Wallet Core's own HTTP
   clients are not covered; see [Diagnostic logging](#diagnostic-logging).
-* Wallet Core logging routed through `WalletCoreLogController`.
+* Wallet Core logging routed through `WalletCoreLogController`, which drops records above
+  `EudiWalletConfig.logLevel`.
 * File logging through `LogControllerImpl`.
 * Transaction logging through `WalletCoreTransactionLogControllerImpl`.
 
@@ -2059,18 +2060,17 @@ encrypted response. Responses from the credential endpoint are encrypted by defa
 logged as received; deferred credential responses are requested without encryption and are
 logged in clear.
 
-`EudiWalletConfig.logLevel` does not limit this output in the reference app. Wallet Core applies
-`logLevel` only in its own logger, which it uses when no logger is supplied. The app supplies
-`WalletCoreLogController`, which forwards every record to `LogController` whatever its level, and
-`LogControllerImpl` writes debug records to logcat and to the log files in every build type;
-**Settings → Retrieve logs** shares those files. Some of Wallet Core's own debug records also carry
-protocol data: the remote OpenID4VP `vp_token` before it is sent, whether or not the response is
-encrypted, the Digital Credential API request and `vp_token`, and the mdoc `DeviceResponse`
-before it is encrypted.
-
-The reference wiring therefore writes, in release builds, data that the rules above forbid. Before
-release, filter Wallet Core's records in `WalletCoreLogController`: drop debug records, or apply
-`logLevel` there. Lowering `logLevel` alone has no effect while the app supplies its own logger.
+Wallet Core applies `EudiWalletConfig.logLevel` only in its own logger, which it uses when no logger
+is supplied, so the logger the app supplies receives every record. The app therefore applies
+`logLevel` itself: `WalletCoreLogController` drops the records above it before they reach
+`LogController`, which writes to logcat and to the log files that **Settings → Retrieve logs**
+shares. `WalletCoreConfigImpl` sets `LEVEL_DEBUG` for debug builds and `LEVEL_INFO` for release
+builds, so a release build keeps none of Wallet Core's debug records. Those include the HTTP
+traffic above and other protocol data: the remote OpenID4VP `vp_token` before it is sent, whether
+or not the response is encrypted, the Digital Credential API request and `vp_token`, and the mdoc
+`DeviceResponse` before it is encrypted. A debug build logs all of it; never ship one, and keep
+`LEVEL_INFO` or lower for release. Logging from the app's own code is not filtered this way; see
+below.
 
 Current `LogControllerImpl` always plants a `Timber.DebugTree()` and a file logger. For production,
 consider:
