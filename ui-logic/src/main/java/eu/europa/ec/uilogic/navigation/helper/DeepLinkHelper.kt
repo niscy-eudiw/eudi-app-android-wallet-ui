@@ -26,7 +26,7 @@ import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.eudi.rqesui.domain.entities.error.EudiRQESUiError
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
 import eu.europa.ec.eudi.rqesui.infrastructure.RemoteUri
-import eu.europa.ec.uilogic.extension.openUrl
+import eu.europa.ec.uilogic.extension.openInBrowser
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.PresentationScreens
 import eu.europa.ec.uilogic.navigation.Screen
@@ -60,6 +60,11 @@ fun handleDeepLinkAction(
     }
 }
 
+/**
+ * Opens the flow [action] starts. A link of no known flow ([DeepLinkType.EXTERNAL]) is opened only
+ * when it is an `https` link, and then only in a browser: as a plain view intent it could come back
+ * to the wallet through one of its own link filters.
+ */
 fun handleDeepLinkAction(
     navController: NavController,
     action: DeepLinkAction,
@@ -84,7 +89,9 @@ fun handleDeepLinkAction(
         }
 
         DeepLinkType.EXTERNAL -> {
-            navController.context.openUrl(action.link)
+            if (isOpenableExternalLink(action.link.toString())) {
+                navController.context.openInBrowser(action.link)
+            }
             return
         }
 

@@ -52,23 +52,37 @@ class TestDeepLinkAction {
     }
 
     @Test
-    fun `Given the document-retrieval scheme, When parsed, Then only the configured host starts the signing flow`() {
-        val configured = BuildConfig.RQES_DOC_RETRIEVAL_HOST
-        if (configured == DeepLinkType.ANY_HOST) {
-            assertEquals(
-                DeepLinkType.RQES_DOC_RETRIEVAL,
-                DeepLinkType.parse(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME, "any.example")
+    fun `Given a configured document-retrieval host, When parsed, Then only that host starts the signing flow`() {
+        val configured = "docs.qtsp.example"
+
+        assertEquals(
+            DeepLinkType.RQES_DOC_RETRIEVAL,
+            DeepLinkType.parse(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME, configured, rqesDocRetrievalHost = configured)
+        )
+        assertEquals(
+            DeepLinkType.EXTERNAL,
+            DeepLinkType.parse(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME, "attacker.example", rqesDocRetrievalHost = configured)
+        )
+        assertEquals(
+            DeepLinkType.RQES_DOC_RETRIEVAL,
+            DeepLinkType.parse(
+                BuildConfig.RQES_DOC_RETRIEVAL_SCHEME,
+                "attacker.example",
+                rqesDocRetrievalHost = DeepLinkType.ANY_HOST,
             )
-        } else {
-            assertEquals(
-                DeepLinkType.RQES_DOC_RETRIEVAL,
-                DeepLinkType.parse(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME, configured)
-            )
-            assertEquals(
-                DeepLinkType.EXTERNAL,
-                DeepLinkType.parse(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME, "attacker.example")
-            )
-        }
+        )
+    }
+
+    @Test
+    fun `Given a known host in another case, When parsed, Then it starts its flow`() {
+        assertEquals(
+            DeepLinkType.ISSUANCE,
+            DeepLinkType.parse(BuildConfig.ISSUE_AUTHORIZATION_SCHEME, BuildConfig.ISSUE_AUTHORIZATION_HOST.uppercase())
+        )
+        assertEquals(
+            DeepLinkType.RQES,
+            DeepLinkType.parse(BuildConfig.RQES_SCHEME, BuildConfig.RQES_HOST.uppercase())
+        )
     }
 
     @Test

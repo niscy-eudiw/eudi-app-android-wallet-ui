@@ -1502,9 +1502,10 @@ What the app enforces:
   rule: one that is not `https` is not shown as a link.
 * **RQES document retrieval.** A link with the `eudi-rqes` scheme starts a signing only when its host
   matches `rqesDocRetrievalHost` (`BuildConfig.RQES_DOC_RETRIEVAL_HOST`), compared without regard
-  to case. Set an exact host: the manifest's `*.domain` form is not supported by the check, and
-  would match no link. The reference value `*` (`DeepLinkType.ANY_HOST`) matches any host so that
-  the demo signing flow works; it is for development only. The host check only narrows which links
+  to case. Set an exact host: the manifest's `*.domain` form is not supported by the check, so no
+  link would match and the wallet would ignore every such link. The reference value `*`
+  (`DeepLinkType.ANY_HOST`) matches any host so that the demo signing flow works; it is for
+  development only. The host check only narrows which links
   start the flow, since any web page can use the configured host. The control that decides whether
   a document is retrieved is the certificate trust in `documentRetrievalConfig`
   (`RQESConfigImpl`). A document QR code scanned from **Sign** goes to the RQES SDK without the

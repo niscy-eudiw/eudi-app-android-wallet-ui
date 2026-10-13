@@ -73,12 +73,22 @@ enum class DeepLinkType(
         /**
          * Whether [host] is the [configured] one, or [configured] is [ANY_HOST]. Hosts are compared
          * without regard to case. A configured host must be exact: the manifest's `*.domain` form
-         * is not supported here, so with it no link would match.
+         * is not supported here, so with it no link would match and the wallet would ignore every
+         * such link (see [EXTERNAL]).
          */
         internal fun hostMatches(configured: String?, host: String?): Boolean =
             configured == ANY_HOST || (host != null && host.equals(configured, ignoreCase = true))
 
-        fun parse(scheme: String, host: String? = null): DeepLinkType = when {
+        /**
+         * The flow a link with [scheme] and [host] starts. A link that matches none, although the
+         * wallet's manifest accepted it, is [EXTERNAL]. [rqesDocRetrievalHost] is the configured
+         * document-retrieval host; it is a parameter only so that a specific host can be tested.
+         */
+        fun parse(
+            scheme: String,
+            host: String? = null,
+            rqesDocRetrievalHost: String? = RQES_DOC_RETRIEVAL.host,
+        ): DeepLinkType = when {
 
             OPENID4VP.schemas.contains(scheme) -> {
                 OPENID4VP
@@ -88,15 +98,15 @@ enum class DeepLinkType(
                 CREDENTIAL_OFFER
             }
 
-            ISSUANCE.schemas.contains(scheme) && host == ISSUANCE.host -> {
+            ISSUANCE.schemas.contains(scheme) && hostMatches(ISSUANCE.host, host) -> {
                 ISSUANCE
             }
 
-            RQES.schemas.contains(scheme) && host == RQES.host -> {
+            RQES.schemas.contains(scheme) && hostMatches(RQES.host, host) -> {
                 RQES
             }
 
-            RQES_DOC_RETRIEVAL.schemas.contains(scheme) && hostMatches(RQES_DOC_RETRIEVAL.host, host) -> {
+            RQES_DOC_RETRIEVAL.schemas.contains(scheme) && hostMatches(rqesDocRetrievalHost, host) -> {
                 RQES_DOC_RETRIEVAL
             }
 
