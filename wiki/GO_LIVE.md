@@ -1200,8 +1200,9 @@ Set `WalletCoreConfig.trustMarkSource` to the Trust Mark information for your wa
 `trustMarkResource` to where its image and text come from, and `isWalletCertified` to whether
 the solution is certified. The reference build bundles a sample resource in the app
 (`res/raw/trust_mark_resource.json`), so a new install fetches no Trust Mark resource; its image
-is the Commission's logo, loaded from `eidas.ec.europa.eu`, and its text says that it is a sample
-and that the build is not certified. The reference build is not certified, so the Trust Mark
+is the Commission's logo, loaded from `eidas.ec.europa.eu`, and its text is the original sample's
+placeholder, "Officially Certified And Trusted EUDI Wallet" in English. That text is not true of
+a build that is not certified, so replace it. The reference build is not certified, so the Trust Mark
 screen shows no sentence claiming certification and no certification links. Replace the
 resource with your own. The certification-page URL still contains the `WALLET_SOLUTION_ID`
 placeholder. See [Trust Mark configuration](CONFIGURATION.md#trust-mark-configuration).

@@ -128,8 +128,9 @@ You will also need to download the EUDI Verifier app. More information can be fo
 ### App launch
 
 1. Launch the application. On first launch the Trust Mark is shown, read from a sample bundled with
-   the app. The reference build is not certified: the sample says so, and the screen leaves out
-   the certification statement and links.
+   the app. The reference build is not certified, so the screen leaves out the certification
+   statement and links. The sample keeps the text of the original sample resource ("Officially
+   Certified And Trusted EUDI Wallet"), which is placeholder content: replace it with your own.
 2. You will be presented with a welcome screen where you will be asked to create a PIN for future logins.
    PINs that are easy to guess, such as `000000`, `123456` or `654321`, are refused. If the device has
    no screen lock, the PIN screen suggests setting one.

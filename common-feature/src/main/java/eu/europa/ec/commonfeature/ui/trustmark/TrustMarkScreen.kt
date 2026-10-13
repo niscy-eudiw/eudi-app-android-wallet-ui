@@ -562,7 +562,6 @@ private class TrustMarkPreviewProvider : PreviewParameterProvider<State> {
                 mode = TrustMarkMode.About
             ),
             trustMark = previewTrustMark().copy(
-                text = "Sample Trust Mark. This reference build is not certified.",
                 certifiedWalletsUrl = null,
                 walletSolutionUrl = null,
                 certificationDescription = null,
