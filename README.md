@@ -144,7 +144,7 @@ the issuance again. The timeouts are set in `AuthenticationConfig`; see
 
 ### Issuance flow (Scoped - Wallet initiated)
 
-1. Navigate to the "Dashboard" screen, go to the "Documents" tab, and tap on the "+" icon (top-right of the screen). Select "From list". If it's your first time opening the app, you will be redirected here automatically after entering or setting up your PIN.
+1. Navigate to the "Dashboard" screen, go to the "Documents" tab, and tap on the "+" icon (top-right of the screen). Select "From list". A new wallet opens the Dashboard after you set up your PIN. With `forcePidActivation` enabled in `ConfigLogic` (off by default), a wallet without documents opens this screen instead, after you set up or enter your PIN.
 2. Select "PID".
 3. In the web view that appears, choose "Country Selection", then "FormEU", and tap "Submit".
 4. Fill in the form. Any data will suffice, but selecting a birth date older than 18 years is recommended, as it is required for certain app functionalities (e.g., RQES).
