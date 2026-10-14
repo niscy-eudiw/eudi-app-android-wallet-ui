@@ -16,6 +16,8 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -32,11 +34,19 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
+import org.mockito.kotlin.whenever
 
 class TestDashboardInteractor {
 
     @Mock
     private lateinit var resourceProvider: ResourceProvider
+
+    @Mock
+    private lateinit var walletWorkScheduler: WalletWorkScheduler
+
+    @Mock
+    private lateinit var sessionController: SessionController
 
     private lateinit var interactor: DashboardInteractor
 
@@ -48,12 +58,33 @@ class TestDashboardInteractor {
 
         interactor = DashboardInteractorImpl(
             resourceProvider = resourceProvider,
+            walletWorkScheduler = walletWorkScheduler,
+            sessionController = sessionController,
         )
     }
 
     @After
     fun after() {
         closeable.close()
+    }
+
+    @Test
+    fun `Given an unlocked wallet, When scheduleBackgroundWork is called, Then the periodic checks and the start-up check are scheduled`() {
+        whenever(sessionController.isUnlocked).thenReturn(true)
+
+        interactor.scheduleBackgroundWork()
+
+        verify(walletWorkScheduler, times(1)).schedule()
+        verify(walletWorkScheduler, times(1)).scheduleStartupCheck()
+    }
+
+    @Test
+    fun `Given a locked wallet, When scheduleBackgroundWork is called, Then nothing is scheduled`() {
+        whenever(sessionController.isUnlocked).thenReturn(false)
+
+        interactor.scheduleBackgroundWork()
+
+        verifyNoInteractions(walletWorkScheduler)
     }
 
     //region getSideMenuOptions

@@ -1356,15 +1356,26 @@ The app enqueues `RevocationWorkManager`, which:
   for a document that has a status reference, and clears it on the next successful check. Document
   details then open the issuer card and say the status could not be refreshed. The document keeps
   its last known state; a failed refresh does not block it.
-* Runs once each time the wallet opens in a new process as well as on its interval, so records lost
-  when the database is recreated after a schema change are rebuilt at the next start that has network
-  access. Until then a document revoked before the upgrade is not blocked. The host activity schedules
-  that run (`WalletWorkScheduler.scheduleStartupCheck`) only after it has set the session id, so the
-  check uses the same Wallet Core instance as the screens; keep that order if you move it. Periodic
-  runs are not ordered this way. One that WorkManager starts as the process starts, such as overdue
-  work after a force-stop, or one already running when the user opens the wallet, reads the previous
-  run's session id and opens a second Wallet Core instance on the same storage, as in earlier
-  releases. Removing that needs one session id shared by the process's workers and screens.
+* Runs once per process, when the dashboard first opens after login, as well as on its interval.
+  Records lost when the database is recreated after a schema change are rebuilt by the first check
+  that runs with network access, whether that is the run after login or a periodic one. Until then a
+  document revoked before the upgrade is not blocked. The dashboard schedules that run and the
+  periodic revocation and re-issuance checks (`DashboardInteractor.scheduleBackgroundWork`, which
+  does nothing while the wallet is locked). So the run waits for login, and on a new install nothing
+  is scheduled before the first login. By then the host activity has set the session id, so the check
+  uses the same Wallet Core instance as the screens; keep that order if you move it. Periodic runs
+  are not ordered this way, and neither is a start-up check that an earlier process queued but did
+  not finish: WorkManager keeps it, and it runs as the next process starts, like overdue periodic
+  work.
+* Once scheduled, the periodic checks stay scheduled with WorkManager and run on their interval
+  whether or not the wallet is unlocked: while the app is closed, and, as overdue work, when the
+  process starts before login. A factory reset schedules them again when it ends, whether or not it
+  succeeded, but not the start-up check; after a successful reset they run on the emptied wallet
+  before the user has set it up again. A periodic run that starts as the process starts, or one
+  already running when the user opens the wallet, reads the previous run's session id and opens a
+  second Wallet Core instance on the same storage, as in earlier releases. Removing that needs one
+  session id shared by the process's workers and screens. To run no check before login, make the
+  workers skip while the session is locked; they then run only while the wallet is in use.
 * Treats a document whose status reference Wallet Core cannot extract (no `status` claim, or a
   mechanism other than a status list) as having no status, and records no failure for it.
 * Status-list trust follows `configureDocumentStatusResolver { configureTrust { … } }`. Under
@@ -1961,7 +1972,11 @@ running:
    settings, keeping only the current session id and the database key, which the running app needs;
 5. deletes the log files and the app's cached files, which include documents signed with RQES and
    the logos of issuers and relying parties;
-6. locks the session and schedules the workers again.
+6. locks the session.
+
+Whether or not these steps succeed, the reset then schedules the periodic revocation and
+re-issuance checks again (`WalletWorkScheduler.schedule`), but not the start-up check. After a
+successful reset they therefore run while the wallet is locked.
 
 The wallet then starts again at the splash screen, which leads to onboarding, as after a first
 install. The app does not close. Once started, the reset runs to the end even if its screen is
@@ -2811,6 +2826,8 @@ Before release candidate approval, test:
   cover the offered document.
 * Reissuance refused for the same reason, confirming the document already held survives it.
 * Revocation.
+* Background checks on a new install: no status list is fetched before the first login, and the
+  check after login runs once per process.
 * Same-device OpenID4VP presentation.
 * Cross-device presentation.
 * Remote presentation rejection with and without a redirect. Confirm that **Close** and Android Back

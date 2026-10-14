@@ -117,10 +117,28 @@ class TestWalletWorkScheduler {
         assertEquals(queued, startupCheckIds())
     }
 
+    @Test
+    fun `Given the periodic work is scheduled, When it is scheduled again, Then the queued work is kept`() {
+        val scheduler = buildScheduler(workerLocks = emptyList())
+
+        scheduler.schedule()
+        val revocation = workIds(RevocationWorkManager.REVOCATION_WORK_NAME)
+        val reIssuance = workIds(ReIssuanceWorkManager.RE_ISSUANCE_WORK_NAME)
+        scheduler.schedule()
+
+        assertEquals(1, revocation.size)
+        assertEquals(1, reIssuance.size)
+        assertEquals(revocation, workIds(RevocationWorkManager.REVOCATION_WORK_NAME))
+        assertEquals(reIssuance, workIds(ReIssuanceWorkManager.RE_ISSUANCE_WORK_NAME))
+    }
+
     private fun startupCheckCount(): Int = startupCheckIds().size
 
-    private fun startupCheckIds(): List<UUID> = WorkManager.getInstance(context)
-        .getWorkInfosForUniqueWork(RevocationWorkManager.REVOCATION_ON_START_WORK_NAME)
+    private fun startupCheckIds(): List<UUID> =
+        workIds(RevocationWorkManager.REVOCATION_ON_START_WORK_NAME)
+
+    private fun workIds(uniqueWorkName: String): List<UUID> = WorkManager.getInstance(context)
+        .getWorkInfosForUniqueWork(uniqueWorkName)
         .get()
         .map { it.id }
 

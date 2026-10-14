@@ -21,7 +21,6 @@ import eu.europa.ec.analyticslogic.controller.AnalyticsController
 import eu.europa.ec.assemblylogic.di.setupKoin
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.config.ConfigLogic
-import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
 import eu.europa.ec.uilogic.container.registerSessionLockObservers
 import org.koin.android.ext.android.inject
@@ -31,7 +30,6 @@ class Application : Application() {
 
     private val analyticsController: AnalyticsController by inject()
     private val configLogic: ConfigLogic by inject()
-    private val walletWorkScheduler: WalletWorkScheduler by inject()
     private val sessionController: SessionController by inject()
 
     override fun onCreate() {
@@ -39,7 +37,6 @@ class Application : Application() {
         initializeKoin().initializeRqes()
         registerSessionLockObservers(this, sessionController)
         initializeReporting()
-        walletWorkScheduler.schedule()
     }
 
     private fun KoinApplication.initializeRqes() {

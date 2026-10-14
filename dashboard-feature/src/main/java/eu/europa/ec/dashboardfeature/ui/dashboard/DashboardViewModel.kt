@@ -148,7 +148,10 @@ class DashboardViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
-            is Event.Init -> handleDeepLink(event.intent)
+            is Event.Init -> {
+                dashboardInteractor.scheduleBackgroundWork()
+                handleDeepLink(event.intent)
+            }
 
             is Event.Pop -> setEffect { Effect.Navigation.Pop }
 

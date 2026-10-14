@@ -35,7 +35,10 @@ import kotlin.time.toJavaDuration
 /** Schedules the wallet's background workers, and stops them for the factory reset. */
 interface WalletWorkScheduler {
 
-    /** Schedules the periodic revocation and re-issuance checks. Work already scheduled is kept. */
+    /**
+     * Schedules the periodic revocation and re-issuance checks. Work already scheduled is kept. The
+     * dashboard calls it once the user has logged in, and a factory reset calls it again when it ends.
+     */
     fun schedule()
 
     /**
@@ -43,8 +46,9 @@ interface WalletWorkScheduler {
      * change, or revocation records lost when the database is recreated after a schema change, is
      * picked up without waiting for the periodic interval. Call it once the wallet's session id is
      * set: a check that started earlier would open Wallet Core under the previous run's session id,
-     * and the wallet's screens would then open a second instance on the same storage. The periodic
-     * runs are not ordered this way; see the Go-Live guide on revocation checks.
+     * and the wallet's screens would then open a second instance on the same storage. The
+     * dashboard calls it once the user has logged in, after the activity has set the session id.
+     * The periodic runs are not ordered this way; see the Go-Live guide on revocation checks.
      */
     fun scheduleStartupCheck()
 

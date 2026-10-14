@@ -38,7 +38,6 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.WalletResetStatus
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.corelogic.provider.DCAPISettingProvider
-import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
 import eu.europa.ec.uilogic.extension.launchingPackage
@@ -367,7 +366,6 @@ internal class EudiComponentActivityViewModel(
     private val prefKeys: PrefKeys,
     private val dcapiSettingProvider: DCAPISettingProvider,
     private val sessionController: SessionController,
-    private val walletWorkScheduler: WalletWorkScheduler,
     uuidProvider: UuidProvider
 ) : ViewModel() {
 
@@ -383,10 +381,12 @@ internal class EudiComponentActivityViewModel(
         getOrNullKoinScope(sessionId)?.close()
     }
 
-    /** Sets the session id, then starts the revocation check that runs once per process. */
+    /**
+     * Sets the session id. The background checks start later, from the dashboard, once the user has
+     * logged in.
+     */
     fun onCreate() {
         setSessionId()
-        walletWorkScheduler.scheduleStartupCheck()
     }
 
     fun onResume() {

@@ -20,7 +20,6 @@ import android.content.Intent
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
-import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -29,7 +28,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -45,26 +43,20 @@ class TestEudiComponentActivityViewModel {
 
     private val prefKeys: PrefKeys = mock()
 
-    private val walletWorkScheduler: WalletWorkScheduler = mock()
-
     private val viewModel = EudiComponentActivityViewModel(
         prefKeys = prefKeys,
         dcapiSettingProvider = mock(),
         sessionController = sessionController,
-        walletWorkScheduler = walletWorkScheduler,
         uuidProvider = uuidProvider,
     )
 
     private val link: Intent = mock()
 
     @Test
-    fun `Given the activity is created, When it starts, Then the session id is set before the start-up check runs`() {
+    fun `Given the activity is created, When it starts, Then it sets the session id`() {
         viewModel.onCreate()
 
-        inOrder(prefKeys, walletWorkScheduler) {
-            runBlocking { verify(prefKeys).setSessionId("session") }
-            verify(walletWorkScheduler).scheduleStartupCheck()
-        }
+        runBlocking { verify(prefKeys).setSessionId("session") }
     }
 
     @Test
