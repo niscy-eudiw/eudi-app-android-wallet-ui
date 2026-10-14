@@ -177,7 +177,8 @@ the PID's issuer. The document's details show the same.
 
 If the issuer adds only some of the requested documents, the success screen lists the ones that were
 not added. If the Wallet cannot renew a document in the background, the document's details say so,
-and you can renew it there with **Reissue document**.
+and you can renew it there with **Reissue document**, unless the issuer has revoked or suspended
+it.
 
 With **Check Registration Certificates** enabled in Settings, both issuance flows require the
 provider to be registered for what it offers: if its registration certificate is missing, cannot be
@@ -188,10 +189,10 @@ applies. A change to this setting applies the next time the app starts.
 
 The Wallet checks each document's status list in the background: once per process after you log in
 (not on each return from the background), and every 15 minutes from your first login on, also while
-the Wallet is closed or locked. A revoked document can no longer be presented, and stays blocked
-even if its status later reads valid; a suspended document is blocked, and shown as suspended, until
-the issuer reinstates it. If the status could not be checked, for example while offline, the
-document's details say so.
+the Wallet is closed or locked. A revoked document can no longer be presented or re-issued, and
+stays blocked even if its status later reads valid; a suspended document is blocked, cannot be
+re-issued, and is shown as suspended until the issuer reinstates it. If the status could not be
+checked, for example while offline, the document's details say so.
 
 ### Presentation (Online authentication/Same device) flow.
 

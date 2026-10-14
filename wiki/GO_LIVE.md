@@ -1312,6 +1312,13 @@ What the user sees:
 * When a background re-issuance fails, the document's details open the issuer card and say that
   the document could not be renewed automatically. The next background check clears the notice
   unless the renewal fails again, and so does a successful **Reissue document** from the card.
+* For a revoked, suspended or unrecognised document **Re-issue** is disabled in the toolbar, and the
+  issuer card offers no **Reissue document**. A re-issue that reaches
+  `DocumentDetailsInteractor.reIssueDocument` for one, for example after a check blocked it while its
+  details were open, is refused with "The issuer has revoked or suspended this document, so it cannot
+  be reissued." A document whose revocation records cannot be read is refused too, with the read's
+  error. A re-issued copy would carry no revocation record, so the block would be lost. The
+  background re-issuance skips blocked documents too.
 
 ## Document Categories
 
@@ -2828,6 +2835,7 @@ Before release candidate approval, test:
 * Revocation.
 * Background checks on a new install: no status list is fetched before the first login, and the
   check after login runs once per process.
+* Re-issue refused for a revoked or suspended document.
 * Same-device OpenID4VP presentation.
 * Cross-device presentation.
 * Remote presentation rejection with and without a redirect. Confirm that **Close** and Android Back

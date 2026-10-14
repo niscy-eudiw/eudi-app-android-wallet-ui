@@ -43,6 +43,7 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import kotlinx.coroutines.flow.Flow
@@ -115,6 +116,12 @@ interface DocumentDetailsInteractor {
         documentId: String
     ): Flow<DocumentDetailsInteractorDeleteBookmarkPartialState>
 
+    /**
+     * Re-issues the document from its issuer. A revoked, suspended or unrecognised document is
+     * refused, because the new copy would carry no revocation record and the block would be lost;
+     * so is any document whose records cannot be read. The details screen disables Re-issue for a
+     * blocked document; this check also covers one blocked while the screen is open.
+     */
     fun reIssueDocument(
         documentId: String,
         issuerId: String,
@@ -303,6 +310,17 @@ class DocumentDetailsInteractorImpl(
         documentId: String,
         issuerId: String,
     ): Flow<DocumentDetailsInteractorIssuancePartialState> = flow {
+
+        if (walletCoreDocumentsController.isDocumentRevoked(documentId)) {
+            emit(
+                DocumentDetailsInteractorIssuancePartialState.Failure(
+                    errorMessage = resourceProvider.getString(
+                        R.string.document_details_reissue_blocked_text
+                    )
+                )
+            )
+            return@flow
+        }
 
         sessionController.beginExternalFlow()
         try {

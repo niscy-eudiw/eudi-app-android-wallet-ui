@@ -84,6 +84,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -122,6 +123,7 @@ class TestDocumentDetailsInteractor {
 
     private val mockedReIssueIssuerId = "mockedReIssueIssuerId"
     private val mockedReIssueUri = "mockedReIssueUri"
+    private val mockedReIssueBlockedMessage = "mockedReIssueBlockedMessage"
 
     private lateinit var closeable: AutoCloseable
 
@@ -143,6 +145,7 @@ class TestDocumentDetailsInteractor {
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
         whenever(configLogic.forcePidActivation).thenReturn(true)
         runBlocking {
+            mockIsDocumentRevoked(isRevoked = false)
             mockIsIssuerTrusted(isTrusted = false)
             mockHasStatusRefreshFailed(hasFailed = false)
             mockHasReIssuanceFailed(hasFailed = false)
@@ -1479,6 +1482,92 @@ class TestDocumentDetailsInteractor {
             val order = inOrder(sessionController)
             order.verify(sessionController).beginExternalFlow()
             order.verify(sessionController, atLeastOnce()).endExternalFlow()
+        }
+    }
+
+    @Test
+    fun `Given a revoked document, When reIssueDocument is called, Then it is refused and nothing is re-issued`() {
+        coroutineRule.runTest {
+            mockIsDocumentRevoked(isRevoked = true)
+            whenever(resourceProvider.getString(R.string.document_details_reissue_blocked_text))
+                .thenReturn(mockedReIssueBlockedMessage)
+
+            interactor.reIssueDocument(
+                documentId = mockedPidId,
+                issuerId = mockedReIssueIssuerId,
+            ).runFlowTest {
+                assertEquals(
+                    DocumentDetailsInteractorIssuancePartialState.Failure(
+                        errorMessage = mockedReIssueBlockedMessage
+                    ),
+                    awaitItem()
+                )
+            }
+
+            verify(walletCoreDocumentsController, never()).reIssueDocument(
+                any(),
+                any(),
+                any(),
+                any()
+            )
+            verify(sessionController, never()).beginExternalFlow()
+        }
+    }
+
+    @Test
+    fun `Given a suspended document, When reIssueDocument is called, Then it is refused and nothing is re-issued`() {
+        coroutineRule.runTest {
+            mockIsDocumentRevoked(isRevoked = true, isSuspended = true)
+            whenever(resourceProvider.getString(R.string.document_details_reissue_blocked_text))
+                .thenReturn(mockedReIssueBlockedMessage)
+
+            interactor.reIssueDocument(
+                documentId = mockedPidId,
+                issuerId = mockedReIssueIssuerId,
+            ).runFlowTest {
+                assertEquals(
+                    DocumentDetailsInteractorIssuancePartialState.Failure(
+                        errorMessage = mockedReIssueBlockedMessage
+                    ),
+                    awaitItem()
+                )
+            }
+
+            verify(walletCoreDocumentsController, never()).reIssueDocument(
+                any(),
+                any(),
+                any(),
+                any()
+            )
+            verify(sessionController, never()).beginExternalFlow()
+        }
+    }
+
+    @Test
+    fun `Given the revocation records cannot be read, When reIssueDocument is called, Then it is refused and nothing is re-issued`() {
+        coroutineRule.runTest {
+            whenever(walletCoreDocumentsController.isDocumentRevoked(mockedPidId))
+                .thenThrow(RuntimeException(mockedPlainFailureMessage))
+
+            interactor.reIssueDocument(
+                documentId = mockedPidId,
+                issuerId = mockedReIssueIssuerId,
+            ).runFlowTest {
+                assertEquals(
+                    DocumentDetailsInteractorIssuancePartialState.Failure(
+                        errorMessage = mockedPlainFailureMessage
+                    ),
+                    awaitItem()
+                )
+            }
+
+            verify(walletCoreDocumentsController, never()).reIssueDocument(
+                any(),
+                any(),
+                any(),
+                any()
+            )
+            verify(sessionController, never()).beginExternalFlow()
         }
     }
 

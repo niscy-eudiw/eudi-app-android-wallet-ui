@@ -487,6 +487,7 @@
     <string name="document_details_issuer_card_expired_on_text">Expired on:\ %1$s</string>
     <string name="document_details_issuer_card_expired_text">Expired</string>
     <string name="document_details_issuer_card_expired_message_text">This document has expired. You may reissue it.</string>
+    <string name="document_details_reissue_blocked_text">The issuer has revoked or suspended this document, so it cannot be reissued.</string>
     <string name="document_details_secondary_button_text">Remove from wallet</string>
 
     <string name="document_details_bottom_sheet_bookmark_info_title">Saved to favourites</string>
