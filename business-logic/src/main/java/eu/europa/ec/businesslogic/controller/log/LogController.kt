@@ -35,6 +35,13 @@ interface LogController {
     fun w(message: () -> String)
     fun i(tag: String, message: () -> String)
     fun i(message: () -> String)
+
+    /**
+     * Whether this build writes the log to files that Settings offers to share ("Retrieve logs").
+     * The files hold what the wallet and Wallet Core log, so a release build writes none.
+     */
+    val writesLogFile: Boolean
+
     fun retrieveLogFileUris(): List<Uri>
 
     /** Deletes the log files, for the factory reset. Logging goes on into new files. */
@@ -44,6 +51,8 @@ interface LogController {
 class LogControllerImpl(
     private val context: Context,
     private val tag: String,
+    /** When false, no log file is written, and files an earlier build left are deleted. */
+    override val writesLogFile: Boolean = true,
 ) : LogController {
 
     companion object {
@@ -55,11 +64,15 @@ class LogControllerImpl(
     private val logsDir = File(context.filesDir.absolutePath + "/logs")
 
     @Volatile
-    private var fileLoggerTree: FileLoggerTree? = buildFileLoggerTree()
+    private var fileLoggerTree: FileLoggerTree? = if (writesLogFile) buildFileLoggerTree() else null
 
     init {
         Timber.plant(Timber.DebugTree())
-        fileLoggerTree?.let { Timber.plant(it) }
+        if (writesLogFile) {
+            fileLoggerTree?.let { Timber.plant(it) }
+        } else {
+            logsDir.listFiles()?.forEach { it.delete() }
+        }
     }
 
     override fun d(tag: String, message: () -> String) {
@@ -120,7 +133,9 @@ class LogControllerImpl(
             previousTree.close()
         }
         logsDir.listFiles()?.forEach { it.delete() }
-        fileLoggerTree = buildFileLoggerTree().also { Timber.plant(it) }
+        if (writesLogFile) {
+            fileLoggerTree = buildFileLoggerTree().also { Timber.plant(it) }
+        }
     }
 
     private fun buildFileLoggerTree(): FileLoggerTree = FileLoggerTree.Builder()

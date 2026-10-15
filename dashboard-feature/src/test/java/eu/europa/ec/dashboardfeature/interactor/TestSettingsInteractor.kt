@@ -39,6 +39,7 @@ import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -84,6 +85,7 @@ class TestSettingsInteractor {
     @Before
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
+        whenever(logController.writesLogFile).thenReturn(true)
 
         interactor = SettingsInteractorImpl(
             biometricInteractor = biometricInteractor,
@@ -220,6 +222,25 @@ class TestSettingsInteractor {
             assertResetWalletItem(settingsItems[3])
 
             verify(biometricInteractor, never()).getBiometricUserSelection()
+        }
+
+    @Test
+    fun `Given a build that writes no log file, When getSettingsItemsUi is called, Then Retrieve logs is not offered`() =
+        coroutineRule.runTest {
+            whenever(logController.writesLogFile).thenReturn(false)
+            whenever(biometricInteractor.getBiometricsAvailability())
+                .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockRegistrationCheckPreference(response = mockedRegistrationCheckEnabled)
+            mockStringsNeededForGetSettingsItemsUi(
+                resourcesProvider = resourceProvider,
+                changeLogUrlIsNull = true,
+            )
+
+            val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
+
+            assertEquals(3, settingsItems.size)
+            assertTrue(settingsItems.none { it.type == SettingsMenuItemType.RETRIEVE_LOGS })
         }
 
     @Test

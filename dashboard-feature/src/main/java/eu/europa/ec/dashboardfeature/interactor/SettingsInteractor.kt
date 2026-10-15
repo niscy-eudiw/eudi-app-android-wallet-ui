@@ -163,23 +163,27 @@ class SettingsInteractorImpl(
                 )
             }
 
-            add(
-                SettingsItemUi(
-                    type = SettingsMenuItemType.RETRIEVE_LOGS,
-                    data = ListItemDataUi(
-                        itemId = SettingsMenuItemType.RETRIEVE_LOGS.itemId,
-                        mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.settings_screen_option_retrieve_logs)
-                        ),
-                        leadingContentData = ListItemLeadingContentDataUi.Icon(
-                            iconData = AppIcons.OpenNew
-                        ),
-                        trailingContentData = ListItemTrailingContentDataUi.Icon(
-                            iconData = AppIcons.KeyboardArrowRight
+            if (logController.writesLogFile) {
+                add(
+                    SettingsItemUi(
+                        type = SettingsMenuItemType.RETRIEVE_LOGS,
+                        data = ListItemDataUi(
+                            itemId = SettingsMenuItemType.RETRIEVE_LOGS.itemId,
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = resourceProvider.getString(
+                                    R.string.settings_screen_option_retrieve_logs
+                                )
+                            ),
+                            leadingContentData = ListItemLeadingContentDataUi.Icon(
+                                iconData = AppIcons.OpenNew
+                            ),
+                            trailingContentData = ListItemTrailingContentDataUi.Icon(
+                                iconData = AppIcons.KeyboardArrowRight
+                            )
                         )
                     )
                 )
-            )
+            }
 
             if (changelogUrl != null) {
                 add(

@@ -59,11 +59,16 @@ fun provideConfigLogic(
     signingLogger = signingLogger,
 )
 
+/**
+ * Only a debug build writes the log to files and offers them in Settings; a release build writes
+ * none. The build type is read here, not from [ConfigLogic], which itself depends on logging.
+ */
 @Single
 fun provideLogController(context: Context): LogController =
     LogControllerImpl(
         context = context,
         tag = "EUDI Wallet ${BuildConfig.FLAVOR.uppercase()}-${AppBuildType.getType()}",
+        writesLogFile = AppBuildType.getType() == AppBuildType.DEBUG,
     )
 
 @Single
