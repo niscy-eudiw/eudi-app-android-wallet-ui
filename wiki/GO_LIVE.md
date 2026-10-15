@@ -145,8 +145,8 @@ Keep these files under strict review:
 | `business-logic/src/<flavor>/java/eu/europa/ec/businesslogic/config/RQESConfigImpl.kt`                    | RQES QTSP/TSA/client config and document retrieval trust config.                                     |
 | `network-logic/src/main/java/eu/europa/ec/networklogic/di/NetworkModule.kt`                               | Ktor client behavior and release logging.                                                            |
 | `network-logic/src/main/res/xml/network_security_config.xml`                                              | Cleartext and certificate trust policy.                                                              |
-| `business-logic/src/main/res/xml/backup_rules.xml`                                                        | Auto Backup policy for Android 11 and below.                                                         |
-| `business-logic/src/main/res/xml/data_extraction_rules.xml`                                               | Cloud backup and device transfer policy for Android 12 and above.                                    |
+| `business-logic/src/main/res/xml/backup_rules.xml`                                                        | Auto Backup policy for Android 11 and below: every domain excluded.                                  |
+| `business-logic/src/main/res/xml/data_extraction_rules.xml`                                               | Cloud backup and device transfer policy for Android 12 and above: every domain excluded from both.   |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinStorageProvider.kt`  | PIN hashing, salt, iteration count, constant-time comparison.                                        |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/config/AuthenticationConfig.kt`      | PIN lockout policy, and the session lock timeouts.                                                   |
 | `ui-logic/src/main/java/eu/europa/ec/uilogic/config/ConfigUILogicImpl.kt` | Login and protected-flow screen lists used by the session lock, and the claims that hold a picture of the holder. |
