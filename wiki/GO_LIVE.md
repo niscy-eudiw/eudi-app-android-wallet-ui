@@ -809,6 +809,12 @@ Production guidance:
   still declined. The switch is shown only when the build enables the API. HLR.48 and IA.30 ask
   for this control in the user's hands, so keep it in production builds; the build setting alone
   does not meet them.
+* A document the revocation check has blocked (revoked, suspended or unrecognised) is left out of
+  the registry, so it is not offered to other apps. At the end of each run the revocation check
+  updates the registry when the blocked documents differ from those it last left out
+  (`WalletCoreDCAPIRegistrationController.excludedDocumentIds`,
+  `DocumentManagerWithoutExcluded`). If the revocation records cannot be read, an update clears the
+  registry instead.
 * Test with all supported Android versions and browsers.
 * Validate all inbound DC API intents.
 * Confirm policy implications for relying parties and browser mediation.

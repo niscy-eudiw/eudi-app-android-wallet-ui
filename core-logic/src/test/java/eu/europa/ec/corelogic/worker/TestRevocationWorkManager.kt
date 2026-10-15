@@ -22,6 +22,7 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.eudi.statium.Status
@@ -69,6 +70,10 @@ class TestRevocationWorkManager {
     @Mock
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
 
+    @Mock
+    private lateinit var walletCoreDCAPIRegistrationController:
+        WalletCoreDCAPIRegistrationController
+
     private lateinit var closeable: AutoCloseable
 
     private val documentId = "document-1"
@@ -98,6 +103,51 @@ class TestRevocationWorkManager {
 
             verify(revokedDocumentDao, never()).delete(documentId)
             verify(revokedDocumentDao, never()).store(any())
+        }
+    }
+
+    @Test
+    fun `Given a document newly revoked, When the check ends, Then the DC-API registry is updated`() {
+        coroutineRule.runTest {
+            givenStoredStatus(null)
+            givenObservedStatus(Status.Invalid)
+            whenever(revokedDocumentDao.retrieveAll())
+                .thenReturn(emptyList(), listOf(RevokedDocument(documentId, RevocationStatus.INVALID)))
+            whenever(walletCoreDCAPIRegistrationController.excludedDocumentIds).thenReturn(emptySet())
+
+            runWorker()
+
+            verify(walletCoreDCAPIRegistrationController).registerCredentials()
+        }
+    }
+
+    @Test
+    fun `Given a suspended document restored, When the check ends, Then the DC-API registry is updated`() {
+        coroutineRule.runTest {
+            givenStoredStatus(RevocationStatus.SUSPENDED)
+            givenObservedStatus(Status.Valid)
+            whenever(revokedDocumentDao.retrieveAll())
+                .thenReturn(listOf(RevokedDocument(documentId, RevocationStatus.SUSPENDED)), emptyList())
+            whenever(walletCoreDCAPIRegistrationController.excludedDocumentIds)
+                .thenReturn(setOf(documentId))
+
+            runWorker()
+
+            verify(walletCoreDCAPIRegistrationController).registerCredentials()
+        }
+    }
+
+    @Test
+    fun `Given the registry already leaves out the blocked documents, When the check ends, Then it is not updated`() {
+        coroutineRule.runTest {
+            givenStoredStatus(RevocationStatus.INVALID)
+            givenObservedStatus(Status.Valid)
+            whenever(walletCoreDCAPIRegistrationController.excludedDocumentIds)
+                .thenReturn(setOf(documentId))
+
+            runWorker()
+
+            verify(walletCoreDCAPIRegistrationController, never()).registerCredentials()
         }
     }
 
@@ -439,6 +489,8 @@ class TestRevocationWorkManager {
                         revokedDocumentDao = revokedDocumentDao,
                         statusRefreshFailureDao = statusRefreshFailureDao,
                         walletCoreDocumentsController = walletCoreDocumentsController,
+                        walletCoreDCAPIRegistrationController =
+                            walletCoreDCAPIRegistrationController,
                     )
                 })
                 .build()

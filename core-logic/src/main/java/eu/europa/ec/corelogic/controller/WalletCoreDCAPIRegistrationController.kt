@@ -32,6 +32,8 @@ import kotlinx.coroutines.sync.withLock
  * A registry that cannot be cleared, for example on a device without Google Play services, does
  * not fail an update: Wallet Core runs updates in a coroutine with no handler, where an exception
  * would end the process. Requests that still arrive are declined by the activity.
+ * Documents the revocation check has blocked are left out of each update ([excludedDocumentIds]);
+ * when the blocked documents cannot be read, the update clears the registry instead.
  */
 interface WalletCoreDCAPIRegistrationController : DCAPIRegistration {
 
@@ -44,11 +46,15 @@ interface WalletCoreDCAPIRegistrationController : DCAPIRegistration {
      * be cleared, for example because the system service is unavailable, does not fail the call.
      */
     suspend fun <T> clearAround(block: suspend () -> T): T
+
+    /** The documents left out of the registration, read when an update starts. */
+    val excludedDocumentIds: Set<String>
 }
 
 class WalletCoreDCAPIRegistrationControllerImpl(
     private val clearRegistry: suspend () -> Unit,
     private val isEnabled: suspend () -> Boolean,
+    private val blockedDocumentIds: suspend () -> Set<String>,
 ) : WalletCoreDCAPIRegistrationController {
 
     private val mutex = Mutex()
@@ -59,6 +65,10 @@ class WalletCoreDCAPIRegistrationControllerImpl(
     @Volatile
     private var registration: DCAPIRegistration? = null
 
+    @Volatile
+    override var excludedDocumentIds: Set<String> = emptySet()
+        private set
+
     override fun attach(createRegistration: () -> DCAPIRegistration) {
         this.createRegistration = createRegistration
         registration = null
@@ -66,7 +76,9 @@ class WalletCoreDCAPIRegistrationControllerImpl(
 
     override suspend fun registerCredentials() {
         mutex.withLock {
-            if (isEnabled()) {
+            val blocked = blockedDocumentIdsOrNull()
+            if (blocked != null) excludedDocumentIds = blocked
+            if (blocked != null && isEnabled()) {
                 currentRegistration()?.registerCredentials()
             } else {
                 clearRegistryIgnoringFailure()
@@ -83,6 +95,16 @@ class WalletCoreDCAPIRegistrationControllerImpl(
         clearRegistryIgnoringFailure()
         result
     }
+
+    /** The blocked documents, or null when they cannot be read, so that the update fails closed. */
+    private suspend fun blockedDocumentIdsOrNull(): Set<String>? =
+        try {
+            blockedDocumentIds()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
 
     /** Clears the registry; a failure of the system service is ignored, see the interface. */
     private suspend fun clearRegistryIgnoringFailure() {

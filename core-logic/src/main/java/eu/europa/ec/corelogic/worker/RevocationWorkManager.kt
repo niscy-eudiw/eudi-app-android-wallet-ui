@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.corelogic.util.CoreActions
@@ -78,6 +79,7 @@ class RevocationWorkManager(
     private val revokedDocumentDao: RevokedDocumentDao,
     private val statusRefreshFailureDao: StatusRefreshFailureDao,
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
 ) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
@@ -89,7 +91,30 @@ class RevocationWorkManager(
         internal val runLock = Mutex()
     }
 
-    override suspend fun doWork(): Result = runLock.withLock { checkStatuses() }
+    override suspend fun doWork(): Result {
+        val result = runLock.withLock { checkStatuses() }
+        updateRegistryIfBlockedChanged()
+        return result
+    }
+
+    /**
+     * Updates the Digital Credential API registry when the blocked documents differ from those it
+     * last left out. It runs outside [runLock], so that the factory reset does not wait for the
+     * registry, and it compares with the registry rather than remembering a change, so a run that was
+     * stopped after writing a record is caught by the next one.
+     */
+    private suspend fun updateRegistryIfBlockedChanged() {
+        val blockedIds = try {
+            revokedDocumentDao.retrieveAll().map { it.identifier }.toSet()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return
+        }
+        if (blockedIds != walletCoreDCAPIRegistrationController.excludedDocumentIds) {
+            walletCoreDCAPIRegistrationController.registerCredentials()
+        }
+    }
 
     private suspend fun checkStatuses(): Result {
         try {

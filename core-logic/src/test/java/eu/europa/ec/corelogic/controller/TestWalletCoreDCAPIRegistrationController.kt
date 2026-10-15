@@ -63,6 +63,7 @@ class TestWalletCoreDCAPIRegistrationController {
             val controller = WalletCoreDCAPIRegistrationControllerImpl(
                 clearRegistry = { throw IllegalStateException("registry unavailable") },
                 isEnabled = { false },
+                blockedDocumentIds = { emptySet() },
             )
             controller.attach { registration() }
 
@@ -127,6 +128,7 @@ class TestWalletCoreDCAPIRegistrationController {
             val controller = WalletCoreDCAPIRegistrationControllerImpl(
                 clearRegistry = { throw IllegalStateException("registry unavailable") },
                 isEnabled = { true },
+                blockedDocumentIds = { emptySet() },
             )
 
             val result = controller.clearAround { true }
@@ -144,9 +146,53 @@ class TestWalletCoreDCAPIRegistrationController {
         }
     }
 
-    private fun controller(enabled: Boolean = true) = WalletCoreDCAPIRegistrationControllerImpl(
+    @Test
+    fun `Given blocked documents, When Wallet Core updates the registration, Then they are excluded from it`() {
+        coroutineRule.runTest {
+            var blocked = setOf("revoked")
+            val controller = controller(blockedDocumentIds = { blocked })
+            var excludedDuringUpdate = emptySet<String>()
+            controller.attach {
+                object : DCAPIRegistration {
+                    override suspend fun registerCredentials() {
+                        excludedDuringUpdate = controller.excludedDocumentIds
+                        steps.add("register")
+                    }
+
+                    override suspend fun unregisterCredentials() = Unit
+                }
+            }
+
+            controller.registerCredentials()
+            assertEquals(setOf("revoked"), excludedDuringUpdate)
+
+            blocked = emptySet()
+            controller.registerCredentials()
+
+            assertEquals(emptySet<String>(), excludedDuringUpdate)
+            assertEquals(listOf("register", "register"), steps)
+        }
+    }
+
+    @Test
+    fun `Given the blocked documents cannot be read, When Wallet Core updates the registration, Then the registry is cleared instead`() {
+        coroutineRule.runTest {
+            val controller = controller(blockedDocumentIds = { throw IllegalStateException("unreadable") })
+            controller.attach { registration() }
+
+            controller.registerCredentials()
+
+            assertEquals(listOf("clear registry"), steps)
+        }
+    }
+
+    private fun controller(
+        enabled: Boolean = true,
+        blockedDocumentIds: suspend () -> Set<String> = { emptySet() },
+    ) = WalletCoreDCAPIRegistrationControllerImpl(
         clearRegistry = { steps.add("clear registry") },
         isEnabled = { enabled },
+        blockedDocumentIds = blockedDocumentIds,
     )
 
     private fun registration(release: CompletableDeferred<Unit>? = null) =

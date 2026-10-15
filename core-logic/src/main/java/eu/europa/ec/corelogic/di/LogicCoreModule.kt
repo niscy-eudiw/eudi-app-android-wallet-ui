@@ -26,6 +26,7 @@ import eu.europa.ec.businesslogic.di.LogicBusinessModule
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.config.WalletCoreConfigImpl
+import eu.europa.ec.corelogic.controller.DocumentManagerWithoutExcluded
 import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
 import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
@@ -106,7 +107,9 @@ fun provideEudiWallet(
     walletCoreDCAPIRegistrationController.attach {
         DefaultDCAPIRegistration(
             context = context,
-            documentManager = eudiWallet,
+            documentManager = DocumentManagerWithoutExcluded(eudiWallet) {
+                walletCoreDCAPIRegistrationController.excludedDocumentIds
+            },
             supportedProtocols = walletCoreConfig.config.dcapiConfig?.supportedProtocols?.toList()
                 .orEmpty(),
             logger = walletCoreLogController,
@@ -119,13 +122,15 @@ fun provideEudiWallet(
 fun provideWalletCoreDCAPIRegistrationController(
     context: Context,
     dcapiSettingProvider: DCAPISettingProvider,
+    revokedDocumentDao: RevokedDocumentDao,
 ): WalletCoreDCAPIRegistrationController = WalletCoreDCAPIRegistrationControllerImpl(
     clearRegistry = {
         RegistryManager.create(context).clearCredentialRegistry(
             ClearCredentialRegistryRequest(isDeleteAll = true)
         )
     },
-    isEnabled = { dcapiSettingProvider.isEnabled() },
+    isEnabled = { dcapiSettingProvider.isAvailable && dcapiSettingProvider.isEnabled() },
+    blockedDocumentIds = { revokedDocumentDao.retrieveAll().map { it.identifier }.toSet() },
 )
 
 @Factory
