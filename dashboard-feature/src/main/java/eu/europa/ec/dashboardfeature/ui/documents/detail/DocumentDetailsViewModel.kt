@@ -620,6 +620,7 @@ class DocumentDetailsViewModel(
 
             is IssuerDetailsCardDataUi.DocumentState.Revoked,
             is IssuerDetailsCardDataUi.DocumentState.Suspended -> {
+                // No-op
             }
         }
     }

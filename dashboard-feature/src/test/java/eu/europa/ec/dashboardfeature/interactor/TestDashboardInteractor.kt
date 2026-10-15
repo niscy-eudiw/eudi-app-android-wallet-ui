@@ -88,9 +88,14 @@ class TestDashboardInteractor {
     }
 
     /**
-     * Case 1: 1. Side-menu labels are available. Case 1 Expected Result: Change PIN and Settings
-     * retain their order, followed by About EUDI Wallet.
+     * Case 1:
+     * 1. Side-menu labels are available.
+     * Case 1 Expected Result:
+     * Change PIN and Settings retain their order, followed by About EUDI Wallet.
      *
+     * Assertions:
+     * 1. First item: CHANGE_PIN
+     * 2. Second item: SETTINGS
      * Verify that getString was called exactly once per resource ID
      */
     @Test
@@ -101,9 +106,6 @@ class TestDashboardInteractor {
 
         assertEquals(3, sideMenuItems.size)
 
-        /**
-         * 1. First item: CHANGE_PIN
-         */
         val firstItem = sideMenuItems[0]
         assertEquals(SideMenuTypeUi.CHANGE_PIN, firstItem.type)
         assertEquals(SideMenuTypeUi.CHANGE_PIN.itemId, firstItem.data.itemId)
@@ -114,9 +116,6 @@ class TestDashboardInteractor {
         val trailingIcon1 = firstItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
         assertEquals(AppIcons.KeyboardArrowRight, trailingIcon1.iconData)
 
-        /**
-         * 2. Second item: SETTINGS
-         */
         val secondItem = sideMenuItems[1]
         assertEquals(SideMenuTypeUi.SETTINGS, secondItem.type)
         assertEquals(SideMenuTypeUi.SETTINGS.itemId, secondItem.data.itemId)

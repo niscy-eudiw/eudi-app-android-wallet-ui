@@ -158,13 +158,15 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 1: 1. walletCoreDocumentsController.getDocumentById() returns a PID document. 2.
-     * walletCoreDocumentsController.isDocumentBookmarked() returns false. 3.
-     * walletCoreDocumentsController.isDocumentLowOnCredentials() returns false. 4.
-     * prefKeys.getShowBatchIssuanceCounter() returns true.
+     * Case 1:
+     * 1. walletCoreDocumentsController.getDocumentById() returns a PID document.
+     * 2. walletCoreDocumentsController.isDocumentBookmarked() returns false.
+     * 3. walletCoreDocumentsController.isDocumentLowOnCredentials() returns false.
+     * 4. prefKeys.getShowBatchIssuanceCounter() returns true.
      *
-     * Case 1 Expected Result: DocumentDetailsInteractorPartialState.Success state, with a PID
-     * document item and documentIsBookmarked is false and document credentials info is returned.
+     * Case 1 Expected Result:
+     * DocumentDetailsInteractorPartialState.Success state, with a PID document item and
+     * documentIsBookmarked is false and document credentials info is returned.
      */
     @Test
     fun `Given Case 1, When getDocumentDetails is called, Then Case 1 Expected Result is returned`() {
@@ -328,13 +330,15 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 2: 1. walletCoreDocumentsController.getDocumentById() returns a PID document. 2.
-     * walletCoreDocumentsController.isDocumentBookmarked() returns false. 3.
-     * walletCoreDocumentsController.isDocumentLowOnCredentials() returns true. 4.
-     * prefKeys.getShowBatchIssuanceCounter() returns true.
+     * Case 2:
+     * 1. walletCoreDocumentsController.getDocumentById() returns a PID document.
+     * 2. walletCoreDocumentsController.isDocumentBookmarked() returns false.
+     * 3. walletCoreDocumentsController.isDocumentLowOnCredentials() returns true.
+     * 4. prefKeys.getShowBatchIssuanceCounter() returns true.
      *
-     * Case 2 Expected Result: DocumentDetailsInteractorPartialState.Success state, with a PID
-     * document item and document credentials info is returned.
+     * Case 2 Expected Result:
+     * DocumentDetailsInteractorPartialState.Success state, with
+     * a PID document item and document credentials info is returned.
      */
     @Test
     fun `Given Case 2, When getDocumentDetails is called, Then Case 2 Expected Result is returned`() {
@@ -376,13 +380,15 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 3: 1. walletCoreDocumentsController.getDocumentById() returns a PID document. 2.
-     * walletCoreDocumentsController.isDocumentBookmarked() returns true. 3.
-     * walletCoreDocumentsController.isDocumentLowOnCredentials() returns false. 4.
-     * prefKeys.getShowBatchIssuanceCounter() returns true.
+     * Case 3:
+     * 1. walletCoreDocumentsController.getDocumentById() returns a PID document.
+     * 2. walletCoreDocumentsController.isDocumentBookmarked() returns true.
+     * 3. walletCoreDocumentsController.isDocumentLowOnCredentials() returns false.
+     * 4. prefKeys.getShowBatchIssuanceCounter() returns true.
      *
-     * Case 3 Expected Result: DocumentDetailsInteractorPartialState.Success state, with a PID
-     * document item and documentIsBookmarked is true and document credentials info is returned.
+     * Case 3 Expected Result:
+     * DocumentDetailsInteractorPartialState.Success state, with a PID document item and
+     * documentIsBookmarked is true and document credentials info is returned.
      */
     @Test
     fun `Given Case 3, When getDocumentDetails is called, Then Case 3 Expected Result is returned`() {
@@ -424,13 +430,15 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 4: 1. walletCoreDocumentsController.getDocumentById() returns an mDL document. 2.
-     * walletCoreDocumentsController.isDocumentBookmarked() returns false. 3.
-     * walletCoreDocumentsController.isDocumentLowOnCredentials() returns false. 4.
-     * prefKeys.getShowBatchIssuanceCounter() returns true.
+     * Case 4:
+     * 1. walletCoreDocumentsController.getDocumentById() returns an mDL document.
+     * 2. walletCoreDocumentsController.isDocumentBookmarked() returns false.
+     * 3. walletCoreDocumentsController.isDocumentLowOnCredentials() returns false.
+     * 4. prefKeys.getShowBatchIssuanceCounter() returns true.
      *
-     * Case 4 Expected Result: DocumentDetailsInteractorPartialState.Success state, with an mDL
-     * document item and documentIsBookmarked is false and document credentials info is returned.
+     * Case 4 Expected Result:
+     * DocumentDetailsInteractorPartialState.Success state, with an mDL document item and
+     * documentIsBookmarked is false and document credentials info is returned.
      */
     @Test
     fun `Given Case 4, When getDocumentDetails is called, Then Case 4 Expected Result is returned`() {
@@ -472,10 +480,12 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 5: 1. walletCoreDocumentsController.getDocumentById() returns null.
+     * Case 5:
+     * 1. walletCoreDocumentsController.getDocumentById() returns null.
      *
-     * Case 5 Expected Result: DocumentDetailsInteractorPartialState.Failed state, with the generic
-     * error message.
+     * Case 5 Expected Result:
+     * DocumentDetailsInteractorPartialState.Failed state,
+     * with the generic error message.
      */
     @Test
     fun `Given Case 5, When getDocumentDetails is called, Then Case 5 Expected Result is returned`() {
@@ -497,14 +507,18 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 6: 1. walletCoreDocumentsController.getDocumentById() returns a PID document, with: no
-     * expiration date, no image, and no user name. 2.
-     * walletCoreDocumentsController.isDocumentBookmarked() returns false. 3.
-     * walletCoreDocumentsController.isDocumentLowOnCredentials() returns false. 4.
-     * prefKeys.getShowBatchIssuanceCounter() returns true.
+     * Case 6:
+     * 1. walletCoreDocumentsController.getDocumentById() returns a PID document, with:
+     * no expiration date,
+     * no image, and
+     * no user name.
+     * 2. walletCoreDocumentsController.isDocumentBookmarked() returns false.
+     * 3. walletCoreDocumentsController.isDocumentLowOnCredentials() returns false.
+     * 4. prefKeys.getShowBatchIssuanceCounter() returns true.
      *
-     * Case 6 Expected Result: DocumentDetailsInteractorPartialState.Success state, with a PID
-     * document item, with: documentIsBookmarked is false and document credentials info is returned.
+     * Case 6 Expected Result:
+     * DocumentDetailsInteractorPartialState.Success state, with a PID document item, with:
+     * documentIsBookmarked is false and document credentials info is returned.
      */
     @Test
     fun `Given Case 6, When getDocumentDetails is called, Then Case 6 Expected Result is returned`() {
@@ -579,11 +593,12 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 7: 1. walletCoreDocumentsController.getDocumentById() throws an exception with a
-     * message.
+     * Case 7:
+     * 1. walletCoreDocumentsController.getDocumentById() throws an exception with a message.
      *
-     * Case 7 Expected Result: DocumentDetailsInteractorPartialState.Failed state, with the
-     * exception's localized message.
+     * Case 7 Expected Result:
+     * DocumentDetailsInteractorPartialState.Failed state,
+     * with the exception's localized message.
      */
     @Test
     fun `Given Case 7, When getDocumentDetails is called, Then Case 7 Expected Result is returned`() {
@@ -606,11 +621,12 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 8: 1. walletCoreDocumentsController.getDocumentById() throws an exception with no
-     * message.
+     * Case 8:
+     * 1. walletCoreDocumentsController.getDocumentById() throws an exception with no message.
      *
-     * Case 8 Expected Result: DocumentDetailsInteractorPartialState.Failed state, with the generic
-     * error message.
+     * Case 8 Expected Result:
+     * DocumentDetailsInteractorPartialState.Failed state,
+     * with the generic error message.
      */
     @Test
     fun `Given Case 8, When getDocumentDetails is called, Then Case 8 Expected Result is returned`() {
@@ -633,9 +649,10 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 9: Same as Case 1 but with wasIssuerDetailsExpanded = true →
-     * IssuerDetailsCardDataUi.isExpanded is true (covers the non-null branch of
-     * `wasIssuerDetailsExpanded ?: false`). prefKeys.getShowBatchIssuanceCounter() returns true.
+     * Case 9:
+     * Same as Case 1 but with wasIssuerDetailsExpanded = true → IssuerDetailsCardDataUi.isExpanded
+     * is true (covers the non-null branch of `wasIssuerDetailsExpanded ?: false`).
+     * prefKeys.getShowBatchIssuanceCounter() returns true.
      */
     @Test
     fun `Given Case 9, When getDocumentDetails is called with wasIssuerDetailsExpanded=true, Then issuerDetails#isExpanded is true`() {
@@ -660,8 +677,9 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 10: prefKeys.getShowBatchIssuanceCounter() returns true. isDocumentRevoked returns true
-     * → IssuerDetailsCardDataUi.documentState is Revoked.
+     * Case 10:
+     * prefKeys.getShowBatchIssuanceCounter() returns true.
+     * isDocumentRevoked returns true → IssuerDetailsCardDataUi.documentState is Revoked.
      */
     @Test
     fun `Given Case 10, When getDocumentDetails is called for a revoked document, Then DocumentState is Revoked`() {
@@ -689,7 +707,10 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 11: prefKeys.getShowBatchIssuanceCounter() returns false. Case 11 Expected Result:
+     * Case 11:
+     * prefKeys.getShowBatchIssuanceCounter() returns false.
+     *
+     * Case 11 Expected Result:
      * DocumentDetailsInteractorPartialState.Success state, with document credentials info hidden.
      */
     @Test
@@ -742,9 +763,10 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 1:
      *
-     * 1. A documentId and document is PID. 2. walletCoreDocumentsController.getAllDocuments()
-     * returns 1 Document and it is PID. 3. walletCoreDocumentsController.getDocumentById returns
-     * that PID Document. 4. walletCoreDocumentsController.deleteAllDocuments() returns Failed.
+     * 1. A documentId and document is PID.
+     * 2. walletCoreDocumentsController.getAllDocuments() returns 1 Document and it is PID.
+     * 3. walletCoreDocumentsController.getDocumentById returns that PID Document.
+     * 4. walletCoreDocumentsController.deleteAllDocuments() returns Failed.
      */
     @Test
     fun `Given Case 1, When deleteDocument is called, Then it returns Failure with failure's error message`() {
@@ -780,9 +802,10 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 2:
      *
-     * 1. A documentId and document is PID. 2. walletCoreDocumentsController.getAllDocuments()
-     * returns 1 Document and it is PID. 3. walletCoreDocumentsController.getDocumentById returns
-     * that PID Document. 4. walletCoreDocumentsController.deleteAllDocuments() returns Success.
+     * 1. A documentId and document is PID.
+     * 2. walletCoreDocumentsController.getAllDocuments() returns 1 Document and it is PID.
+     * 3. walletCoreDocumentsController.getDocumentById returns that PID Document.
+     * 4. walletCoreDocumentsController.deleteAllDocuments() returns Success.
      */
     @Test
     fun `Given Case 2, When deleteDocument is called, Then it returns AllDocumentsDeleted`() {
@@ -812,9 +835,10 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 3:
      *
-     * 1. A documentId and document is PID. 2. walletCoreDocumentsController.getAllDocuments()
-     * returns more than 1 PIDs 3. walletCoreDocumentsController.getDocumentById returns the oldest
-     * Document. 4. walletCoreDocumentsController.deleteAllDocuments() returns Success.
+     * 1. A documentId and document is PID.
+     * 2. walletCoreDocumentsController.getAllDocuments() returns more than 1 PIDs
+     * 3. walletCoreDocumentsController.getDocumentById returns the oldest Document.
+     * 4. walletCoreDocumentsController.deleteAllDocuments() returns Success.
      */
     @Test
     fun `Given Case 3, When deleteDocument is called, Then it returns AllDocumentsDeleted`() {
@@ -849,9 +873,10 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 4:
      *
-     * 1. A documentId and document is PID. 2.
-     * walletCoreDocumentsController.getAllDocuments(documentIdentifier: DocumentIdentifier) returns
-     * more than 1 PIDs AND the documentId we are about to delete is NOT the one of the oldest PID.
+     * 1. A documentId and document is PID.
+     * 2. walletCoreDocumentsController.getAllDocuments(documentIdentifier: DocumentIdentifier)
+     *    returns more than 1 PIDs
+     *      AND the documentId we are about to delete is NOT the one of the oldest PID.
      * 3. walletCoreDocumentsController.deleteDocument() returns Success.
      */
     @Test
@@ -883,8 +908,8 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 5:
      *
-     * 1. A documentId and document is mDL. 2. walletCoreDocumentsController.deleteDocument()
-     * returns Failed.
+     * 1. A documentId and document is mDL.
+     * 2. walletCoreDocumentsController.deleteDocument() returns Failed.
      */
     @Test
     fun `Given Case 5, When deleteDocument is called, Then it returns Failure with failure's error message`() {
@@ -911,8 +936,8 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 6:
      *
-     * 1. A documentId and document is mDL. 2. walletCoreDocumentsController.deleteDocument()
-     * returns Success.
+     * 1. A documentId and document is mDL.
+     * 2. walletCoreDocumentsController.deleteDocument() returns Success.
      */
     @Test
     fun `Given Case 6, When deleteDocument is called, Then it returns SingleDocumentDeleted`() {
@@ -933,8 +958,8 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 7:
      *
-     * 1. A documentId and document is mDL. 2. walletCoreDocumentsController.deleteDocument() throws
-     * an exception with a message.
+     * 1. A documentId and document is mDL.
+     * 2. walletCoreDocumentsController.deleteDocument() throws an exception with a message.
      */
     @Test
     fun `Given Case 7, When deleteDocument is called, Then it returns Failure with the exception's localized message`() {
@@ -958,8 +983,8 @@ class TestDocumentDetailsInteractor {
     /**
      * Case 8:
      *
-     * 1. A documentId and document is mDL. 2. walletCoreDocumentsController.deleteDocument() throws
-     * an exception with no message.
+     * 1. A documentId and document is mDL.
+     * 2. walletCoreDocumentsController.deleteDocument() throws an exception with no message.
      */
     @Test
     fun `Given Case 8, When deleteDocument is called, Then it returns Failure with the generic error message`() {
@@ -981,8 +1006,9 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 9 (deleteDocument): forcePidActivation=false → shouldDeleteAllDocuments=false
-     * (short-circuit on `&&`) → deleteDocument single-document path.
+     * Case 9 (deleteDocument):
+     * forcePidActivation=false → shouldDeleteAllDocuments=false (short-circuit on `&&`)
+     * → deleteDocument single-document path.
      */
     @Test
     fun `Given Case 9, When deleteDocument is called with forcePidActivation false, Then SingleDocumentDeleted is returned`() {
@@ -1002,9 +1028,9 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 10 (deleteDocument): The fetched document is non-PID (e.g., mDL) →
-     * shouldDeleteAllDocuments=false (short-circuit on docIdentifier check) → deleteDocument
-     * single-document path.
+     * Case 10 (deleteDocument):
+     * The fetched document is non-PID (e.g., mDL) → shouldDeleteAllDocuments=false
+     * (short-circuit on docIdentifier check) → deleteDocument single-document path.
      */
     @Test
     fun `Given Case 10, When deleteDocument is called for a non-PID document, Then SingleDocumentDeleted is returned`() {
@@ -1023,9 +1049,10 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 11 (deleteDocument): The document is an SdJwt PID → the `docType` resolution falls
-     * through the `(format as? MsoMdocFormat)?.docType ?: (format as? SdJwtVcFormat)?.vct` chain to
-     * the SdJwt branch (line 598). With forcePidActivation=true and one SdJwt PID, the
+     * Case 11 (deleteDocument):
+     * The document is an SdJwt PID → the `docType` resolution falls through the
+     * `(format as? MsoMdocFormat)?.docType ?: (format as? SdJwtVcFormat)?.vct` chain to the
+     * SdJwt branch (line 598). With forcePidActivation=true and one SdJwt PID, the
      * shouldDeleteAllDocuments branch returns true → deleteAllDocuments path.
      */
     @Test
@@ -1047,9 +1074,10 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 12 (deleteDocument): Multiple PID documents exist; the document being deleted is NOT the
-     * main PID (allPidDocuments.count > 1 AND getMainPidDocument().id != documentId). →
-     * shouldDeleteAllDocuments evaluates false → single-document delete path.
+     * Case 12 (deleteDocument):
+     * Multiple PID documents exist; the document being deleted is NOT the main PID
+     * (allPidDocuments.count > 1 AND getMainPidDocument().id != documentId).
+     * → shouldDeleteAllDocuments evaluates false → single-document delete path.
      */
     @Test
     fun `Given Case 12, When deleteDocument is called for a non-main PID with multiple PIDs, Then SingleDocumentDeleted is returned`() {
@@ -1071,8 +1099,9 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 13 (deleteDocument): forcePidActivation=true, doc is PID, allPidDocuments has exactly 1
-     * entry → the `if (allPidDocuments.count() > 1)` false branch runs → `else true` returns true →
+     * Case 13 (deleteDocument):
+     * forcePidActivation=true, doc is PID, allPidDocuments has exactly 1 entry → the
+     * `if (allPidDocuments.count() > 1)` false branch runs → `else true` returns true →
      * shouldDeleteAllDocuments=true → deleteAllDocuments path with single PID present.
      */
     @Test
@@ -1093,9 +1122,10 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 15 (deleteDocument): Multiple PIDs exist but getMainPidDocument returns null → the
-     * `?.id` safe-call returns null → `null == documentId` is false →
-     * shouldDeleteAllDocuments=false → SingleDocumentDeleted.
+     * Case 15 (deleteDocument):
+     * Multiple PIDs exist but getMainPidDocument returns null → the `?.id` safe-call returns
+     * null → `null == documentId` is false → shouldDeleteAllDocuments=false →
+     * SingleDocumentDeleted.
      */
     @Test
     fun `Given Case 15, When deleteDocument is called and getMainPidDocument returns null, Then SingleDocumentDeleted is returned`() {
@@ -1117,10 +1147,10 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 14 (deleteDocument): forcePidActivation=true, doc is PID, multiple PIDs exist, AND
-     * getMainPidDocument().id matches the documentId being deleted → the inner
-     * `getMainPidDocument()?.id == documentId` branch evaluates true →
-     * shouldDeleteAllDocuments=true → deleteAllDocuments path.
+     * Case 14 (deleteDocument):
+     * forcePidActivation=true, doc is PID, multiple PIDs exist, AND getMainPidDocument().id
+     * matches the documentId being deleted → the inner `getMainPidDocument()?.id == documentId`
+     * branch evaluates true → shouldDeleteAllDocuments=true → deleteAllDocuments path.
      */
     @Test
     fun `Given Case 14, When deleteDocument is called for the main PID with multiple PIDs, Then AllDocumentsDeleted is returned`() {
@@ -1142,9 +1172,12 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 1: 1. A valid bookmarkId is provided. 2. walletCoreDocumentsController.storeBookmark()
-     * succeeds. Expected result: DocumentDetailsInteractorStoreBookmarkPartialState.Success state
-     * is returned with the bookmarkId.
+     * Case 1:
+     * 1. A valid bookmarkId is provided.
+     * 2. walletCoreDocumentsController.storeBookmark() succeeds.
+     * Expected result:
+     * DocumentDetailsInteractorStoreBookmarkPartialState.Success state is returned with the
+     * bookmarkId.
      */
     @Test
     fun `Given Case 1, When storeBookmark is called, Then the expected result is returned`() {
@@ -1163,9 +1196,11 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 2: 1. A valid bookmarkId is provided. 2. When
-     * walletCoreDocumentsController.storeBookmark() is called, an exception is thrown. Expected
-     * result: DocumentDetailsInteractorStoreBookmarkPartialState.Failure state is returned.
+     * Case 2:
+     * 1. A valid bookmarkId is provided.
+     * 2. When walletCoreDocumentsController.storeBookmark() is called, an exception is thrown.
+     * Expected result:
+     * DocumentDetailsInteractorStoreBookmarkPartialState.Failure state is returned.
      */
     @Test
     fun `Given Case 2, When storeBookmark is called, Then the expected result is returned`() {
@@ -1185,9 +1220,11 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 1: 1. A valid bookmarkId is provided. 2. walletCoreDocumentsController.deleteBookmark()
-     * succeeds. Expected result: DocumentDetailsInteractorDeleteBookmarkPartialState.Success state
-     * is returned.
+     * Case 1:
+     * 1. A valid bookmarkId is provided.
+     * 2. walletCoreDocumentsController.deleteBookmark() succeeds.
+     * Expected result:
+     * DocumentDetailsInteractorDeleteBookmarkPartialState.Success state is returned.
      */
     @Test
     fun `Given Case 1, When deleteBookmark is called, Then the expected result is returned`() {
@@ -1204,9 +1241,11 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * Case 2: 1. A valid bookmarkId is provided for the bookmark to be deleted. 2. When
-     * walletCoreDocumentsController.deleteBookmark() is called, an exception is thrown. Expected
-     * result: DocumentDetailsInteractorDeleteBookmarkPartialState.Failure state is returned.
+     * Case 2:
+     * 1. A valid bookmarkId is provided for the bookmark to be deleted.
+     * 2. When walletCoreDocumentsController.deleteBookmark() is called, an exception is thrown.
+     * Expected result:
+     * DocumentDetailsInteractorDeleteBookmarkPartialState.Failure state is returned.
      */
     @Test
     fun `Given Case 2, When deleteBookmark is called, Then the expected result is returned`() {
@@ -1623,8 +1662,8 @@ class TestDocumentDetailsInteractor {
     }
 
     /**
-     * The pre-flight refuses before anything starts, so the original document is intact when this
-     * arrives; the reason travels through unchanged.
+     * The pre-flight refuses before anything starts, so the original document is intact
+     * when this arrives; the reason travels through unchanged.
      */
     @Test
     fun `Given controller emits IssuerNotTrusted for the registration certificate, When reIssueDocument is called, Then IssuerNotTrusted with that reason is emitted`() {

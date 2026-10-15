@@ -156,9 +156,11 @@ class TestSettingsInteractor {
     }
 
     /**
+     * Assertions:
      * 1. Size = 4 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS + RESET_WALLET)
-     *
+     * 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
      * 3. Second item: REGISTRATION_CHECK
+     * 4. Third item: RETRIEVE_LOGS
      */
     @Test
     fun `Given no Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then four SettingsItemUi entries are returned`() =
@@ -177,9 +179,6 @@ class TestSettingsInteractor {
 
             assertEquals(4, settingsItems.size)
 
-            /**
-             * 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
-             */
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
@@ -188,9 +187,6 @@ class TestSettingsInteractor {
                 isChecked = mockedRegistrationCheckEnabled,
             )
 
-            /**
-             * 4. Third item: RETRIEVE_LOGS
-             */
             val thirdItem = settingsItems[2]
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, thirdItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, thirdItem.data.itemId)
@@ -229,10 +225,13 @@ class TestSettingsInteractor {
         }
 
     /**
-     * 1. Size = 5 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS + CHANGELOG +
-     * RESET_WALLET)
-     *
+     * Assertions:
+     * 1. Size = 5 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS +
+     * CHANGELOG + RESET_WALLET)
+     * 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
      * 3. Second item: REGISTRATION_CHECK
+     * 4. Third item: RETRIEVE_LOGS
+     * 5. Fourth item: CHANGELOG
      */
     @Test
     fun `Given a Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then five SettingsItemUi entries are returned`() =
@@ -253,9 +252,6 @@ class TestSettingsInteractor {
 
             assertEquals(5, settingsItems.size)
 
-            /**
-             * 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
-             */
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
@@ -264,9 +260,6 @@ class TestSettingsInteractor {
                 isChecked = mockedRegistrationCheckEnabled,
             )
 
-            /**
-             * 4. Third item: RETRIEVE_LOGS
-             */
             val thirdItem = settingsItems[2]
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, thirdItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, thirdItem.data.itemId)
@@ -280,9 +273,6 @@ class TestSettingsInteractor {
                 thirdItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
             assertEquals(AppIcons.KeyboardArrowRight, trailingIcon3.iconData)
 
-            /**
-             * 5. Fourth item: CHANGELOG
-             */
             val fourthItem = settingsItems[3]
             assertEquals(SettingsMenuItemType.CHANGELOG, fourthItem.type)
             assertEquals(SettingsMenuItemType.CHANGELOG.itemId, fourthItem.data.itemId)

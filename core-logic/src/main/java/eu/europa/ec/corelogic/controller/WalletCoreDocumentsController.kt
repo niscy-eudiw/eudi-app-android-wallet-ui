@@ -400,14 +400,14 @@ class WalletCoreDocumentsControllerImpl(
         }
     }
 
+    /**
+     * Every issuer is resolved on its own: one unreachable, malformed or untrusted issuer must not
+     * hide the documents offered by the others.
+     */
     override suspend fun getScopedDocuments(locale: Locale): FetchScopedDocumentsPartialState {
         return withContext(dispatcher) {
             runCatching {
 
-                /**
-                 * every issuer is resolved on its own: one unreachable, malformed or untrusted
-                 * issuer must not hide the documents offered by the others
-                 */
                 val metadataPerIssuer: Map<VciConfig, GetIssuerMetadataPartialState> =
                     openId4VciManagers.mapValues { (vciConfig, manager) ->
                         getIssuerMetadata(
@@ -610,6 +610,11 @@ class WalletCoreDocumentsControllerImpl(
         IssueDocumentsPartialState.Failure(errorMessage = documentErrorMessage)
     }
 
+    /**
+     * A successful re-issue makes Wallet Core delete the original document, so the registration
+     * outcome is checked before anything starts. In that way, a refusal leaves the original
+     * document intact.
+     */
     override fun reIssueDocument(
         documentId: DocumentId,
         issuerId: String,
@@ -622,11 +627,6 @@ class WalletCoreDocumentsControllerImpl(
             errorMessage = documentErrorMessage
         ).getOrThrow()
 
-        /**
-         * a successful re-issue makes Wallet Core delete the original document, so the registration
-         * outcome is checked before anything starts in that way, a refusal here leaves the original
-         * document intact
-         */
         val preflightRefusal = reIssueBlockedRefusalOrNull(documentId)
             ?: preflightRegistrationRefusalOrNull(
                 resolveRegistration = {
@@ -778,6 +778,10 @@ class WalletCoreDocumentsControllerImpl(
             )
         }
 
+    /**
+     * With the registration check off, Core evaluates nothing, so the check's outcome is consulted
+     * only while it is on; otherwise every offer would be refused for lack of an outcome.
+     */
     override fun resolveDocumentOffer(offerUri: String): Flow<ResolveDocumentOfferPartialState> =
         callbackFlow {
 
@@ -827,10 +831,6 @@ class WalletCoreDocumentsControllerImpl(
                         val issuerRegistration = result.offer.issuerRegistration
                             .toIssuerRegistrationDomain(locale = resourceProvider.getLocale())
 
-                        /**
-                         * with the check off Core evaluates nothing, so every offer would otherwise
-                         * refuse for lack of an outcome
-                         */
                         val registrationRefused = walletCoreConfig.isRegistrationCheckEnabled &&
                                 issuerRegistration.isBlockedForIssuance
 
@@ -1138,6 +1138,10 @@ class WalletCoreDocumentsControllerImpl(
     override suspend fun hasReIssuanceFailed(documentId: DocumentId): Boolean =
         failedReIssuedDocumentDao.retrieve(documentId) != null
 
+    /**
+     * Wallet-initiated issuance has no approval screen, so the registration outcome is checked
+     * before the flow starts: a refusal opens no browser and stores nothing.
+     */
     private fun issueDocumentsWithOpenId4VCI(
         configIds: List<String>,
         issuerId: String,
@@ -1150,10 +1154,6 @@ class WalletCoreDocumentsControllerImpl(
                 errorMessage = documentErrorMessage
             ).getOrThrow()
 
-            /**
-             * wallet-initiated issuance has no approval screen, so the registration outcome is
-             * checked before the flow starts — a refusal here opens no browser and stores nothing
-             */
             val preflightRefusal = preflightRegistrationRefusalOrNull(
                 resolveRegistration = {
                     manager.resolveIssuerRegistration(
@@ -1190,9 +1190,9 @@ class WalletCoreDocumentsControllerImpl(
      * start atomically ([CoroutineStart.ATOMIC]), so a cancellation right after an event cannot
      * skip them.
      *
-     * TODO: Revisit this once Core adds support. event.issuedDocuments folds in deferred ids too —
-     * the Core emits Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted outcome
-     * is decided on the locally tracked *actually issued* documents. Otherwise a batch of "one
+     * `event.issuedDocuments` folds in deferred ids too — the Core emits
+     * Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted outcome is decided on
+     * the locally tracked *actually issued* documents. Otherwise a batch of "one
      * untrusted + one deferred from the same issuer" would be treated as a partial success and
      * navigate the user on the success screen with a deferred (un-issued) id instead of the
      * "Issuance blocked" sheet.
@@ -1276,7 +1276,7 @@ class WalletCoreDocumentsControllerImpl(
                             }
 
                         val keyUnlockData =
-                            keyUnlockDataMap.values.first()
+                            keyUnlockDataMap.values.first() //TODO: Revisit this once Core adds support.
 
                         val cryptoObject = keyUnlockData?.getCryptoObjectForSigning()
 
@@ -1394,9 +1394,8 @@ class WalletCoreDocumentsControllerImpl(
     /**
      * Registration check for a flow with no approval screen, run before it starts. Returns the
      * terminal state refusing or failing the flow, or null to proceed — always null while the
-     * check is off, which also skips the resolve itself.
-     *
-     * no registration certificate published; refuse like any unverified outcome
+     * check is off, which also skips the resolve itself. An issuer that publishes no registration
+     * certificate is refused like any unverified outcome.
      */
     private suspend fun preflightRegistrationRefusalOrNull(
         resolveRegistration: suspend () -> Result<RegistrationCertificateResult>,

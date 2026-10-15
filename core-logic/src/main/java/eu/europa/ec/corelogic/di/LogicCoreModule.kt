@@ -158,10 +158,8 @@ fun provideWalletCoreLogController(
     logLevel = walletCoreConfig.config.logLevel,
 )
 
-/**
- * Single, not a factory: the controller owns the queue that keeps transaction writes in order, so a
- * second instance would be a second queue writing the same rows.
- */
+// Single, not a factory: the controller owns the queue that keeps transaction writes in order, so
+// a second instance would be a second queue writing the same rows.
 @Single
 fun provideWalletCoreTransactionLogController(
     transactionLogDao: TransactionLogDao,

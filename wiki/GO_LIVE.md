@@ -2043,7 +2043,7 @@ The app has:
   clients are not covered; see [Diagnostic logging](#diagnostic-logging).
 * Wallet Core logging routed through `WalletCoreLogController`, which drops records above
   `EudiWalletConfig.logLevel`.
-* File logging through `LogControllerImpl`, in debug builds only (`LogController.writesLogFile`,
+* File logging through `LogControllerImpl`, in debug builds only (`LogController.shouldWriteLogFile`,
   set from the build type in `provideLogController`). A release build writes no log file, deletes
   files an earlier build left, and Settings offers no "Retrieve logs".
 * Transaction logging through `WalletCoreTransactionLogControllerImpl`.
