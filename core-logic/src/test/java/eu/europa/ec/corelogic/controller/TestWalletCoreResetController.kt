@@ -65,6 +65,7 @@ class TestWalletCoreResetController {
     private val resetStatus = WalletResetStatus()
 
     private val registration = object : WalletCoreDCAPIRegistrationController {
+        override val excludedDocumentIds: Set<String> = emptySet()
         override fun attach(createRegistration: () -> DCAPIRegistration) {}
         override suspend fun registerCredentials() {}
         override suspend fun unregisterCredentials() {}
