@@ -22,8 +22,11 @@ import eu.europa.ec.businesslogic.controller.crypto.CryptoController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
+import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
+import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
+import eu.europa.ec.storagelogic.service.DatabaseEraser
 import eu.europa.ec.storagelogic.service.DatabaseService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -38,6 +41,11 @@ import org.koin.core.annotation.Single
 @ComponentScan("eu.europa.ec.storagelogic")
 class LogicStorageModule
 
+/**
+ * Opens the database with the key kept in the preferences. Without a stored key, an existing
+ * database file was written with a key that is gone, for example because the preferences were lost,
+ * and cannot be opened; it is deleted before a new key is created.
+ */
 @Single
 fun provideAppDatabase(
     context: Context,
@@ -47,18 +55,23 @@ fun provideAppDatabase(
     System.loadLibrary("sqlcipher")
     val key = runBlocking(Dispatchers.IO) {
         prefKeys.getDbKey() ?: cryptoController.createRandomKey(context).also {
+            context.deleteDatabase(DatabaseService.DATABASE_NAME)
             prefKeys.setDbKey(it)
         }
     }
     return Room.databaseBuilder(
         context,
         DatabaseService::class.java,
-        "eudi.app.wallet.storage"
+        DatabaseService.DATABASE_NAME
     )
         .openHelperFactory(SupportOpenHelperFactory(key))
         .fallbackToDestructiveMigration(true)
         .build()
 }
+
+@Single
+fun provideDatabaseEraser(service: DatabaseService): DatabaseEraser =
+    DatabaseEraser(service)
 
 @Single
 fun provideBookmarkDao(service: DatabaseService): BookmarkDao = service.bookmarkDao()
@@ -74,3 +87,11 @@ fun provideTransactionLogDao(service: DatabaseService): TransactionLogDao =
 @Single
 fun provideFailedReIssuedDocumentDao(service: DatabaseService): FailedReIssuedDocumentDao =
     service.failedReIssuedDocumentDao()
+
+@Single
+fun provideIssuerTrustDao(service: DatabaseService): IssuerTrustDao =
+    service.issuerTrustDao()
+
+@Single
+fun provideStatusRefreshFailureDao(service: DatabaseService): StatusRefreshFailureDao =
+    service.statusRefreshFailureDao()

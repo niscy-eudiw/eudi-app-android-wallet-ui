@@ -23,7 +23,7 @@ import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.ui.loading.Effect
 import eu.europa.ec.commonfeature.ui.loading.Event
 import eu.europa.ec.commonfeature.ui.loading.LoadingViewModel
-import eu.europa.ec.corelogic.model.AuthenticationData
+import eu.europa.ec.corelogic.model.AuthenticationDataDomain
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendRequestedDocumentPartialState
@@ -181,7 +181,7 @@ class PresentationLoadingViewModel(
     private fun openAuthenticationPrompt(
         context: Context,
         popEffect: Effect,
-        authenticationDataList: List<AuthenticationData>,
+        authenticationDataList: List<AuthenticationDataDomain>,
         sendRequestedDocumentsAction: () -> Unit,
         index: Int = 0,
     ) {

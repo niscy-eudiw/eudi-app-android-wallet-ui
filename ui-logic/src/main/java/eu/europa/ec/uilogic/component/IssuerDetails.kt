@@ -62,12 +62,21 @@ import java.net.URI
  * @property documentState The current state of the document (e.g., Issued or Revoked),
  * containing relevant dates.
  * @property isExpanded Boolean flag indicating whether the card is currently in its expanded state.
+ * @property isIssuerVerified True only when Wallet Core found the issuer trusted when the document
+ * was issued.
+ * @property hasStatusRefreshFailed True when the last attempt to refresh the document's status failed,
+ * so the state shown is the one from the last successful check.
+ * @property hasReIssuanceFailed True when the wallet's last automatic re-issuance of the document
+ * failed, so the user may need to re-issue it by hand.
  */
 data class IssuerDetailsCardDataUi(
     val issuerName: String?,
     val issuerLogo: URI?,
     val documentState: DocumentState,
     val isExpanded: Boolean,
+    val isIssuerVerified: Boolean,
+    val hasStatusRefreshFailed: Boolean,
+    val hasReIssuanceFailed: Boolean,
 ) {
     sealed class DocumentState {
         data class Issued(
@@ -81,7 +90,27 @@ data class IssuerDetailsCardDataUi(
         ) : DocumentState()
 
         data object Revoked : DocumentState()
+
+        /** Blocked because the issuer suspended it; unlike [Revoked], the issuer can lift it. */
+        data object Suspended : DocumentState()
     }
+
+    /**
+     * The string resource ID for the line saying whether the issuer was verified.
+     */
+    val issuerVerificationTextResId: Int
+        @StringRes
+        get() = if (isIssuerVerified) {
+            R.string.document_details_issuer_card_issuer_verified_text
+        } else {
+            R.string.document_details_issuer_card_issuer_not_verified_text
+        }
+
+    /**
+     * The colour of the line saying whether the issuer was verified.
+     */
+    val issuerVerificationTextColorKey: ThemeColorKey
+        get() = if (isIssuerVerified) ThemeColorKey.Success else ThemeColorKey.Warning
 
     /**
      * The string resource ID for the message text displayed when the card is expanded.
@@ -102,6 +131,10 @@ data class IssuerDetailsCardDataUi(
                 is DocumentState.Revoked -> {
                     R.string.document_details_issuer_card_revoked_message_text
                 }
+
+                is DocumentState.Suspended -> {
+                    R.string.document_details_issuer_card_suspended_message_text
+                }
             }
         }
 
@@ -121,7 +154,8 @@ data class IssuerDetailsCardDataUi(
                     R.string.document_details_issuer_card_expired_action_btn_text
                 }
 
-                is DocumentState.Revoked -> {
+                is DocumentState.Revoked,
+                is DocumentState.Suspended -> {
                     null
                 }
             }
@@ -230,6 +264,13 @@ fun IssuerDetailsCard(
                                 textColorKey = ThemeColorKey.Error,
                             )
                         }
+
+                        is IssuerDetailsCardDataUi.DocumentState.Suspended -> {
+                            ListItemSupportingContentDataUi.Text(
+                                text = stringResource(R.string.document_details_issuer_card_suspended_text),
+                                textColorKey = ThemeColorKey.Error,
+                            )
+                        }
                     }
 
                 WrapListItem(
@@ -240,6 +281,7 @@ fun IssuerDetailsCard(
                             text = data.issuerName
                                 ?: stringResource(R.string.document_details_issuer_card_unknown_issuer)
                         ),
+                        overlineText = stringResource(data.issuerVerificationTextResId),
                         supportingContentData = supportingContentData,
                         leadingContentData = leadingContent,
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
@@ -253,6 +295,11 @@ fun IssuerDetailsCard(
                     },
                     mainContentVerticalPadding = SPACING_MEDIUM.dp,
                     colors = colors,
+                    overlineTextStyle = {
+                        MaterialTheme.typography.labelMedium.copy(
+                            color = data.issuerVerificationTextColorKey.toColor()
+                        )
+                    },
                 )
             },
             cardExpandedContent = {
@@ -285,6 +332,33 @@ private fun IssuerDetailsCardExpanded(
         verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
         horizontalAlignment = Alignment.Start
     ) {
+        if (data.showsExpandedContentOnly) {
+            Text(
+                text = stringResource(data.issuerVerificationTextResId),
+                modifier = Modifier.fillMaxWidth(),
+                color = data.issuerVerificationTextColorKey.toColor(),
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+
+        if (data.hasStatusRefreshFailed) {
+            Text(
+                text = stringResource(R.string.document_details_issuer_card_status_refresh_failed_text),
+                modifier = Modifier.fillMaxWidth(),
+                color = ThemeColorKey.Warning.toColor(),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        if (data.hasReIssuanceFailed) {
+            Text(
+                text = stringResource(R.string.document_details_issuer_card_reissuance_failed_text),
+                modifier = Modifier.fillMaxWidth(),
+                color = ThemeColorKey.Warning.toColor(),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         when (val docState = data.documentState) {
             is IssuerDetailsCardDataUi.DocumentState.Issued -> {
                 IssuedOnText(
@@ -300,7 +374,8 @@ private fun IssuerDetailsCardExpanded(
                 )
             }
 
-            is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
+            is IssuerDetailsCardDataUi.DocumentState.Revoked,
+            is IssuerDetailsCardDataUi.DocumentState.Suspended -> {
                 // Nothing to show
             }
         }
@@ -383,42 +458,63 @@ private fun IssuerDetailsCardPreview() {
                 issuerLogo = null,
                 documentState = issuedState,
                 isExpanded = false,
+                isIssuerVerified = true,
+                hasStatusRefreshFailed = false,
+                hasReIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = issuedState,
                 isExpanded = true,
+                isIssuerVerified = true,
+                hasStatusRefreshFailed = true,
+                hasReIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = revokedState,
                 isExpanded = false,
+                isIssuerVerified = false,
+                hasStatusRefreshFailed = false,
+                hasReIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = revokedState,
                 isExpanded = true,
+                isIssuerVerified = false,
+                hasStatusRefreshFailed = false,
+                hasReIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = expiredState,
                 isExpanded = false,
+                isIssuerVerified = true,
+                hasStatusRefreshFailed = false,
+                hasReIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = issuerName,
                 issuerLogo = null,
                 documentState = expiredState,
                 isExpanded = true,
+                isIssuerVerified = true,
+                hasStatusRefreshFailed = false,
+                hasReIssuanceFailed = false,
             ),
             IssuerDetailsCardDataUi(
                 issuerName = null,
                 issuerLogo = null,
                 documentState = issuedNoNameNoExpiryState,
                 isExpanded = false,
+                isIssuerVerified = false,
+                hasStatusRefreshFailed = false,
+                hasReIssuanceFailed = false,
             )
         )
 

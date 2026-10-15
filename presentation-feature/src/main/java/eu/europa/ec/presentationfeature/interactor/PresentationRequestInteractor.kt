@@ -30,6 +30,7 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.corelogic.model.overaskedClaimsOrEmpty
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.uilogic.config.ConfigUILogic
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
@@ -61,6 +62,7 @@ class PresentationRequestInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val configUILogic: ConfigUILogic,
     walletCorePresentationController: WalletCorePresentationController? = null
 ) : PresentationRequestInteractor,
     ScopedPresentationInteractorDelegate(walletCorePresentationController) {
@@ -113,6 +115,7 @@ class PresentationRequestInteractorImpl(
                             combinationsDomain = combinationsDomain,
                             claimsAreSelectable = claimsAreSelectable,
                             overaskedClaims = response.relyingParty.registration.overaskedClaimsOrEmpty(),
+                            userImageClaimKeys = configUILogic.userImageClaimKeys,
                         ).getOrThrow()
                             .filter { it.documents.isNotEmpty() }
 

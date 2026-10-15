@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.wallet.dcapi.DCAPIProtocol
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
+import eu.europa.ec.eudi.wallet.logging.Logger
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationPolicy
 import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
@@ -57,6 +58,9 @@ internal class WalletCoreConfigImpl(
         get() {
             if (_config == null) {
                 _config = EudiWalletConfig {
+                    configureLogging(
+                        level = if (BuildConfig.DEBUG) Logger.LEVEL_DEBUG else Logger.LEVEL_INFO
+                    )
                     configureDocumentKeyCreation(
                         userAuthenticationRequired = false,
                         userAuthenticationTimeout = 30.seconds,
@@ -189,6 +193,7 @@ internal class WalletCoreConfigImpl(
             ),
             VciConfig(
                 issuerUrl = "https://issuer-backend.eudiw.dev",
+                logoOrigins = listOf("https://eudiw.dev"),
                 config = OpenId4VciManager.Config.Builder()
                     .withClientAuthenticationType(
                         OpenId4VciManager.ClientAuthenticationType.AttestationBased(

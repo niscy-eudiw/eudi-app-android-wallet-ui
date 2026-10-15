@@ -231,7 +231,9 @@ private fun getToolbarConfig(
                     text = stringResource(R.string.document_details_toolbar_action_reissue),
                     icon = null,
                     onClick = { onEventSend(Event.IssuerDetails.OnActionButtonClicked(context)) },
-                    enabled = !state.isLoading && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Revoked,
+                    enabled = !state.isLoading
+                            && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Revoked
+                            && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Suspended,
                     throttleClicks = true,
                 ),
                 ToolbarActionUi(
@@ -547,6 +549,9 @@ private fun DocumentDetailsScreenPreview() {
                     expirationDate = "22 March 2030"
                 ),
                 isExpanded = true,
+                isIssuerVerified = true,
+                hasStatusRefreshFailed = false,
+                hasReIssuanceFailed = false,
             ),
             documentCredentialsInfoUi = DocumentCredentialsInfoUi(
                 availableCredentials = availableCredentials,
