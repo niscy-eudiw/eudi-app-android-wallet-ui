@@ -87,23 +87,23 @@ class TestDashboardInteractor {
         verifyNoInteractions(walletWorkScheduler)
     }
 
-    //region getSideMenuOptions
-    // Case 1:
-    // 1. Side-menu labels are available.
-    // Case 1 Expected Result:
-    // Change PIN and Settings retain their order, followed by About EUDI Wallet.
+    /**
+     * Case 1: 1. Side-menu labels are available. Case 1 Expected Result: Change PIN and Settings
+     * retain their order, followed by About EUDI Wallet.
+     *
+     * Verify that getString was called exactly once per resource ID
+     */
     @Test
     fun `Given Case 1, When getSideMenuOptions is called, Then Case 1 Expected Result is returned`() {
-        // Given
         mockStringsNeededForGetSideMenuOptions(resourceProvider)
 
-        // When
         val sideMenuItems = interactor.getSideMenuOptions()
 
-        // Then
         assertEquals(3, sideMenuItems.size)
 
-        // 1. First item: CHANGE_PIN
+        /**
+         * 1. First item: CHANGE_PIN
+         */
         val firstItem = sideMenuItems[0]
         assertEquals(SideMenuTypeUi.CHANGE_PIN, firstItem.type)
         assertEquals(SideMenuTypeUi.CHANGE_PIN.itemId, firstItem.data.itemId)
@@ -114,7 +114,9 @@ class TestDashboardInteractor {
         val trailingIcon1 = firstItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
         assertEquals(AppIcons.KeyboardArrowRight, trailingIcon1.iconData)
 
-        // 2. Second item: SETTINGS
+        /**
+         * 2. Second item: SETTINGS
+         */
         val secondItem = sideMenuItems[1]
         assertEquals(SideMenuTypeUi.SETTINGS, secondItem.type)
         assertEquals(SideMenuTypeUi.SETTINGS.itemId, secondItem.data.itemId)
@@ -142,16 +144,13 @@ class TestDashboardInteractor {
             (aboutItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon).iconData,
         )
 
-        // Verify that getString was called exactly once per resource ID
         verify(resourceProvider, times(1))
             .getString(R.string.dashboard_side_menu_option_change_pin)
         verify(resourceProvider, times(1))
             .getString(R.string.dashboard_side_menu_option_settings)
         verify(resourceProvider, times(1)).getString(R.string.trust_mark_about_title)
     }
-    //endregion
 
-    //region Mock Calls
     private fun mockStringsNeededForGetSideMenuOptions(resourcesProvider: ResourceProvider) {
         mockResourceProviderStrings(
             resourcesProvider,
@@ -162,11 +161,8 @@ class TestDashboardInteractor {
             )
         )
     }
-    //endregion
 
-    //region Mocked objects needed for tests.
     private val changePinText = "Change PIN"
     private val settingsText = "Settings"
     private val mockedAboutText = "About EUDI Wallet"
-    //endregion
 }

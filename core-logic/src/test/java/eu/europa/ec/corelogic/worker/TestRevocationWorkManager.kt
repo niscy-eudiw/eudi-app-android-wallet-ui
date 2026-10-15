@@ -72,7 +72,7 @@ class TestRevocationWorkManager {
 
     @Mock
     private lateinit var walletCoreDCAPIRegistrationController:
-        WalletCoreDCAPIRegistrationController
+            WalletCoreDCAPIRegistrationController
 
     private lateinit var closeable: AutoCloseable
 
@@ -112,8 +112,12 @@ class TestRevocationWorkManager {
             givenStoredStatus(null)
             givenObservedStatus(Status.Invalid)
             whenever(revokedDocumentDao.retrieveAll())
-                .thenReturn(emptyList(), listOf(RevokedDocument(documentId, RevocationStatus.INVALID)))
-            whenever(walletCoreDCAPIRegistrationController.excludedDocumentIds).thenReturn(emptySet())
+                .thenReturn(
+                    emptyList(),
+                    listOf(RevokedDocument(documentId, RevocationStatus.INVALID)),
+                )
+            whenever(walletCoreDCAPIRegistrationController.excludedDocumentIds)
+                .thenReturn(emptySet())
 
             runWorker()
 
@@ -127,7 +131,10 @@ class TestRevocationWorkManager {
             givenStoredStatus(RevocationStatus.SUSPENDED)
             givenObservedStatus(Status.Valid)
             whenever(revokedDocumentDao.retrieveAll())
-                .thenReturn(listOf(RevokedDocument(documentId, RevocationStatus.SUSPENDED)), emptyList())
+                .thenReturn(
+                    listOf(RevokedDocument(documentId, RevocationStatus.SUSPENDED)),
+                    emptyList(),
+                )
             whenever(walletCoreDCAPIRegistrationController.excludedDocumentIds)
                 .thenReturn(setOf(documentId))
 

@@ -82,7 +82,9 @@ class SettingsInteractorImpl(
                         data = ListItemDataUi(
                             itemId = SettingsMenuItemType.BIOMETRICS_AUTHENTICATION.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = resourceProvider.getString(R.string.settings_screen_option_biometrics_authentication)
+                                text = resourceProvider.getString(
+                                    R.string.settings_screen_option_biometrics_authentication
+                                )
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.TouchId
@@ -104,7 +106,9 @@ class SettingsInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.settings_screen_option_show_batch_issuance_counter)
+                            text = resourceProvider.getString(
+                                R.string.settings_screen_option_show_batch_issuance_counter
+                            )
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.BatchIssuanceCounter
@@ -125,7 +129,9 @@ class SettingsInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SettingsMenuItemType.REGISTRATION_CHECK.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.settings_screen_option_registration_check)
+                            text = resourceProvider.getString(
+                                R.string.settings_screen_option_registration_check
+                            )
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.Verified
@@ -147,7 +153,9 @@ class SettingsInteractorImpl(
                         data = ListItemDataUi(
                             itemId = SettingsMenuItemType.DC_API.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = resourceProvider.getString(R.string.settings_screen_option_dc_api)
+                                text = resourceProvider.getString(
+                                    R.string.settings_screen_option_dc_api
+                                )
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.PresentDocumentOnline
@@ -163,7 +171,7 @@ class SettingsInteractorImpl(
                 )
             }
 
-            if (logController.writesLogFile) {
+            if (logController.shouldWriteLogFile) {
                 add(
                     SettingsItemUi(
                         type = SettingsMenuItemType.RETRIEVE_LOGS,
@@ -192,7 +200,9 @@ class SettingsInteractorImpl(
                         data = ListItemDataUi(
                             itemId = SettingsMenuItemType.CHANGELOG.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = resourceProvider.getString(R.string.settings_screen_option_changelog)
+                                text = resourceProvider.getString(
+                                    R.string.settings_screen_option_changelog
+                                )
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.OpenInBrowser
@@ -211,7 +221,9 @@ class SettingsInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SettingsMenuItemType.RESET_WALLET.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.settings_screen_option_reset_wallet)
+                            text = resourceProvider.getString(
+                                R.string.settings_screen_option_reset_wallet
+                            )
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.Delete

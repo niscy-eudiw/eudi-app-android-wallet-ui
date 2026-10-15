@@ -82,7 +82,11 @@ class TestLogController {
         logsDir.mkdirs()
         File(logsDir, "eudi-android-wallet-logs0.txt").writeText("left by an earlier build")
 
-        val controller = LogControllerImpl(context = context, tag = "TAG", writesLogFile = false)
+        val controller = LogControllerImpl(
+            context = context,
+            tag = "TAG",
+            shouldWriteLogFile = false,
+        )
         controller.i { "not written" }
 
         assertTrue(logsDir.listFiles().orEmpty().isEmpty())
@@ -91,7 +95,11 @@ class TestLogController {
 
     @Test
     fun `Given a build that writes no log file, When the log files are deleted, Then none is written afterwards`() {
-        val controller = LogControllerImpl(context = context, tag = "TAG", writesLogFile = false)
+        val controller = LogControllerImpl(
+            context = context,
+            tag = "TAG",
+            shouldWriteLogFile = false,
+        )
 
         controller.deleteLogFiles()
         controller.i { "not written" }

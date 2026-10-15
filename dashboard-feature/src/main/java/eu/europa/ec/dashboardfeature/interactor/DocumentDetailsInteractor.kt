@@ -206,17 +206,19 @@ class DocumentDetailsInteractorImpl(
 
                         documentIsRevoked -> IssuerDetailsCardDataUi.DocumentState.Revoked
 
-                        safeIssuedDocument.isExpired() -> IssuerDetailsCardDataUi.DocumentState.Expired(
-                            issuanceDate = documentDetailsDomain.documentIssuanceDate,
-                            expirationDate = documentDetailsDomain.documentExpirationDate
-                        )
+                        safeIssuedDocument.isExpired() -> IssuerDetailsCardDataUi.DocumentState
+                            .Expired(
+                                issuanceDate = documentDetailsDomain.documentIssuanceDate,
+                                expirationDate = documentDetailsDomain.documentExpirationDate
+                            )
 
                         else -> IssuerDetailsCardDataUi.DocumentState.Issued(
                             issuanceDate = documentDetailsDomain.documentIssuanceDate,
                             expirationDate = documentDetailsDomain.documentExpirationDate
                         )
                     },
-                    isExpanded = wasIssuerDetailsExpanded == true || hasStatusRefreshFailed || hasReIssuanceFailed,
+                    isExpanded = wasIssuerDetailsExpanded == true || hasStatusRefreshFailed ||
+                            hasReIssuanceFailed,
                     isIssuerVerified = walletCoreDocumentsController.isIssuerTrusted(documentId),
                     hasStatusRefreshFailed = hasStatusRefreshFailed,
                     hasReIssuanceFailed = hasReIssuanceFailed,
@@ -247,7 +249,8 @@ class DocumentDetailsInteractorImpl(
             val docIdentifier = docType?.toDocumentIdentifier()
 
             val shouldDeleteAllDocuments: Boolean = if (configLogic.forcePidActivation
-                && (docIdentifier == DocumentIdentifier.MdocPid || docIdentifier == DocumentIdentifier.SdJwtPid)
+                && (docIdentifier == DocumentIdentifier.MdocPid ||
+                        docIdentifier == DocumentIdentifier.SdJwtPid)
             ) {
 
                 val allPidDocuments = walletCoreDocumentsController.getAllDocumentsByType(
@@ -270,21 +273,27 @@ class DocumentDetailsInteractorImpl(
                 walletCoreDocumentsController.deleteAllDocuments()
                     .map {
                         when (it) {
-                            is DeleteAllDocumentsPartialState.Failure -> DocumentDetailsInteractorDeleteDocumentPartialState.Failure(
-                                errorMessage = it.errorMessage
-                            )
+                            is DeleteAllDocumentsPartialState.Failure ->
+                                DocumentDetailsInteractorDeleteDocumentPartialState.Failure(
+                                    errorMessage = it.errorMessage
+                                )
 
-                            is DeleteAllDocumentsPartialState.Success -> DocumentDetailsInteractorDeleteDocumentPartialState.AllDocumentsDeleted
+                            is DeleteAllDocumentsPartialState.Success ->
+                                DocumentDetailsInteractorDeleteDocumentPartialState
+                                    .AllDocumentsDeleted
                         }
                     }
             } else {
                 walletCoreDocumentsController.deleteDocument(documentId = documentId).map {
                     when (it) {
-                        is DeleteDocumentPartialState.Failure -> DocumentDetailsInteractorDeleteDocumentPartialState.Failure(
-                            errorMessage = it.errorMessage
-                        )
+                        is DeleteDocumentPartialState.Failure ->
+                            DocumentDetailsInteractorDeleteDocumentPartialState.Failure(
+                                errorMessage = it.errorMessage
+                            )
 
-                        is DeleteDocumentPartialState.Success -> DocumentDetailsInteractorDeleteDocumentPartialState.SingleDocumentDeleted
+                        is DeleteDocumentPartialState.Success ->
+                            DocumentDetailsInteractorDeleteDocumentPartialState
+                                .SingleDocumentDeleted
                     }
                 }
             }.collect {
@@ -296,7 +305,9 @@ class DocumentDetailsInteractorImpl(
             )
         }
 
-    override fun storeBookmark(documentId: DocumentId): Flow<DocumentDetailsInteractorStoreBookmarkPartialState> =
+    override fun storeBookmark(
+        documentId: DocumentId
+    ): Flow<DocumentDetailsInteractorStoreBookmarkPartialState> =
         flow {
             walletCoreDocumentsController.storeBookmark(documentId)
             emit(DocumentDetailsInteractorStoreBookmarkPartialState.Success(documentId))
@@ -304,7 +315,9 @@ class DocumentDetailsInteractorImpl(
             DocumentDetailsInteractorStoreBookmarkPartialState.Failure
         }
 
-    override fun deleteBookmark(documentId: DocumentId): Flow<DocumentDetailsInteractorDeleteBookmarkPartialState> =
+    override fun deleteBookmark(
+        documentId: DocumentId
+    ): Flow<DocumentDetailsInteractorDeleteBookmarkPartialState> =
         flow {
             walletCoreDocumentsController.deleteBookmark(documentId)
             emit(DocumentDetailsInteractorDeleteBookmarkPartialState.Success)

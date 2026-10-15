@@ -53,7 +53,9 @@ import org.koin.core.annotation.KoinViewModel
 
 data class State(
 
-    // side menu
+    /**
+     * side menu
+     */
     val isSideMenuVisible: Boolean = false,
     val sideMenuTitle: String,
     val sideMenuOptions: List<SideMenuItemUi>,
@@ -77,7 +79,9 @@ sealed class Event : ViewEvent {
         val payload: List<RevokedDocumentDataDomain>
     ) : Event()
 
-    // side menu events
+    /**
+     * side menu events
+     */
     sealed class SideMenu : Event() {
         data object Open : SideMenu()
         data object Close : SideMenu()

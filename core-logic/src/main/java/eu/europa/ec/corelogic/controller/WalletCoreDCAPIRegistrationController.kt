@@ -54,7 +54,7 @@ interface WalletCoreDCAPIRegistrationController : DCAPIRegistration {
 class WalletCoreDCAPIRegistrationControllerImpl(
     private val clearRegistry: suspend () -> Unit,
     private val isEnabled: suspend () -> Boolean,
-    private val blockedDocumentIds: suspend () -> Set<String>,
+    private val getBlockedDocumentIds: suspend () -> Set<String>,
 ) : WalletCoreDCAPIRegistrationController {
 
     private val mutex = Mutex()
@@ -76,7 +76,7 @@ class WalletCoreDCAPIRegistrationControllerImpl(
 
     override suspend fun registerCredentials() {
         mutex.withLock {
-            val blocked = blockedDocumentIdsOrNull()
+            val blocked = getBlockedDocumentIdsOrNull()
             if (blocked != null) excludedDocumentIds = blocked
             if (blocked != null && isEnabled()) {
                 currentRegistration()?.registerCredentials()
@@ -97,9 +97,9 @@ class WalletCoreDCAPIRegistrationControllerImpl(
     }
 
     /** The blocked documents, or null when they cannot be read, so that the update fails closed. */
-    private suspend fun blockedDocumentIdsOrNull(): Set<String>? =
+    private suspend fun getBlockedDocumentIdsOrNull(): Set<String>? =
         try {
-            blockedDocumentIds()
+            getBlockedDocumentIds()
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {

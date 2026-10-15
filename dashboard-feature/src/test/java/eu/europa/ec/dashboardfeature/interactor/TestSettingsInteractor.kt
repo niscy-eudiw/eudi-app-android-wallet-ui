@@ -85,7 +85,7 @@ class TestSettingsInteractor {
     @Before
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
-        whenever(logController.writesLogFile).thenReturn(true)
+        whenever(logController.shouldWriteLogFile).thenReturn(true)
 
         interactor = SettingsInteractorImpl(
             biometricInteractor = biometricInteractor,
@@ -103,36 +103,27 @@ class TestSettingsInteractor {
         closeable.close()
     }
 
-    //region getAppVersion
     @Test
     fun `Given an App Version, When getAppVersion is called, Then it returns the Apps Version`() {
-        // Given
         val expectedAppVersion = "2024.01.1"
         whenever(configLogic.appVersion)
             .thenReturn(expectedAppVersion)
 
-        // When
         val actualAppVersion = interactor.getAppVersion()
 
-        // Then
         assertEquals(expectedAppVersion, actualAppVersion)
         verify(configLogic, times(1))
             .appVersion
     }
-    //endregion
 
-    //region getChangelogUrl
     @Test
     fun `Given a Changelog URL in configLogic, When getChangelogUrl is called, Then it returns the Changelog URL`() {
-        // Given
         val expectedUrl = mockedChangeLogUrl
         whenever(configLogic.changelogUrl)
             .thenReturn(expectedUrl)
 
-        // When
         val actualUrl = interactor.getChangelogUrl()
 
-        // Then
         assertEquals(expectedUrl, actualUrl)
         verify(configLogic, times(1))
             .changelogUrl
@@ -140,44 +131,38 @@ class TestSettingsInteractor {
 
     @Test
     fun `Given no Changelog URL in configLogic, When getChangelogUrl is called, Then it returns null`() {
-        // Given
         val expectedUrl = null
         whenever(configLogic.changelogUrl)
             .thenReturn(expectedUrl)
 
-        // When
         val actualUrl = interactor.getChangelogUrl()
 
-        // Then
         assertEquals(expectedUrl, actualUrl)
         verify(configLogic, times(1))
             .changelogUrl
     }
-    //endregion
 
-    //region retrieveLogFileUris
     @Test
     fun `Given a list of logs via logController, When retrieveLogFileUris is called, Then expected logs are returned`() {
-        // Given
         val mockedArrayList = arrayListOf(
             Uri.parse(mockedUriPath1),
             Uri.parse(mockedUriPath2)
         )
         whenever(logController.retrieveLogFileUris()).thenReturn(mockedArrayList)
 
-        // When
         val expectedLogFileUris = interactor.retrieveLogFileUris()
 
-        // Then
         assertEquals(mockedArrayList, expectedLogFileUris)
     }
-    //endregion
 
-    //region getSettingsItemsUi
+    /**
+     * 1. Size = 4 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS + RESET_WALLET)
+     *
+     * 3. Second item: REGISTRATION_CHECK
+     */
     @Test
     fun `Given no Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then four SettingsItemUi entries are returned`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
             mockShowBatchIssuanceCounterPreference(response = true)
@@ -188,24 +173,24 @@ class TestSettingsInteractor {
                 changeLogUrlIsNull = true,
             )
 
-            // When
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
-            // Then
-            // 1. Size = 4 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS + RESET_WALLET)
             assertEquals(4, settingsItems.size)
 
-            // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
+            /**
+             * 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
+             */
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
-            // 3. Second item: REGISTRATION_CHECK
             assertRegistrationCheckItem(
                 settingsItems[1],
                 isChecked = mockedRegistrationCheckEnabled,
             )
 
-            // 4. Third item: RETRIEVE_LOGS
+            /**
+             * 4. Third item: RETRIEVE_LOGS
+             */
             val thirdItem = settingsItems[2]
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, thirdItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, thirdItem.data.itemId)
@@ -227,7 +212,7 @@ class TestSettingsInteractor {
     @Test
     fun `Given a build that writes no log file, When getSettingsItemsUi is called, Then Retrieve logs is not offered`() =
         coroutineRule.runTest {
-            whenever(logController.writesLogFile).thenReturn(false)
+            whenever(logController.shouldWriteLogFile).thenReturn(false)
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
             mockShowBatchIssuanceCounterPreference(response = true)
@@ -243,10 +228,15 @@ class TestSettingsInteractor {
             assertTrue(settingsItems.none { it.type == SettingsMenuItemType.RETRIEVE_LOGS })
         }
 
+    /**
+     * 1. Size = 5 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS + CHANGELOG +
+     * RESET_WALLET)
+     *
+     * 3. Second item: REGISTRATION_CHECK
+     */
     @Test
     fun `Given a Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then five SettingsItemUi entries are returned`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
             mockShowBatchIssuanceCounterPreference(response = true)
@@ -259,25 +249,24 @@ class TestSettingsInteractor {
 
             val sampleChangelogUrl = mockedChangeLogUrl
 
-            // When
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
-            // Then
-            // 1. Size = 5 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS +
-            // CHANGELOG + RESET_WALLET)
             assertEquals(5, settingsItems.size)
 
-            // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
+            /**
+             * 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
+             */
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
-            // 3. Second item: REGISTRATION_CHECK
             assertRegistrationCheckItem(
                 settingsItems[1],
                 isChecked = mockedRegistrationCheckEnabled,
             )
 
-            // 4. Third item: RETRIEVE_LOGS
+            /**
+             * 4. Third item: RETRIEVE_LOGS
+             */
             val thirdItem = settingsItems[2]
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, thirdItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, thirdItem.data.itemId)
@@ -291,7 +280,9 @@ class TestSettingsInteractor {
                 thirdItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
             assertEquals(AppIcons.KeyboardArrowRight, trailingIcon3.iconData)
 
-            // 5. Fourth item: CHANGELOG
+            /**
+             * 5. Fourth item: CHANGELOG
+             */
             val fourthItem = settingsItems[3]
             assertEquals(SettingsMenuItemType.CHANGELOG, fourthItem.type)
             assertEquals(SettingsMenuItemType.CHANGELOG.itemId, fourthItem.data.itemId)
@@ -313,7 +304,6 @@ class TestSettingsInteractor {
     @Test
     fun `Given device supports Biometrics with no Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then Biometrics and Retrieve Logs entries are returned`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.CanAuthenticate)
             whenever(biometricInteractor.getBiometricUserSelection())
@@ -327,10 +317,8 @@ class TestSettingsInteractor {
                 deviceSupportsBiometrics = true,
             )
 
-            // When
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
-            // Then
             assertEquals(5, settingsItems.size)
 
             val firstItem = settingsItems[0]
@@ -377,7 +365,6 @@ class TestSettingsInteractor {
     @Test
     fun `Given device has Biometrics with user selection false and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then Biometrics switch is unchecked`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.NonEnrolled)
             whenever(biometricInteractor.getBiometricUserSelection())
@@ -391,10 +378,8 @@ class TestSettingsInteractor {
                 deviceSupportsBiometrics = true,
             )
 
-            // When
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
-            // Then
             assertEquals(5, settingsItems.size)
 
             val biometricsItem = settingsItems[0]
@@ -408,7 +393,6 @@ class TestSettingsInteractor {
     @Test
     fun `Given device supports Biometrics with a Changelog URL and show batch issuance counter preference is true, When getSettingsItemsUi is called, Then six SettingsItemUi entries are returned`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.CanAuthenticate)
             whenever(biometricInteractor.getBiometricUserSelection())
@@ -424,10 +408,8 @@ class TestSettingsInteractor {
 
             val sampleChangelogUrl = mockedChangeLogUrl
 
-            // When
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
-            // Then
             assertEquals(6, settingsItems.size)
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, settingsItems[0].type)
             assertEquals(SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER, settingsItems[1].type)
@@ -440,7 +422,6 @@ class TestSettingsInteractor {
     @Test
     fun `Given show batch issuance counter preference is false, When getSettingsItemsUi is called, Then switch is unchecked`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
             mockShowBatchIssuanceCounterPreference(response = false)
@@ -451,10 +432,8 @@ class TestSettingsInteractor {
                 changeLogUrlIsNull = true,
             )
 
-            // When
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
-            // Then
             val showBatchItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(showBatchItem, isChecked = false)
         }
@@ -462,7 +441,6 @@ class TestSettingsInteractor {
     @Test
     fun `Given registration check preference is false, When getSettingsItemsUi is called, Then the switch is unchecked`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricsAvailability())
                 .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
             mockShowBatchIssuanceCounterPreference(response = true)
@@ -473,10 +451,8 @@ class TestSettingsInteractor {
                 changeLogUrlIsNull = true,
             )
 
-            // When
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
-            // Then
             assertRegistrationCheckItem(settingsItems[1], isChecked = false)
         }
 
@@ -535,91 +511,66 @@ class TestSettingsInteractor {
             assertEquals(false, settingsItems.any { it.type == SettingsMenuItemType.DC_API })
             verify(dcapiSettingProvider, never()).isEnabled()
         }
-    //endregion
 
-    //region toggleBiometricsAuthentication
     @Test
     fun `Given Biometrics user selection is false, When toggleBiometricsAuthentication is called, Then true is stored`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricUserSelection()).thenReturn(false)
 
-            // When
             interactor.toggleBiometricsAuthentication()
 
-            // Then
             verify(biometricInteractor).storeBiometricsUsageDecision(true)
         }
 
     @Test
     fun `Given Biometrics user selection is true, When toggleBiometricsAuthentication is called, Then false is stored`() =
         coroutineRule.runTest {
-            // Given
             whenever(biometricInteractor.getBiometricUserSelection()).thenReturn(true)
 
-            // When
             interactor.toggleBiometricsAuthentication()
 
-            // Then
             verify(biometricInteractor).storeBiometricsUsageDecision(false)
         }
-    //endregion
 
-    //region showBatchIssuanceCounter
     @Test
     fun `Given show batch issuance counter preference is true, When toggleShowBatchIssuanceCounter is called, Then false is stored`() =
         coroutineRule.runTest {
-            // Given
             mockShowBatchIssuanceCounterPreference(response = true)
 
-            // When
             interactor.toggleShowBatchIssuanceCounter()
 
-            // Then
             verify(prefKeys).setShowBatchIssuanceCounter(false)
         }
 
     @Test
     fun `Given show batch issuance counter preference is false, When toggleShowBatchIssuanceCounter is called, Then true is stored`() =
         coroutineRule.runTest {
-            // Given
             mockShowBatchIssuanceCounterPreference(response = false)
 
-            // When
             interactor.toggleShowBatchIssuanceCounter()
 
-            // Then
             verify(prefKeys).setShowBatchIssuanceCounter(true)
         }
-    //endregion
 
-    //region registrationCheck
     @Test
     fun `Given registration check preference is true, When toggleRegistrationCheck is called, Then false is stored`() =
         coroutineRule.runTest {
-            // Given
             mockRegistrationCheckPreference(response = true)
 
-            // When
             interactor.toggleRegistrationCheck()
 
-            // Then
             verify(prefKeys).setRegistrationCheckEnabled(false)
         }
 
     @Test
     fun `Given registration check preference is false, When toggleRegistrationCheck is called, Then true is stored`() =
         coroutineRule.runTest {
-            // Given
             mockRegistrationCheckPreference(response = false)
 
-            // When
             interactor.toggleRegistrationCheck()
 
-            // Then
             verify(prefKeys).setRegistrationCheckEnabled(true)
         }
-    //endregion
 
     @Test
     fun `Given the Digital Credential API is on, When toggleDCAPI is called, Then it is turned off and the registry is updated`() =
@@ -647,7 +598,6 @@ class TestSettingsInteractor {
             }
         }
 
-    //region Mock Calls
     private fun mockShowBatchIssuanceCounterPreference(response: Boolean) {
         whenever(suspend { prefKeys.getShowBatchIssuanceCounter() }).thenReturn(response)
     }
@@ -689,9 +639,7 @@ class TestSettingsInteractor {
             )
         }
     }
-    //endregion
 
-    //region Assertions
     private fun assertShowBatchIssuanceCounterItem(
         item: SettingsItemUi,
         isChecked: Boolean,
@@ -732,9 +680,7 @@ class TestSettingsInteractor {
         val trailingIcon = item.data.trailingContentData as ListItemTrailingContentDataUi.Icon
         assertEquals(AppIcons.KeyboardArrowRight, trailingIcon.iconData)
     }
-    //endregion
 
-    //region Mocked objects needed for tests.
     private val biometricsAuthenticationText = "Authenticate with biometrics"
     private val retrieveLogsText = "Retrieve logs"
     private val showBatchIssuanceCounterText = "Batch issuance counter"
@@ -744,7 +690,8 @@ class TestSettingsInteractor {
     private val resetWalletText = "Reset wallet"
     private val dcApiText = "Offer documents to apps and websites"
 
-    // the standing value for the cases that are about other rows
+    /**
+     * the standing value for the cases that are about other rows
+     */
     private val mockedRegistrationCheckEnabled = true
-    //endregion
 }

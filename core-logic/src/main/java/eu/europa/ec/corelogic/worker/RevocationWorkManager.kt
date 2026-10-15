@@ -100,8 +100,8 @@ class RevocationWorkManager(
     /**
      * Updates the Digital Credential API registry when the blocked documents differ from those it
      * last left out. It runs outside [runLock], so that the factory reset does not wait for the
-     * registry, and it compares with the registry rather than remembering a change, so a run that was
-     * stopped after writing a record is caught by the next one.
+     * registry, and it compares with the registry rather than remembering a change, so a run that
+     * was stopped after writing a record is caught by the next one.
      */
     private suspend fun updateRegistryIfBlockedChanged() {
         val blockedIds = try {

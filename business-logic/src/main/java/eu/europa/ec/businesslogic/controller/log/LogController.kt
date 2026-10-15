@@ -40,7 +40,7 @@ interface LogController {
      * Whether this build writes the log to files that Settings offers to share ("Retrieve logs").
      * The files hold what the wallet and Wallet Core log, so a release build writes none.
      */
-    val writesLogFile: Boolean
+    val shouldWriteLogFile: Boolean
 
     fun retrieveLogFileUris(): List<Uri>
 
@@ -52,7 +52,7 @@ class LogControllerImpl(
     private val context: Context,
     private val tag: String,
     /** When false, no log file is written, and files an earlier build left are deleted. */
-    override val writesLogFile: Boolean = true,
+    override val shouldWriteLogFile: Boolean = true,
 ) : LogController {
 
     companion object {
@@ -64,11 +64,12 @@ class LogControllerImpl(
     private val logsDir = File(context.filesDir.absolutePath + "/logs")
 
     @Volatile
-    private var fileLoggerTree: FileLoggerTree? = if (writesLogFile) buildFileLoggerTree() else null
+    private var fileLoggerTree: FileLoggerTree? =
+        if (shouldWriteLogFile) buildFileLoggerTree() else null
 
     init {
         Timber.plant(Timber.DebugTree())
-        if (writesLogFile) {
+        if (shouldWriteLogFile) {
             fileLoggerTree?.let { Timber.plant(it) }
         } else {
             logsDir.listFiles()?.forEach { it.delete() }
@@ -133,7 +134,7 @@ class LogControllerImpl(
             previousTree.close()
         }
         logsDir.listFiles()?.forEach { it.delete() }
-        if (writesLogFile) {
+        if (shouldWriteLogFile) {
             fileLoggerTree = buildFileLoggerTree().also { Timber.plant(it) }
         }
     }

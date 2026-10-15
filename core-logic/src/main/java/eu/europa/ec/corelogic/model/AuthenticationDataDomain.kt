@@ -18,7 +18,7 @@ package eu.europa.ec.corelogic.model
 
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 
-data class AuthenticationData(
+data class AuthenticationDataDomain(
     val crypto: BiometricCrypto,
     val onAuthenticationSuccess: () -> Unit
 )

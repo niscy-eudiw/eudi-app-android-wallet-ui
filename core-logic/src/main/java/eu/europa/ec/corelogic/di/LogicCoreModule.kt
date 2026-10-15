@@ -26,7 +26,6 @@ import eu.europa.ec.businesslogic.di.LogicBusinessModule
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.config.WalletCoreConfigImpl
-import eu.europa.ec.corelogic.controller.DocumentManagerWithoutExcluded
 import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
 import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
@@ -50,6 +49,7 @@ import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.corelogic.provider.RegistrationCheckProviderImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
+import eu.europa.ec.corelogic.util.DocumentManagerWithoutExcluded
 import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.corelogic.worker.WalletWorkSchedulerImpl
 import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
@@ -130,7 +130,7 @@ fun provideWalletCoreDCAPIRegistrationController(
         )
     },
     isEnabled = { dcapiSettingProvider.isAvailable && dcapiSettingProvider.isEnabled() },
-    blockedDocumentIds = { revokedDocumentDao.retrieveAll().map { it.identifier }.toSet() },
+    getBlockedDocumentIds = { revokedDocumentDao.retrieveAll().map { it.identifier }.toSet() },
 )
 
 @Factory
@@ -158,8 +158,10 @@ fun provideWalletCoreLogController(
     logLevel = walletCoreConfig.config.logLevel,
 )
 
-// Single, not a factory: the controller owns the queue that keeps transaction writes in order, so
-// a second instance would be a second queue writing the same rows.
+/**
+ * Single, not a factory: the controller owns the queue that keeps transaction writes in order, so a
+ * second instance would be a second queue writing the same rows.
+ */
 @Single
 fun provideWalletCoreTransactionLogController(
     transactionLogDao: TransactionLogDao,
@@ -227,18 +229,18 @@ fun provideWalletCoreDocumentsController(
     issuerTrustDao: IssuerTrustDao,
     statusRefreshFailureDao: StatusRefreshFailureDao,
     prefKeys: PrefKeys,
-    walletWorkScheduler: WalletWorkScheduler
+    walletWorkScheduler: WalletWorkScheduler,
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
-        resourceProvider,
-        walletCoreConfig,
-        bookmarkDao,
-        revokedDocumentDao,
-        failedReIssuedDocumentDao,
-        issuerTrustDao,
-        statusRefreshFailureDao,
-        prefKeys,
-        walletWorkScheduler
+        resourceProvider = resourceProvider,
+        walletCoreConfig = walletCoreConfig,
+        bookmarkDao = bookmarkDao,
+        revokedDocumentDao = revokedDocumentDao,
+        failedReIssuedDocumentDao = failedReIssuedDocumentDao,
+        issuerTrustDao = issuerTrustDao,
+        statusRefreshFailureDao = statusRefreshFailureDao,
+        prefKeys = prefKeys,
+        walletWorkScheduler = walletWorkScheduler,
     )
 
 @Factory

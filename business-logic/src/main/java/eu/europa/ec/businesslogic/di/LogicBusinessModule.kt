@@ -68,7 +68,7 @@ fun provideLogController(context: Context): LogController =
     LogControllerImpl(
         context = context,
         tag = "EUDI Wallet ${BuildConfig.FLAVOR.uppercase()}-${AppBuildType.getType()}",
-        writesLogFile = AppBuildType.getType() == AppBuildType.DEBUG,
+        shouldWriteLogFile = AppBuildType.getType() == AppBuildType.DEBUG,
     )
 
 @Single

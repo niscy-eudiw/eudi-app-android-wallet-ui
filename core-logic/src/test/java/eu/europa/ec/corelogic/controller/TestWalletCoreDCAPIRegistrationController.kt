@@ -63,7 +63,7 @@ class TestWalletCoreDCAPIRegistrationController {
             val controller = WalletCoreDCAPIRegistrationControllerImpl(
                 clearRegistry = { throw IllegalStateException("registry unavailable") },
                 isEnabled = { false },
-                blockedDocumentIds = { emptySet() },
+                getBlockedDocumentIds = { emptySet() },
             )
             controller.attach { registration() }
 
@@ -128,7 +128,7 @@ class TestWalletCoreDCAPIRegistrationController {
             val controller = WalletCoreDCAPIRegistrationControllerImpl(
                 clearRegistry = { throw IllegalStateException("registry unavailable") },
                 isEnabled = { true },
-                blockedDocumentIds = { emptySet() },
+                getBlockedDocumentIds = { emptySet() },
             )
 
             val result = controller.clearAround { true }
@@ -150,7 +150,7 @@ class TestWalletCoreDCAPIRegistrationController {
     fun `Given blocked documents, When Wallet Core updates the registration, Then they are excluded from it`() {
         coroutineRule.runTest {
             var blocked = setOf("revoked")
-            val controller = controller(blockedDocumentIds = { blocked })
+            val controller = controller(getBlockedDocumentIds = { blocked })
             var excludedDuringUpdate = emptySet<String>()
             controller.attach {
                 object : DCAPIRegistration {
@@ -177,7 +177,9 @@ class TestWalletCoreDCAPIRegistrationController {
     @Test
     fun `Given the blocked documents cannot be read, When Wallet Core updates the registration, Then the registry is cleared instead`() {
         coroutineRule.runTest {
-            val controller = controller(blockedDocumentIds = { throw IllegalStateException("unreadable") })
+            val controller = controller(
+                getBlockedDocumentIds = { throw IllegalStateException("unreadable") }
+            )
             controller.attach { registration() }
 
             controller.registerCredentials()
@@ -188,11 +190,11 @@ class TestWalletCoreDCAPIRegistrationController {
 
     private fun controller(
         enabled: Boolean = true,
-        blockedDocumentIds: suspend () -> Set<String> = { emptySet() },
+        getBlockedDocumentIds: suspend () -> Set<String> = { emptySet() },
     ) = WalletCoreDCAPIRegistrationControllerImpl(
         clearRegistry = { steps.add("clear registry") },
         isEnabled = { enabled },
-        blockedDocumentIds = blockedDocumentIds,
+        getBlockedDocumentIds = getBlockedDocumentIds,
     )
 
     private fun registration(release: CompletableDeferred<Unit>? = null) =

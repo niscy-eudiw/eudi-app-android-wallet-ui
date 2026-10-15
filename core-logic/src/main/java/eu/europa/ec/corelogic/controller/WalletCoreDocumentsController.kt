@@ -119,8 +119,9 @@ sealed class IssueDocumentsPartialState {
     ) : IssueDocumentsPartialState()
 
     /**
-     * The documents in [issuedDocumentIds] were issued. [untrustedDocuments] were refused because their
-     * issuer could not be trusted, and [nonIssuedDocuments] were not issued for another reason.
+     * The documents in [issuedDocumentIds] were issued. [untrustedDocuments] were refused because
+     * their issuer could not be trusted, and [nonIssuedDocuments] were not issued for another
+     * reason.
      */
     data class PartialSuccessWithUntrustedIssuer(
         val issuedDocumentIds: List<DocumentId>,
@@ -352,7 +353,9 @@ class WalletCoreDocumentsControllerImpl(
         get() = resourceProvider.getString(R.string.issuance_generic_error)
 
     private val unconfiguredIssuerMessage
-        get() = resourceProvider.getString(R.string.issuance_document_offer_error_issuer_not_configured)
+        get() = resourceProvider.getString(
+            R.string.issuance_document_offer_error_issuer_not_configured
+        )
 
     private val unreadableOfferMessage
         get() = resourceProvider.getString(R.string.issuance_document_offer_error_no_document)
@@ -401,8 +404,10 @@ class WalletCoreDocumentsControllerImpl(
         return withContext(dispatcher) {
             runCatching {
 
-                // every issuer is resolved on its own: one unreachable, malformed or untrusted
-                // issuer must not hide the documents offered by the others
+                /**
+                 * every issuer is resolved on its own: one unreachable, malformed or untrusted
+                 * issuer must not hide the documents offered by the others
+                 */
                 val metadataPerIssuer: Map<VciConfig, GetIssuerMetadataPartialState> =
                     openId4VciManagers.mapValues { (vciConfig, manager) ->
                         getIssuerMetadata(
@@ -414,7 +419,9 @@ class WalletCoreDocumentsControllerImpl(
                 val resolvedMetadata: List<Pair<VciConfig, CredentialIssuerMetadata>> =
                     metadataPerIssuer.mapNotNull { (vciConfig, response) ->
                         when (response) {
-                            is GetIssuerMetadataPartialState.Success -> vciConfig to response.metadata
+                            is GetIssuerMetadataPartialState.Success ->
+                                vciConfig to response.metadata
+
                             is GetIssuerMetadataPartialState.IssuerNotTrusted -> null
                             is GetIssuerMetadataPartialState.Failure -> null
                         }
@@ -431,8 +438,12 @@ class WalletCoreDocumentsControllerImpl(
                                 )
 
                             val isPid = when (credentialConfig) {
-                                is MsoMdocCredential -> credentialConfig.docType.toDocumentIdentifier() == DocumentIdentifier.MdocPid
-                                is SdJwtVcCredential -> credentialConfig.type.toDocumentIdentifier() == DocumentIdentifier.SdJwtPid
+                                is MsoMdocCredential -> credentialConfig.docType
+                                    .toDocumentIdentifier() == DocumentIdentifier.MdocPid
+
+                                is SdJwtVcCredential -> credentialConfig.type
+                                    .toDocumentIdentifier() == DocumentIdentifier.SdJwtPid
+
                                 else -> false
                             }
 
@@ -481,7 +492,9 @@ class WalletCoreDocumentsControllerImpl(
         }
     }
 
-    override fun getAllDocumentsByType(documentIdentifiers: List<DocumentIdentifier>): List<IssuedDocument> =
+    override fun getAllDocumentsByType(
+        documentIdentifiers: List<DocumentIdentifier>
+    ): List<IssuedDocument> =
         getAllDocuments()
             .filterIsInstance<IssuedDocument>()
             .filter {
@@ -519,7 +532,8 @@ class WalletCoreDocumentsControllerImpl(
     }
 
     private fun logoOriginsOf(issuerId: String?): List<String> =
-        walletCoreConfig.issuersConfig.firstOrNull { it.issuerUrl == issuerId }?.logoOrigins.orEmpty()
+        walletCoreConfig.issuersConfig.firstOrNull { it.issuerUrl == issuerId }?.logoOrigins
+            .orEmpty()
 
     override fun getMainPidDocument(): IssuedDocument? =
         getAllDocumentsByType(
@@ -608,9 +622,11 @@ class WalletCoreDocumentsControllerImpl(
             errorMessage = documentErrorMessage
         ).getOrThrow()
 
-        // a successful re-issue makes Wallet Core delete the original document, so the
-        // registration outcome is checked before anything starts
-        // in that way, a refusal here leaves the original document intact
+        /**
+         * a successful re-issue makes Wallet Core delete the original document, so the registration
+         * outcome is checked before anything starts in that way, a refusal here leaves the original
+         * document intact
+         */
         val preflightRefusal = reIssueBlockedRefusalOrNull(documentId)
             ?: preflightRegistrationRefusalOrNull(
                 resolveRegistration = {
@@ -745,7 +761,11 @@ class WalletCoreDocumentsControllerImpl(
                         }
                     }
                 } else {
-                    emit(DeleteAllDocumentsPartialState.Failure(errorMessage = restOfAllDocsDeletedFailureReason))
+                    emit(
+                        DeleteAllDocumentsPartialState.Failure(
+                            errorMessage = restOfAllDocsDeletedFailureReason
+                        )
+                    )
                 }
             } ?: emit(
                 DeleteAllDocumentsPartialState.Failure(
@@ -806,8 +826,11 @@ class WalletCoreDocumentsControllerImpl(
                     is OfferResult.Success -> {
                         val issuerRegistration = result.offer.issuerRegistration
                             .toIssuerRegistrationDomain(locale = resourceProvider.getLocale())
-                        // with the check off Core evaluates nothing, so every offer would
-                        // otherwise refuse for lack of an outcome
+
+                        /**
+                         * with the check off Core evaluates nothing, so every offer would otherwise
+                         * refuse for lack of an outcome
+                         */
                         val registrationRefused = walletCoreConfig.isRegistrationCheckEnabled &&
                                 issuerRegistration.isBlockedForIssuance
 
@@ -834,8 +857,9 @@ class WalletCoreDocumentsControllerImpl(
         }
 
     /**
-     * Stores a deferred document's issuer-trust verdict before reporting it as issued. The write starts
-     * atomically ([CoroutineStart.ATOMIC]), so a cancellation right after the event cannot skip it.
+     * Stores a deferred document's issuer-trust verdict before reporting it as issued. The write
+     * starts atomically ([CoroutineStart.ATOMIC]), so a cancellation right after the event cannot
+     * skip it.
      */
     @OptIn(DelicateCoroutinesApi::class)
     override fun issueDeferredDocument(docId: DocumentId): Flow<IssueDeferredDocumentPartialState> =
@@ -854,14 +878,17 @@ class WalletCoreDocumentsControllerImpl(
                         when (deferredIssuanceResult) {
                             is DeferredIssueResult.DocumentFailed -> {
                                 trySendBlocking(
-                                    if (deferredIssuanceResult.cause.toUntrustedIssuerReasonOrNull() != null) {
+                                    if (deferredIssuanceResult.cause
+                                            .toUntrustedIssuerReasonOrNull() != null
+                                    ) {
                                         IssueDeferredDocumentPartialState.IssuerNotTrusted(
                                             documentId = deferredIssuanceResult.documentId
                                         )
                                     } else {
                                         IssueDeferredDocumentPartialState.Failed(
                                             documentId = deferredIssuanceResult.documentId,
-                                            errorMessage = deferredIssuanceResult.cause.localizedMessage
+                                            errorMessage = deferredIssuanceResult.cause
+                                                .localizedMessage
                                                 ?: documentErrorMessage
                                         )
                                     }
@@ -872,7 +899,8 @@ class WalletCoreDocumentsControllerImpl(
                                 launch(start = CoroutineStart.ATOMIC) {
                                     storeIssuerTrust(
                                         documentId = deferredIssuanceResult.documentId,
-                                        verdict = deferredIssuanceResult.issuerTrustResult.toIssuerTrustVerdict(),
+                                        verdict = deferredIssuanceResult.issuerTrustResult
+                                            .toIssuerTrustVerdict(),
                                     )
                                     cleanUpRecords { deleteRecordsOfMissingDocuments() }
                                     trySendBlocking(
@@ -979,13 +1007,13 @@ class WalletCoreDocumentsControllerImpl(
     }
 
     /**
-     * Wallet Core deletes the original document once a re-issuance has issued a new credential; when
-     * the new credential is deferred, only once it arrives (see [deleteRecordsOfMissingDocuments]).
-     * Copies the original's bookmark to the new documents, which keep their ids when a deferred
-     * credential arrives, and deletes the rest of what the app stored about the original once Wallet
-     * Core has deleted it. The history stays. If the original gained a revocation record while the
-     * re-issuance was under way, a revocation check is scheduled, so that the new documents are checked
-     * without waiting for the periodic interval.
+     * Wallet Core deletes the original document once a re-issuance has issued a new credential;
+     * when the new credential is deferred, only once it arrives (see
+     * [deleteRecordsOfMissingDocuments]). Copies the original's bookmark to the new documents,
+     * which keep their ids when a deferred credential arrives, and deletes the rest of what the app
+     * stored about the original once Wallet Core has deleted it. The history stays. If the original
+     * gained a revocation record while the re-issuance was under way, a revocation check is
+     * scheduled, so that the new documents are checked without waiting for the periodic interval.
      */
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal suspend fun cleanUpAfterReIssuance(
@@ -995,7 +1023,9 @@ class WalletCoreDocumentsControllerImpl(
         val newIds = when (state) {
             is IssueDocumentsPartialState.Success -> state.documentIds
             is IssueDocumentsPartialState.PartialSuccess -> state.documentIds
-            is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> state.issuedDocumentIds
+            is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer ->
+                state.issuedDocumentIds
+
             is IssueDocumentsPartialState.DeferredSuccess -> state.deferredDocuments.keys.toList()
             else -> return
         }
@@ -1013,11 +1043,11 @@ class WalletCoreDocumentsControllerImpl(
     }
 
     /**
-     * Deletes the records of documents Wallet Core no longer holds. Wallet Core deletes the original
-     * of a deferred re-issuance when the new credential arrives, without saying which document that
-     * was. Records are read before the documents, so a record written for a document issued in the
-     * meantime is kept. A revocation record among those deleted schedules a revocation check, as in
-     * [cleanUpAfterReIssuance].
+     * Deletes the records of documents Wallet Core no longer holds. Wallet Core deletes the
+     * original of a deferred re-issuance when the new credential arrives, without saying which
+     * document that was. Records are read before the documents, so a record written for a document
+     * issued in the meantime is kept. A revocation record among those deleted schedules a
+     * revocation check, as in [cleanUpAfterReIssuance].
      */
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal suspend fun deleteRecordsOfMissingDocuments() {
@@ -1036,9 +1066,10 @@ class WalletCoreDocumentsControllerImpl(
     }
 
     /**
-     * Runs a clean-up of the app's records after Wallet Core has changed its documents. It completes
-     * even if the flow is no longer collected, and a storage error leaves records behind rather than
-     * turning a completed operation into a reported failure; the factory reset removes what is left.
+     * Runs a clean-up of the app's records after Wallet Core has changed its documents. It
+     * completes even if the flow is no longer collected, and a storage error leaves records behind
+     * rather than turning a completed operation into a reported failure; the factory reset removes
+     * what is left.
      */
     private suspend fun cleanUpRecords(cleanUp: suspend () -> Unit) {
         withContext(NonCancellable) {
@@ -1080,8 +1111,8 @@ class WalletCoreDocumentsControllerImpl(
 
     /**
      * Keeps the issuer-trust verdict for [documentId]. Wallet Core has already stored the document,
-     * so the write completes even if the issuance flow is no longer collected. A failed write leaves
-     * no record, which reads as not trusted, rather than turning a completed issuance into a
+     * so the write completes even if the issuance flow is no longer collected. A failed write
+     * leaves no record, which reads as not trusted, rather than turning a completed issuance into a
      * reported failure.
      */
     private suspend fun storeIssuerTrust(documentId: DocumentId, verdict: IssuerTrustVerdict) {
@@ -1119,9 +1150,10 @@ class WalletCoreDocumentsControllerImpl(
                 errorMessage = documentErrorMessage
             ).getOrThrow()
 
-            // wallet-initiated issuance has no approval screen, so the registration outcome
-            // is checked before the flow starts — a refusal here opens no browser and stores
-            // nothing
+            /**
+             * wallet-initiated issuance has no approval screen, so the registration outcome is
+             * checked before the flow starts — a refusal here opens no browser and stores nothing
+             */
             val preflightRefusal = preflightRegistrationRefusalOrNull(
                 resolveRegistration = {
                     manager.resolveIssuerRegistration(
@@ -1152,10 +1184,18 @@ class WalletCoreDocumentsControllerImpl(
         }
 
     /**
-     * Turns Wallet Core's issuance events into [IssueDocumentsPartialState]s. Each issued document's
-     * issuer-trust verdict is stored as it arrives, and the outcome is reported only after those
-     * writes finish, because the success screen reads the stored verdicts. The writes start atomically
-     * ([CoroutineStart.ATOMIC]), so a cancellation right after an event cannot skip them.
+     * Turns Wallet Core's issuance events into [IssueDocumentsPartialState]s. Each issued
+     * document's issuer-trust verdict is stored as it arrives, and the outcome is reported only
+     * after those writes finish, because the success screen reads the stored verdicts. The writes
+     * start atomically ([CoroutineStart.ATOMIC]), so a cancellation right after an event cannot
+     * skip them.
+     *
+     * TODO: Revisit this once Core adds support. event.issuedDocuments folds in deferred ids too —
+     * the Core emits Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted outcome
+     * is decided on the locally tracked *actually issued* documents. Otherwise a batch of "one
+     * untrusted + one deferred from the same issuer" would be treated as a partial success and
+     * navigate the user on the success screen with a deferred (un-issued) id instead of the
+     * "Issuance blocked" sheet.
      */
     @OptIn(DelicateCoroutinesApi::class)
     private fun ProducerScope<IssueDocumentsPartialState>.issuanceCallback(
@@ -1182,7 +1222,8 @@ class WalletCoreDocumentsControllerImpl(
                 is IssueEvent.DocumentRequiresCreateSettings -> {
                     when (event) {
                         is IssueEvent.DocumentRequiresCreateSettings.MandatoryReusePolicy -> {
-                            val (secureAreaId, createKeySettings) = eudiWallet.getDefaultCreateKeySettings()
+                            val (secureAreaId, createKeySettings) = eudiWallet
+                                .getDefaultCreateKeySettings()
                             event.resume(secureAreaId, createKeySettings)
                         }
 
@@ -1235,7 +1276,7 @@ class WalletCoreDocumentsControllerImpl(
                             }
 
                         val keyUnlockData =
-                            keyUnlockDataMap.values.first() //TODO: Revisit this once Core adds support.
+                            keyUnlockDataMap.values.first()
 
                         val cryptoObject = keyUnlockData?.getCryptoObjectForSigning()
 
@@ -1269,12 +1310,6 @@ class WalletCoreDocumentsControllerImpl(
                     launch {
                         issuerTrustWrites.joinAll()
 
-                        // event.issuedDocuments folds in deferred ids too — the Core emits
-                        // Finished(issuedDocumentIds + deferredDocumentIds) — so the untrusted
-                        // outcome is decided on the locally tracked *actually issued* documents.
-                        // Otherwise a batch of "one untrusted + one deferred from the same issuer"
-                        // would be treated as a partial success and navigate the user on the success screen with a deferred
-                        // (un-issued) id instead of the "Issuance blocked" sheet.
                         if (untrustedDocuments.isNotEmpty() && issuedDocuments.isEmpty()) {
                             trySendBlocking(
                                 IssueDocumentsPartialState.IssuerNotTrusted(
@@ -1295,7 +1330,9 @@ class WalletCoreDocumentsControllerImpl(
                             return@launch
                         }
 
-                        if (deferredDocuments.isNotEmpty() && (prioritizeDeferred || (issuedDocuments.isEmpty()))) {
+                        if (deferredDocuments.isNotEmpty() &&
+                            (prioritizeDeferred || (issuedDocuments.isEmpty()))
+                        ) {
                             trySendBlocking(
                                 IssueDocumentsPartialState.DeferredSuccess(
                                     deferredDocuments = deferredDocuments
@@ -1358,6 +1395,8 @@ class WalletCoreDocumentsControllerImpl(
      * Registration check for a flow with no approval screen, run before it starts. Returns the
      * terminal state refusing or failing the flow, or null to proceed — always null while the
      * check is off, which also skips the resolve itself.
+     *
+     * no registration certificate published; refuse like any unverified outcome
      */
     private suspend fun preflightRegistrationRefusalOrNull(
         resolveRegistration: suspend () -> Result<RegistrationCertificateResult>,
@@ -1387,7 +1426,6 @@ class WalletCoreDocumentsControllerImpl(
                         reason = untrustedReason
                     )
 
-                    // no registration certificate published; refuse like any unverified outcome
                     cause is IllegalStateException -> IssueDocumentsPartialState.IssuerNotTrusted(
                         reason = UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE
                     )
@@ -1401,8 +1439,8 @@ class WalletCoreDocumentsControllerImpl(
     }
 
     /**
-     * The manager configured for the issuer [issuerId], or a failure with [errorMessage]. There is no
-     * fallback: another issuer's manager would send that issuer's client settings to this one.
+     * The manager configured for the issuer [issuerId], or a failure with [errorMessage]. There is
+     * no fallback: another issuer's manager would send that issuer's client settings to this one.
      */
     private fun getVciManager(
         issuerId: String,
