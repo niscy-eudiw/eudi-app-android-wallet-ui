@@ -56,6 +56,12 @@ sealed class DocumentDetailsInteractorIssuancePartialState {
 
     data class Failure(val errorMessage: String) : DocumentDetailsInteractorIssuancePartialState()
 
+    /**
+     * The issuer has revoked or suspended the document, so it was not re-issued. The details on
+     * screen may predate that and are reloaded.
+     */
+    data class Blocked(val errorMessage: String) : DocumentDetailsInteractorIssuancePartialState()
+
     data class IssuerNotTrusted(
         val reason: UntrustedIssuerReasonDomain,
     ) : DocumentDetailsInteractorIssuancePartialState()
@@ -313,7 +319,7 @@ class DocumentDetailsInteractorImpl(
 
         if (walletCoreDocumentsController.isDocumentRevoked(documentId)) {
             emit(
-                DocumentDetailsInteractorIssuancePartialState.Failure(
+                DocumentDetailsInteractorIssuancePartialState.Blocked(
                     errorMessage = resourceProvider.getString(
                         R.string.document_details_reissue_blocked_text
                     )

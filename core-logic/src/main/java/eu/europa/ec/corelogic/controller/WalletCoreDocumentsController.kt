@@ -44,6 +44,7 @@ import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.corelogic.util.OfferIssuer
 import eu.europa.ec.corelogic.util.issuerLogoOrNull
 import eu.europa.ec.corelogic.util.offerIssuerOf
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
@@ -318,6 +319,7 @@ class WalletCoreDocumentsControllerImpl(
     private val issuerTrustDao: IssuerTrustDao,
     private val statusRefreshFailureDao: StatusRefreshFailureDao,
     private val prefKeys: PrefKeys,
+    private val walletWorkScheduler: WalletWorkScheduler,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     walletCore: EudiWallet? = null,
 ) : WalletCoreDocumentsController {
@@ -609,11 +611,12 @@ class WalletCoreDocumentsControllerImpl(
         // a successful re-issue makes Wallet Core delete the original document, so the
         // registration outcome is checked before anything starts
         // in that way, a refusal here leaves the original document intact
-        val preflightRefusal = preflightRegistrationRefusalOrNull(
-            resolveRegistration = {
-                manager.resolveIssuerRegistration(documentId = documentId)
-            }
-        )
+        val preflightRefusal = reIssueBlockedRefusalOrNull(documentId)
+            ?: preflightRegistrationRefusalOrNull(
+                resolveRegistration = {
+                    manager.resolveIssuerRegistration(documentId = documentId)
+                }
+            )
 
         if (preflightRefusal != null) {
             trySendBlocking(preflightRefusal)
@@ -980,7 +983,9 @@ class WalletCoreDocumentsControllerImpl(
      * the new credential is deferred, only once it arrives (see [deleteRecordsOfMissingDocuments]).
      * Copies the original's bookmark to the new documents, which keep their ids when a deferred
      * credential arrives, and deletes the rest of what the app stored about the original once Wallet
-     * Core has deleted it. The history stays.
+     * Core has deleted it. The history stays. If the original gained a revocation record while the
+     * re-issuance was under way, a revocation check is scheduled, so that the new documents are checked
+     * without waiting for the periodic interval.
      */
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal suspend fun cleanUpAfterReIssuance(
@@ -995,6 +1000,7 @@ class WalletCoreDocumentsControllerImpl(
             else -> return
         }
         if (newIds.isEmpty() || originalId in newIds) return
+        if (isDocumentRevoked(originalId)) walletWorkScheduler.scheduleRevocationCheck()
 
         cleanUpRecords {
             if (bookmarkDao.retrieve(originalId) != null) {
@@ -1010,19 +1016,23 @@ class WalletCoreDocumentsControllerImpl(
      * Deletes the records of documents Wallet Core no longer holds. Wallet Core deletes the original
      * of a deferred re-issuance when the new credential arrives, without saying which document that
      * was. Records are read before the documents, so a record written for a document issued in the
-     * meantime is kept.
+     * meantime is kept. A revocation record among those deleted schedules a revocation check, as in
+     * [cleanUpAfterReIssuance].
      */
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     internal suspend fun deleteRecordsOfMissingDocuments() {
+        val revokedIds = revokedDocumentDao.retrieveAll().map { it.identifier }.toSet()
         val recordIds = buildSet {
-            revokedDocumentDao.retrieveAll().mapTo(this) { it.identifier }
+            addAll(revokedIds)
             issuerTrustDao.retrieveAll().mapTo(this) { it.identifier }
             statusRefreshFailureDao.retrieveAll().mapTo(this) { it.identifier }
             bookmarkDao.retrieveAll().mapTo(this) { it.identifier }
             failedReIssuedDocumentDao.retrieveAll().mapTo(this) { it.identifier }
         }
         val documentIds = getAllDocuments().map { it.id }.toSet()
-        (recordIds - documentIds).forEach { documentId -> deleteDocumentRecords(documentId) }
+        val missingIds = recordIds - documentIds
+        if (missingIds.any { it in revokedIds }) walletWorkScheduler.scheduleRevocationCheck()
+        missingIds.forEach { documentId -> deleteDocumentRecords(documentId) }
     }
 
     /**
@@ -1040,6 +1050,24 @@ class WalletCoreDocumentsControllerImpl(
             }
         }
     }
+
+    /**
+     * Refuses the re-issuance of a document the issuer has revoked or suspended. The details screen
+     * checks this before the issuer's sign-in starts; checking here as well covers the background
+     * re-issuance, which filters its documents once and then re-issues them one by one.
+     */
+    private suspend fun reIssueBlockedRefusalOrNull(
+        documentId: DocumentId
+    ): IssueDocumentsPartialState? =
+        if (isDocumentRevoked(documentId)) {
+            IssueDocumentsPartialState.Failure(
+                errorMessage = resourceProvider.getString(
+                    R.string.document_details_reissue_blocked_text
+                )
+            )
+        } else {
+            null
+        }
 
     override suspend fun isDocumentRevoked(id: String): Boolean =
         revokedDocumentDao.retrieve(id) != null

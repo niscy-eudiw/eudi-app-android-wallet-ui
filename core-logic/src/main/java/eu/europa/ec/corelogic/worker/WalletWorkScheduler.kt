@@ -53,6 +53,13 @@ interface WalletWorkScheduler {
     fun scheduleStartupCheck()
 
     /**
+     * Runs the revocation check once more, after any run already queued or running, so that the
+     * documents of a re-issuance that completed while its original gained a revocation record are
+     * checked without waiting for the periodic interval.
+     */
+    fun scheduleRevocationCheck()
+
+    /**
      * Cancels the wallet's workers and waits until none is still working, for
      * [WalletCoreConfig.workerStopTimeout] at most.
      * WorkManager marks a running worker cancelled at once, and Wallet Core finishes a re-issuance it
@@ -103,6 +110,14 @@ class WalletWorkSchedulerImpl(
         workManager.enqueueUniqueWork(
             RevocationWorkManager.REVOCATION_ON_START_WORK_NAME,
             ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequest.from(RevocationWorkManager::class.java)
+        )
+    }
+
+    override fun scheduleRevocationCheck() {
+        workManager.enqueueUniqueWork(
+            RevocationWorkManager.REVOCATION_ON_START_WORK_NAME,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
             OneTimeWorkRequest.from(RevocationWorkManager::class.java)
         )
     }

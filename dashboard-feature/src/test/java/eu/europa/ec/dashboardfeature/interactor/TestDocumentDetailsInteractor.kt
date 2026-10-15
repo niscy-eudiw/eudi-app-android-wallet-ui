@@ -1497,7 +1497,7 @@ class TestDocumentDetailsInteractor {
                 issuerId = mockedReIssueIssuerId,
             ).runFlowTest {
                 assertEquals(
-                    DocumentDetailsInteractorIssuancePartialState.Failure(
+                    DocumentDetailsInteractorIssuancePartialState.Blocked(
                         errorMessage = mockedReIssueBlockedMessage
                     ),
                     awaitItem()
@@ -1526,7 +1526,7 @@ class TestDocumentDetailsInteractor {
                 issuerId = mockedReIssueIssuerId,
             ).runFlowTest {
                 assertEquals(
-                    DocumentDetailsInteractorIssuancePartialState.Failure(
+                    DocumentDetailsInteractorIssuancePartialState.Blocked(
                         errorMessage = mockedReIssueBlockedMessage
                     ),
                     awaitItem()

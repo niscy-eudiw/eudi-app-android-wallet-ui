@@ -1317,8 +1317,13 @@ What the user sees:
   `DocumentDetailsInteractor.reIssueDocument` for one, for example after a check blocked it while its
   details were open, is refused with "The issuer has revoked or suspended this document, so it cannot
   be reissued." A document whose revocation records cannot be read is refused too, with the read's
-  error. A re-issued copy would carry no revocation record, so the block would be lost. The
-  background re-issuance skips blocked documents too.
+  error. A re-issued copy would carry no revocation record, so the block would be lost. Closing the
+  refusal reloads the details, so the card shows the block. The background re-issuance skips blocked
+  documents too, and `WalletCoreDocumentsController.reIssueDocument` checks again just before it asks
+  the issuer, for a document blocked after the background run chose it. If the original is blocked
+  while a re-issue is already under way (the issuer's sign-in, or a deferred credential), the
+  re-issue still completes, as the issuer chose to issue; a revocation check is then scheduled, so
+  the new copy's own status is read without waiting for the periodic interval.
 
 ## Document Categories
 

@@ -540,6 +540,21 @@ class DocumentDetailsViewModel(
                         }
                     }
 
+                    is DocumentDetailsInteractorIssuancePartialState.Blocked -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = ContentErrorConfig(
+                                    errorSubTitle = it.errorMessage,
+                                    onCancel = {
+                                        setEvent(Event.DismissError)
+                                        getDocumentDetails(Event.Init(deepLink = null))
+                                    }
+                                )
+                            )
+                        }
+                    }
+
                     is DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted -> {
                         setState {
                             copy(

@@ -221,7 +221,8 @@ fun provideWalletCoreDocumentsController(
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     issuerTrustDao: IssuerTrustDao,
     statusRefreshFailureDao: StatusRefreshFailureDao,
-    prefKeys: PrefKeys
+    prefKeys: PrefKeys,
+    walletWorkScheduler: WalletWorkScheduler
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
         resourceProvider,
@@ -231,7 +232,8 @@ fun provideWalletCoreDocumentsController(
         failedReIssuedDocumentDao,
         issuerTrustDao,
         statusRefreshFailureDao,
-        prefKeys
+        prefKeys,
+        walletWorkScheduler
     )
 
 @Factory

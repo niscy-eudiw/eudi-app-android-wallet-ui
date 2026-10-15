@@ -19,6 +19,7 @@ package eu.europa.ec.corelogic.controller
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.corelogic.config.VciConfig
 import eu.europa.ec.corelogic.config.WalletCoreConfig
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.eudi.openid4vci.CredentialOffer
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.eudi.wallet.document.DeferredDocument
@@ -104,6 +105,9 @@ class TestWalletCoreDocumentsController {
     private lateinit var prefKeys: PrefKeys
 
     @Mock
+    private lateinit var walletWorkScheduler: WalletWorkScheduler
+
+    @Mock
     private lateinit var eudiWallet: EudiWallet
 
     private lateinit var controller: WalletCoreDocumentsController
@@ -140,6 +144,7 @@ class TestWalletCoreDocumentsController {
             issuerTrustDao = issuerTrustDao,
             statusRefreshFailureDao = statusRefreshFailureDao,
             prefKeys = prefKeys,
+            walletWorkScheduler = walletWorkScheduler,
             dispatcher = coroutineRule.testDispatcher,
             walletCore = eudiWallet,
         )
@@ -216,6 +221,22 @@ class TestWalletCoreDocumentsController {
             verify(bookmarkDao).delete("pid")
             verify(revokedDocumentDao).delete("pid")
             verify(issuerTrustDao).delete("pid")
+            verify(walletWorkScheduler, never()).scheduleRevocationCheck()
+        }
+
+    @Test
+    fun `Given the original was revoked during its re-issuance, When it is cleaned up, Then a revocation check is scheduled`() =
+        coroutineRule.runTest {
+            whenever(eudiWallet.getDocumentById("pid")).thenReturn(null)
+            whenever(revokedDocumentDao.retrieve("pid"))
+                .thenReturn(RevokedDocument("pid", RevocationStatus.INVALID))
+
+            implementation().cleanUpAfterReIssuance(
+                originalId = "pid",
+                state = IssueDocumentsPartialState.Success(documentIds = listOf("newPid")),
+            )
+
+            verify(walletWorkScheduler).scheduleRevocationCheck()
         }
 
     @Test
@@ -269,6 +290,24 @@ class TestWalletCoreDocumentsController {
             verify(bookmarkDao).delete("oldPid")
             verify(issuerTrustDao, never()).delete("otherPid")
             verify(failedReIssuedDocumentDao, never()).delete("otherPid")
+            verify(walletWorkScheduler, never()).scheduleRevocationCheck()
+        }
+
+    @Test
+    fun `Given a revoked document Wallet Core no longer holds, When missing documents are cleaned up, Then a revocation check is scheduled`() =
+        coroutineRule.runTest {
+            whenever(revokedDocumentDao.retrieveAll())
+                .thenReturn(listOf(RevokedDocument("oldPid", RevocationStatus.INVALID)))
+            whenever(issuerTrustDao.retrieveAll()).thenReturn(emptyList())
+            whenever(statusRefreshFailureDao.retrieveAll()).thenReturn(emptyList())
+            whenever(bookmarkDao.retrieveAll()).thenReturn(emptyList())
+            whenever(failedReIssuedDocumentDao.retrieveAll()).thenReturn(emptyList())
+            whenever(eudiWallet.getDocuments(anyOrNull())).thenReturn(listOf(otherPid))
+
+            implementation().deleteRecordsOfMissingDocuments()
+
+            verify(revokedDocumentDao).delete("oldPid")
+            verify(walletWorkScheduler).scheduleRevocationCheck()
         }
 
     @Test
@@ -393,6 +432,25 @@ class TestWalletCoreDocumentsController {
             ).first()
 
             assertEquals(IssueDocumentsPartialState.Failure(errorMessage = DOCUMENT_ERROR), result)
+            verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
+        }
+
+    @Test
+    fun `Given a revoked document, When it is re-issued, Then it is refused before the issuer is used`() =
+        coroutineRule.runTest {
+            givenTwoIssuers()
+            whenever(revokedDocumentDao.retrieve("pid"))
+                .thenReturn(RevokedDocument("pid", RevocationStatus.SUSPENDED))
+            whenever(resourceProvider.getString(R.string.document_details_reissue_blocked_text))
+                .thenReturn("blocked")
+
+            val result = controller.reIssueDocument(
+                documentId = "pid",
+                issuerId = CONFIGURED_ISSUER,
+                allowAuthorizationFallback = false,
+            ).first()
+
+            assertEquals(IssueDocumentsPartialState.Failure(errorMessage = "blocked"), result)
             verifyNoInteractions(firstIssuerManager, configuredIssuerManager)
         }
 
