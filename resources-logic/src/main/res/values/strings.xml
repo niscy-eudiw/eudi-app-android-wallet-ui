@@ -262,6 +262,7 @@
         <item quantity="other">%d bytes</item>
     </plurals>
     <string name="request_transaction_unavailable">Details for this transaction are unavailable.</string>
+    <string name="request_transaction_data_not_shown_error">This request asks you to sign data that the wallet cannot show in full, so it was declined.</string>
     <string name="request_transaction_qes">Qualified electronic signature (QES)</string>
     <string name="request_transaction_qeseal">Qualified electronic seal</string>
     <string name="request_transaction_aes">Advanced electronic signature</string>

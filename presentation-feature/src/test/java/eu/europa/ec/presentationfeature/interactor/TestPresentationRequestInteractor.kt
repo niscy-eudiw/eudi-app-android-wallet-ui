@@ -26,6 +26,7 @@ import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.PresentationCombinationDomain
+import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -641,11 +642,10 @@ class TestPresentationRequestInteractor {
         assertEquals("DefaultPresentationScopeId", newInteractor.presentationScopeId)
     }
 
-    // Case 15:
-    // 1. A revoked PID and a valid mDL each carry transaction data.
-    //
-    // Case 15 Expected Result:
-    // Only the mDL contributes transaction rows in an expanded section, without RP origin or identifier.
+    /**
+     * Case 15: a revoked PID without transaction data, and a valid mDL that carries it. Only the mDL
+     * contributes transaction rows, in an expanded section, without RP origin or identifier.
+     */
     @Test
     fun `Given Case 15, When getRequestDocuments is called, Then Case 15 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -658,11 +658,7 @@ class TestPresentationRequestInteractor {
             mockGetAllIssuedDocumentsCall(response = listOf(pid, mdl))
             mockIsDocumentRevoked(revokedIds = setOf(pid.id))
             val matches = listOf(
-                mockedValidPidWithBasicFieldsRequestMatch.copy(
-                    transactionData = listOf(
-                        mockedTransactionDataApproval
-                    )
-                ),
+                mockedValidPidWithBasicFieldsRequestMatch,
                 mockedValidMdlWithBasicFieldsRequestMatch.copy(
                     queryId = mockedTransactionQueryId,
                     transactionData = listOf(mockedTransactionDataApproval),
@@ -705,6 +701,114 @@ class TestPresentationRequestInteractor {
                     listOf(mockedTransactionQueryId),
                     rows.filter { row -> row.overlineText == "Requested credentials" }
                         .map { row -> (row.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+            }
+        }
+
+    /**
+     * The revoked PID is left off the screen, and its transaction data with it, so the user would
+     * sign without seeing it; the request is declined instead, as on iOS.
+     */
+    @Test
+    fun `Given transaction data bound to a revoked document, When getRequestDocuments is called, Then the request is declined`() =
+        coroutineRule.runTest {
+            val pid = getMockedPidWithBasicFields()
+            val mdl = getMockedMdlWithBasicFields()
+            mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
+            mockTransactionDataStrings(resourceProvider = resourceProvider)
+            mockDeclineString()
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+            mockGetAllIssuedDocumentsCall(response = listOf(pid, mdl))
+            mockIsDocumentRevoked(revokedIds = setOf(pid.id))
+            val matches = listOf(
+                mockedValidPidWithBasicFieldsRequestMatch.copy(
+                    transactionData = listOf(mockedTransactionDataApproval),
+                ),
+                mockedValidMdlWithBasicFieldsRequestMatch.copy(
+                    queryId = mockedTransactionQueryId,
+                    transactionData = listOf(mockedTransactionDataApproval),
+                ),
+            )
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.RequestReceived(
+                    combinationsDomain = listOf(PresentationCombinationDomain(matches = matches)),
+                    relyingParty = mockedRelyingPartyDomain,
+                ),
+            )
+
+            interactor.getRequestDocuments().runFlowTest {
+                assertEquals(
+                    PresentationRequestInteractorPartialState.Failure(error = mockedDeclineMessage),
+                    awaitItem(),
+                )
+            }
+        }
+
+    /**
+     * The PID matches two queries; the one that asks for no claims is not shown, so the transaction
+     * data it carries would not be displayed. The check is per match, as the selection is.
+     */
+    @Test
+    fun `Given transaction data on a match that is not shown, When getRequestDocuments is called, Then the request is declined`() =
+        coroutineRule.runTest {
+            mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
+            mockTransactionDataStrings(resourceProvider = resourceProvider)
+            mockDeclineString()
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+            mockGetAllIssuedDocumentsCall(response = listOf(getMockedPidWithBasicFields()))
+            mockIsDocumentRevoked(isRevoked = false)
+            val matches = listOf(
+                mockedValidPidWithBasicFieldsRequestMatch,
+                mockedValidPidWithBasicFieldsRequestMatch.copy(
+                    queryId = mockedTransactionQueryId,
+                    requestedClaims = emptyList(),
+                    transactionData = listOf(mockedTransactionDataApproval),
+                ),
+            )
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.RequestReceived(
+                    combinationsDomain = listOf(PresentationCombinationDomain(matches = matches)),
+                    relyingParty = mockedRelyingPartyDomain,
+                ),
+            )
+
+            interactor.getRequestDocuments().runFlowTest {
+                assertEquals(
+                    PresentationRequestInteractorPartialState.Failure(error = mockedDeclineMessage),
+                    awaitItem(),
+                )
+            }
+        }
+
+    /**
+     * Wallet Core passes a transaction-data type the app does not know through unparsed, so the
+     * screen could only say that its details are unavailable; the request is declined instead.
+     */
+    @Test
+    fun `Given transaction data that cannot be read, When getRequestDocuments is called, Then the request is declined`() =
+        coroutineRule.runTest {
+            mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
+            mockTransactionDataStrings(resourceProvider = resourceProvider)
+            mockDeclineString()
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+            mockGetAllIssuedDocumentsCall(response = listOf(getMockedPidWithBasicFields()))
+            mockIsDocumentRevoked(isRevoked = false)
+            val match = mockedValidPidWithBasicFieldsRequestMatch.copy(
+                transactionData = listOf(PresentationTransactionDataDomain.Unavailable),
+            )
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.RequestReceived(
+                    combinationsDomain = listOf(
+                        PresentationCombinationDomain(matches = listOf(match))
+                    ),
+                    relyingParty = mockedRelyingPartyDomain,
+                ),
+            )
+
+            interactor.getRequestDocuments().runFlowTest {
+                assertEquals(
+                    PresentationRequestInteractorPartialState.Failure(error = mockedDeclineMessage),
+                    awaitItem(),
                 )
             }
         }
@@ -917,9 +1021,15 @@ class TestPresentationRequestInteractor {
         whenever(walletCorePresentationController.requestAllowsClaimSelection)
             .thenReturn(response)
     }
+
+    private fun mockDeclineString() {
+        whenever(resourceProvider.getString(R.string.request_transaction_data_not_shown_error))
+            .thenReturn(mockedDeclineMessage)
+    }
     //endregion
 
     //region mocked objects
     private val mockedInitiatorRoute = "mockedInitiatorRoute"
+    private val mockedDeclineMessage = "declined"
     //endregion
 }
