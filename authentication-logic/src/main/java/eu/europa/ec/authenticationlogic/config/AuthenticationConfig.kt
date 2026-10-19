@@ -51,9 +51,10 @@ interface AuthenticationConfig {
     /**
      * How long the app may stay in the background while an issuance, presentation, signing or
      * factory reset is in progress, in place of [backgroundLockTimeout]. Issuance and signing send
-     * the user to a website and back, and a reset must not be interrupted. A flow is in progress while the screen in front is one of
-     * `ConfigUILogic.protectedFlowScreens`, or while a flow started elsewhere, such as a
-     * re-issuance from document details, is marked with `SessionController.beginExternalFlow`.
+     * the user to a website and back, and a reset must not be interrupted. A flow is in progress
+     * while the screen in front is one of `ConfigUILogic.protectedFlowScreens`, or while a flow
+     * started elsewhere, such as a re-issuance from document details, is marked with
+     * `SessionController.beginExternalFlow`.
      * It is also the longest time another screen of the app, such as the RQES SDK's, may stay in
      * front of the wallet's before returning to the wallet requires login again.
      * [Duration.INFINITE] never locks during such a flow.

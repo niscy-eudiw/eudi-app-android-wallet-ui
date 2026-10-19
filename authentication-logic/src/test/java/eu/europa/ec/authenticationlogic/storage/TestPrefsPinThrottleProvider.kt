@@ -117,6 +117,21 @@ class TestPrefsPinThrottleProvider {
             assertEquals(1, prefs.values["PinLockoutLevel"])
         }
 
+    /**
+     * A failure recorded while a lockout runs, such as one from another screen that read the state
+     * before the lockout began, keeps the lockout running.
+     */
+    @Test
+    fun `Given a lockout that runs, When a wrong PIN is recorded, Then the lockout keeps running`() =
+        coroutineRule.runTest {
+            lockOut()
+            now += 10.seconds.inWholeMilliseconds
+
+            provider.recordFailure()
+
+            assertEquals(active(20.seconds, 30.seconds), provider.getState())
+        }
+
     /** The screen did not read the state after the countdown; the next wrong PIN clears it. */
     @Test
     fun `Given a lockout that ended unseen, When a wrong PIN is recorded and the device restarts, Then no lockout begins`() =

@@ -139,7 +139,10 @@ class PrefsPinThrottleProvider(
         prefsController.setInt(KEY_LOCKOUT_BOOT_COUNT, bootCount())
     }
 
-    /** Clears a lockout that has run its course in this boot, so that a later restart does not begin it again. */
+    /**
+     * Clears a lockout that has run its course in this boot, so that a later restart does not begin
+     * it again.
+     */
     private suspend fun clearLockoutIfEnded() {
         val (startedAt, duration, lockoutBootCount) = readLockout()
         val now = elapsedRealtime()

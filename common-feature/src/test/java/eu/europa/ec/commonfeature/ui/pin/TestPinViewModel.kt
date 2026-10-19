@@ -16,6 +16,7 @@
 
 package eu.europa.ec.commonfeature.ui.pin
 
+import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePinImpl
 import eu.europa.ec.commonfeature.interactor.DeviceLockNotice
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
@@ -24,7 +25,9 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.serializer.UiSerializer
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -35,8 +38,11 @@ import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class TestPinViewModel {
 
@@ -142,6 +148,32 @@ class TestPinViewModel {
 
             assertNull(viewModel.viewState.value.deviceLockNotice)
             verify(interactor, never()).getDeviceLockNotice()
+        }
+
+    /**
+     * At zero the change-PIN screen reads the state again, as the login screen does: a lockout that
+     * is still running goes on, and the read that finds it over clears it in the provider.
+     */
+    @Test
+    fun `Given a lockout on the change-PIN screen, When its countdown reaches zero while it still runs, Then it goes on`() =
+        coroutineRule.runTest {
+            whenever(interactor.getPinLockoutState()).thenReturn(
+                PinLockoutState.Active(remaining = 1.seconds, total = 30.seconds),
+                PinLockoutState.Active(remaining = 2.seconds, total = 30.seconds),
+                PinLockoutState.Idle,
+            )
+            val viewModel = viewModel(PinFlow.UPDATE)
+
+            viewModel.handleEvents(Event.Init)
+            coroutineRule.testScope.advanceTimeBy(1_500.milliseconds)
+            coroutineRule.testScope.runCurrent()
+
+            assertTrue(viewModel.viewState.value.isLockedOut)
+
+            coroutineRule.testScope.advanceUntilIdle()
+
+            assertFalse(viewModel.viewState.value.isLockedOut)
+            verify(interactor, times(3)).getPinLockoutState()
         }
 
     private fun viewModel(pinFlow: PinFlow) = PinViewModel(
