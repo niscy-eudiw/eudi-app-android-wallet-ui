@@ -17,6 +17,7 @@
 package eu.europa.ec.authenticationlogic.di
 
 import android.content.Context
+import android.provider.Settings
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfigImpl
 import eu.europa.ec.authenticationlogic.config.StorageConfig
@@ -66,12 +67,19 @@ fun provideSessionController(
 
 @Single
 fun provideStorageConfig(
+    context: Context,
     prefsController: PrefsController,
     authenticationConfig: AuthenticationConfig,
 ): StorageConfig = StorageConfigImpl(
     pinImpl = PrefsPinStorageProvider(prefsController),
     biometryImpl = PrefsBiometryStorageProvider(prefsController),
-    pinThrottleImpl = PrefsPinThrottleProvider(prefsController, authenticationConfig)
+    pinThrottleImpl = PrefsPinThrottleProvider(
+        prefsController = prefsController,
+        authenticationConfig = authenticationConfig,
+        bootCount = {
+            Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+        },
+    )
 )
 
 @Factory
