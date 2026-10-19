@@ -83,4 +83,23 @@ class TestDeepLinkHelper {
         assertEquals(Intent.ACTION_VIEW, started.action)
         assertEquals(setOf(Intent.CATEGORY_BROWSABLE), started.categories)
     }
+
+    /**
+     * The path comes from the link itself, so a callback opened by another app with another path,
+     * a trailing slash or none does not resume a signing.
+     */
+    @Test
+    fun `Given rqes links with several paths, When they are read, Then only the callback's path starts the signing flow`() {
+        assertEquals(
+            DeepLinkType.RQES,
+            hasDeepLink(Uri.parse("rqes://oauth/callback?code=1"))?.type
+        )
+        listOf(
+            "rqes://oauth/callback/?code=1",
+            "rqes://oauth?code=1",
+            "rqes://oauth/other"
+        ).forEach {
+            assertEquals(it, DeepLinkType.EXTERNAL, hasDeepLink(Uri.parse(it))?.type)
+        }
+    }
 }

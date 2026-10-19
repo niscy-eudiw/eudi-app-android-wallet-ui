@@ -99,6 +99,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                     )
                     addConfigField("RQES_SCHEME", rqesScheme)
                     addConfigField("RQES_HOST", rqesHost)
+                    addConfigField("RQES_PATH", rqesPath)
                     addConfigField("RQES_DEEPLINK", "$rqesScheme://$rqesHost$rqesPath")
                     addConfigField("RQES_DOC_RETRIEVAL_SCHEME", rqesDocRetrievalScheme)
                     addConfigField("RQES_DOC_RETRIEVAL_HOST", rqesDocRetrievalHost)

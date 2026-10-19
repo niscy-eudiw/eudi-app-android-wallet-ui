@@ -24,9 +24,13 @@ data class DeepLinkAction(
     val type: DeepLinkType
 )
 
+/**
+ * @property path The path a link must have, compared exactly; null when any path is accepted.
+ */
 enum class DeepLinkType(
     val schemas: List<String>,
-    val host: String? = null
+    val host: String? = null,
+    val path: String? = null
 ) {
     OPENID4VP(
         schemas = listOf(
@@ -54,7 +58,8 @@ enum class DeepLinkType(
     ),
     RQES(
         schemas = listOf(BuildConfig.RQES_SCHEME),
-        host = BuildConfig.RQES_HOST
+        host = BuildConfig.RQES_HOST,
+        path = BuildConfig.RQES_PATH
     ),
     RQES_DOC_RETRIEVAL(
         schemas = listOf(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME),
@@ -80,13 +85,16 @@ enum class DeepLinkType(
             configured == ANY_HOST || (host != null && host.equals(configured, ignoreCase = true))
 
         /**
-         * The flow a link with [scheme] and [host] starts. A link that matches none, although the
-         * wallet's manifest accepted it, is [EXTERNAL]. [rqesDocRetrievalHost] is the configured
-         * document-retrieval host; it is a parameter only so that a specific host can be tested.
+         * The flow a link with [scheme], [host] and [path] starts. A link that matches none,
+         * although the wallet's manifest accepted it, is [EXTERNAL]. An [RQES] link must also have
+         * the path of the signing service's callback, as on iOS, because any app can open the
+         * scheme. [rqesDocRetrievalHost] is the configured document-retrieval host; it is a
+         * parameter only so that a specific host can be tested.
          */
         fun parse(
             scheme: String,
             host: String? = null,
+            path: String? = null,
             rqesDocRetrievalHost: String? = RQES_DOC_RETRIEVAL.host,
         ): DeepLinkType = when {
 
@@ -102,7 +110,7 @@ enum class DeepLinkType(
                 ISSUANCE
             }
 
-            RQES.schemas.contains(scheme) && hostMatches(RQES.host, host) -> {
+            RQES.schemas.contains(scheme) && hostMatches(RQES.host, host) && path == RQES.path -> {
                 RQES
             }
 

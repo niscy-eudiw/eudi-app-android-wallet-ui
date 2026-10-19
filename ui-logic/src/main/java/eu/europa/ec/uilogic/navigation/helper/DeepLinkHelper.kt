@@ -40,7 +40,8 @@ fun hasDeepLink(deepLinkUri: Uri?): DeepLinkAction? {
             link = uri,
             type = DeepLinkType.parse(
                 scheme = scheme,
-                host = uri.host
+                host = uri.host,
+                path = uri.path
             )
         )
     }

@@ -47,7 +47,11 @@ class TestDeepLinkAction {
         )
         assertEquals(
             DeepLinkType.RQES,
-            DeepLinkType.parse(BuildConfig.RQES_SCHEME, BuildConfig.RQES_HOST)
+            DeepLinkType.parse(
+                BuildConfig.RQES_SCHEME,
+                BuildConfig.RQES_HOST,
+                BuildConfig.RQES_PATH
+            )
         )
     }
 
@@ -55,7 +59,7 @@ class TestDeepLinkAction {
     fun `Given a known scheme with the wrong host, When parsed, Then it starts no flow`() {
         assertEquals(
             DeepLinkType.EXTERNAL,
-            DeepLinkType.parse(BuildConfig.RQES_SCHEME, "attacker.example")
+            DeepLinkType.parse(BuildConfig.RQES_SCHEME, "attacker.example", BuildConfig.RQES_PATH)
         )
         assertEquals(
             DeepLinkType.EXTERNAL,
@@ -104,7 +108,23 @@ class TestDeepLinkAction {
         )
         assertEquals(
             DeepLinkType.RQES,
-            DeepLinkType.parse(BuildConfig.RQES_SCHEME, BuildConfig.RQES_HOST.uppercase())
+            DeepLinkType.parse(
+                BuildConfig.RQES_SCHEME,
+                BuildConfig.RQES_HOST.uppercase(),
+                BuildConfig.RQES_PATH
+            )
+        )
+    }
+
+    @Test
+    fun `Given the signing callback's scheme and host with another path or none, When parsed, Then it starts no flow`() {
+        assertEquals(
+            DeepLinkType.EXTERNAL,
+            DeepLinkType.parse(BuildConfig.RQES_SCHEME, BuildConfig.RQES_HOST, "/other")
+        )
+        assertEquals(
+            DeepLinkType.EXTERNAL,
+            DeepLinkType.parse(BuildConfig.RQES_SCHEME, BuildConfig.RQES_HOST)
         )
     }
 
