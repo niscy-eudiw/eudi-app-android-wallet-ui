@@ -686,8 +686,9 @@ sign data that the wallet cannot show in full, so it was declined.", never shown
 type the app cannot display, which Wallet Core passes through unparsed, or an entry bound to a
 match the consent screen does not show, such as one for a revoked document. Each option is checked
 against its own transaction data; an option that is not offered, because none of its documents can
-be shown, is not checked. The wallet sends the verifier no error response for a declined request,
-as on iOS.
+be shown, is not checked. The request screen shows the message in place of the documents, with
+Share disabled and no Retry (`RequestDataUi.Declined`), and the wallet sends the verifier no error
+response; both as on iOS.
 
 The wallet displays hashes and checksums as the relying party supplied them. It does not verify
 them: neither the app nor Wallet Core compares a document opened from its link with them, so the

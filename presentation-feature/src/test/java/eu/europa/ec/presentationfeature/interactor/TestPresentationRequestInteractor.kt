@@ -738,7 +738,10 @@ class TestPresentationRequestInteractor {
 
             interactor.getRequestDocuments().runFlowTest {
                 assertEquals(
-                    PresentationRequestInteractorPartialState.Failure(error = mockedDeclineMessage),
+                    PresentationRequestInteractorPartialState.Declined(
+                        relyingParty = mockedRelyingPartyDomain,
+                        reason = mockedDeclineMessage,
+                    ),
                     awaitItem(),
                 )
             }
@@ -774,7 +777,10 @@ class TestPresentationRequestInteractor {
 
             interactor.getRequestDocuments().runFlowTest {
                 assertEquals(
-                    PresentationRequestInteractorPartialState.Failure(error = mockedDeclineMessage),
+                    PresentationRequestInteractorPartialState.Declined(
+                        relyingParty = mockedRelyingPartyDomain,
+                        reason = mockedDeclineMessage,
+                    ),
                     awaitItem(),
                 )
             }
@@ -807,7 +813,10 @@ class TestPresentationRequestInteractor {
 
             interactor.getRequestDocuments().runFlowTest {
                 assertEquals(
-                    PresentationRequestInteractorPartialState.Failure(error = mockedDeclineMessage),
+                    PresentationRequestInteractorPartialState.Declined(
+                        relyingParty = mockedRelyingPartyDomain,
+                        reason = mockedDeclineMessage,
+                    ),
                     awaitItem(),
                 )
             }

@@ -96,6 +96,16 @@ class TestRequestDataUi {
     }
 
     @Test
+    fun `Given a declined request, When it is read or edited, Then nothing can be shared and it stays as it is`() {
+        val declined = RequestDataUi.Declined(reason = "declined")
+
+        assertNull(declined.selectedCombination)
+        assertTrue(declined.selectedDocuments.isEmpty())
+        assertEquals(declined, declined.withSelectedDocuments(emptyList()))
+        assertEquals(declined, declined.toggleTransactionDataExpansion("section", "section"))
+    }
+
+    @Test
     fun `Given several combinations, When only another one includes the portrait, Then the selected one decides`() {
         val withPortrait = combination(document(keys = listOf("portrait"), selectable = true))
         val withoutPortrait = combination(document(keys = listOf("family_name"), selectable = true))

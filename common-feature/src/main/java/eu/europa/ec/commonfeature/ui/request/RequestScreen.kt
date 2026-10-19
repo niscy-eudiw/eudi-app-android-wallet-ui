@@ -429,6 +429,11 @@ private fun DisplayRequestContent(
             informativeText = stringResource(id = R.string.request_no_data),
         )
 
+        is RequestDataUi.Declined -> ErrorInfo(
+            modifier = modifier.fillMaxSize(),
+            informativeText = requestDataUi.reason,
+        )
+
         is RequestDataUi.Single -> Column(
             modifier = modifier,
         ) {

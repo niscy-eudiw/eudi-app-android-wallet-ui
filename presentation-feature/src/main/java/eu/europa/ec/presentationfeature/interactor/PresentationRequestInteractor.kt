@@ -49,6 +49,12 @@ sealed class PresentationRequestInteractorPartialState {
         val relyingParty: RelyingPartyDomain,
     ) : PresentationRequestInteractorPartialState()
 
+    /** The wallet declined the request, for [reason]; nothing can be shared. */
+    data class Declined(
+        val relyingParty: RelyingPartyDomain,
+        val reason: String,
+    ) : PresentationRequestInteractorPartialState()
+
     data class Failure(val error: String) : PresentationRequestInteractorPartialState()
     data object VerifierNotTrusted : PresentationRequestInteractorPartialState()
     data object Disconnect : PresentationRequestInteractorPartialState()
@@ -132,10 +138,11 @@ class PresentationRequestInteractorImpl(
                             }
 
                         if (!canShowAllTransactionData) {
-                            PresentationRequestInteractorPartialState.Failure(
-                                error = resourceProvider.getString(
+                            PresentationRequestInteractorPartialState.Declined(
+                                relyingParty = response.relyingParty,
+                                reason = resourceProvider.getString(
                                     R.string.request_transaction_data_not_shown_error
-                                )
+                                ),
                             )
                         } else if (combinationsUi.isNotEmpty()) {
                             PresentationRequestInteractorPartialState.Success(
