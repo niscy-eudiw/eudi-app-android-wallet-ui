@@ -117,6 +117,20 @@ class TestPrefsPinThrottleProvider {
             assertEquals(1, prefs.values["PinLockoutLevel"])
         }
 
+    /** The screen did not read the state after the countdown; the next wrong PIN clears it. */
+    @Test
+    fun `Given a lockout that ended unseen, When a wrong PIN is recorded and the device restarts, Then no lockout begins`() =
+        coroutineRule.runTest {
+            lockOut()
+            now += 30.seconds.inWholeMilliseconds
+
+            assertEquals(PinLockoutState.Idle, provider.recordFailure())
+            boot += 1
+            now = 2_000L
+
+            assertEquals(PinLockoutState.Idle, provider.getState())
+        }
+
     @Test
     fun `Given an elapsed time earlier than the lockout's start, When the state is read, Then the lockout begins again in full`() =
         coroutineRule.runTest {

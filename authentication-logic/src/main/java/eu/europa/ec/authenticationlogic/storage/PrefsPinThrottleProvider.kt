@@ -100,6 +100,7 @@ class PrefsPinThrottleProvider(
 
         if (newAttempts < maxAttempts) {
             prefsController.setInt(KEY_FAILED_ATTEMPTS, newAttempts)
+            runCatching { clearLockoutIfEnded() }
             return@withContext PinLockoutState.Idle
         }
 
@@ -136,6 +137,17 @@ class PrefsPinThrottleProvider(
         prefsController.setLong(KEY_LOCKOUT_STARTED_AT_ELAPSED, elapsedRealtime())
         prefsController.setLong(KEY_LOCKOUT_DURATION, durationMillis)
         prefsController.setInt(KEY_LOCKOUT_BOOT_COUNT, bootCount())
+    }
+
+    /** Clears a lockout that has run its course in this boot, so that a later restart does not begin it again. */
+    private suspend fun clearLockoutIfEnded() {
+        val (startedAt, duration, lockoutBootCount) = readLockout()
+        val now = elapsedRealtime()
+        if (startedAt > 0L && lockoutBootCount == bootCount() && now >= startedAt &&
+            now - startedAt >= duration
+        ) {
+            clearLockout()
+        }
     }
 
     private suspend fun clearLockout() {
