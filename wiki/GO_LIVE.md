@@ -1859,7 +1859,7 @@ Default policy (`AuthenticationConfigImpl`):
 | Device reboot                               | The lockout begins again in full: the elapsed real time restarts at boot. |
 | Device date or time changed                 | No effect: the lockout runs on the elapsed real time, so moving the date forward does not end it early. |
 | Preferences cannot be read                  | Counts as a lockout of the longest configured duration, never as extra attempts. |
-| Lockout over, then device reboot            | No new lockout once the wallet has seen it end (the login or change-PIN screen opened after it, or a PIN entered after it), which clears it and keeps its level; otherwise the reboot begins it again in full. |
+| Lockout over, then device reboot            | No new lockout once the wallet has seen it end (the login or change-PIN screen counting down to it or opened after it, or a PIN entered after it), which clears it and keeps its level; a lockout that ended while the app was closed begins again in full if the device reboots first. |
 | Update from a build with the wall-clock lockout | Ends a lockout in progress: those values are not read; the level is kept. |
 | App reinstall                               | State is wiped together with app data. Require re-enrollment unless secure backup/recovery is explicitly implemented. |
 
