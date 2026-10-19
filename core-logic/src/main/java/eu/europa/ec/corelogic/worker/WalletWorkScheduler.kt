@@ -37,8 +37,8 @@ interface WalletWorkScheduler {
 
     /**
      * Schedules the periodic revocation and re-issuance checks. Work already scheduled is kept. The
-     * dashboard calls it once the user has logged in, and a factory reset calls it again when it
-     * ends.
+     * dashboard calls it once the user has logged in, and a factory reset that fails calls it
+     * again.
      */
     fun schedule()
 

@@ -680,15 +680,15 @@ which the relying party chooses freely, are marked "Chosen by the relying party;
 the wallet". A document the request carries inline is shown as included, with its type and size;
 its content is not displayed. A document given by reference can be opened in the browser.
 
-A request whose transaction data cannot be shown in full is declined with "This request asks you to
-sign data that the wallet cannot show in full, so it was declined.", never shown in part
-(`PresentationRequestInteractorImpl.canShowTransactionData`), as on iOS: an entry of a configured
-type the app cannot display, which Wallet Core passes through unparsed, or an entry bound to a
-match the consent screen does not show, such as one for a revoked document. Each option is checked
-against its own transaction data; an option that is not offered, because none of its documents can
-be shown, is not checked. The request screen shows the message in place of the documents, with
-Share disabled and no Retry (`RequestDataUi.Declined`), and the wallet sends the verifier no error
-response; both as on iOS.
+The wallet declines a request whose transaction data it cannot show in full, rather than show it
+in part (`PresentationRequestInteractorImpl.canShowTransactionData`). That covers an entry of a
+configured type the app cannot display, which Wallet Core passes through unparsed, and an entry
+bound to a match the consent screen does not show, such as one for a revoked document. Each
+offered option is checked against its own transaction data; an option with no document that can
+be shown is not offered and not checked. The request screen then shows "This request asks you to
+sign data that the wallet cannot show in full, so it was declined." in place of the documents,
+with Share disabled and no Retry (`RequestDataUi.Declined`). The verifier receives no error
+response. iOS behaves the same way.
 
 The wallet displays hashes and checksums as the relying party supplied them. It does not verify
 them: neither the app nor Wallet Core compares a document opened from its link with them, so the
@@ -1402,9 +1402,9 @@ The app enqueues `RevocationWorkManager`, which:
   whether or not the wallet is unlocked: while the app is closed, and, as overdue work, when the
   process starts before login. A factory reset that fails schedules them again, but not the
   start-up check; after a successful reset they start with the dashboard, after the next login. A
-  periodic run that starts as the process starts, or one
-  already running when the user opens the wallet, reads the previous run's session id and opens a
-  second Wallet Core instance on the same storage, as in earlier releases. Removing that needs one
+  periodic run that starts as the process starts, or one already running when the user opens the
+  wallet, reads the previous run's session id and opens a second Wallet Core instance on the same
+  storage, as in earlier releases. Removing that needs one
   session id shared by the process's workers and screens. To run no check before login, make the
   workers skip while the session is locked; they then run only while the wallet is in use.
 * Treats a document whose status reference Wallet Core cannot extract (no `status` claim, or a
@@ -1817,6 +1817,7 @@ Production guidance:
 * 210,000 iterations.
 * Constant-time hash comparison.
 * Encrypted preference storage through `PrefsController`.
+* An empty PIN is never stored: `setPin` refuses it, as on iOS.
 
 Production guidance:
 
@@ -1858,8 +1859,8 @@ Default policy (`AuthenticationConfigImpl`):
 | Device reboot                               | The lockout begins again in full: the elapsed real time restarts at boot. |
 | Device date or time changed                 | No effect: the lockout runs on the elapsed real time, so moving the date forward does not end it early. |
 | Preferences cannot be read                  | Counts as a lockout of the longest configured duration, never as extra attempts. |
-| Lockout over, then device reboot            | No new lockout: an ended lockout is cleared, its level kept. |
-| App update during a lockout                 | Ends it: the wall-clock values of earlier builds are not read; the level is kept. |
+| Lockout over, then device reboot            | No new lockout once the wallet has seen it end (the login or change-PIN screen opened after it, or a PIN entered after it), which clears it and keeps its level; otherwise the reboot begins it again in full. |
+| Update from a build with the wall-clock lockout | Ends a lockout in progress: those values are not read; the level is kept. |
 | App reinstall                               | State is wiped together with app data. Require re-enrollment unless secure backup/recovery is explicitly implemented. |
 
 Lockout counters are persisted in the encrypted DataStore, not just in
@@ -2232,7 +2233,7 @@ Production decisions:
 | Biometric strength | Prefer `BIOMETRIC_STRONG` for sensitive operations. |
 | Device credential fallback | Decide whether fallback is allowed for each operation. For highest assurance, do not silently weaken biometric-only requirements. |
 | Key invalidation | Keep invalidation on new biometric enrollment. |
-| Session duration | The wallet locks after `AuthenticationConfig.backgroundLockTimeout` in the background (default 60 seconds) and after `idleLockTimeout` without interaction on any of the wallet's screens (default 5 minutes). The RQES SDK's signing screens are a separate activity whose interaction the wallet cannot see: while they are in front the idle lock gives way to `protectedFlowLockTimeout`, and returning to the wallet after that long requires login. While an issuance, presentation or signing is in progress, the background limit is `protectedFlowLockTimeout` instead (default 10 minutes), because issuance and signing send the user to a website and back. Tune all three for your assurance level; production wallets usually lock sooner. Every credential release already asks for the PIN or a biometric. |
+| Session duration | The wallet locks after `AuthenticationConfig.backgroundLockTimeout` in the background (default 60 seconds) and after `idleLockTimeout` without interaction on any of the wallet's screens (default 5 minutes). The RQES SDK's signing screens are a separate activity whose interaction the wallet cannot see: while they are in front the idle lock gives way to `protectedFlowLockTimeout`, and returning to the wallet after that long requires login. While an issuance, presentation, signing or factory reset is in progress, the background limit is `protectedFlowLockTimeout` instead (default 10 minutes), because issuance and signing send the user to a website and back, and a reset must not be interrupted. Tune all three for your assurance level; production wallets usually lock sooner. Every credential release already asks for the PIN or a biometric. |
 | PIN length | Current UI defaults to 6 digits. Confirm policy. |
 | PIN strength | A new PIN is refused when it is one digit repeated (`000000`), an ascending or descending run (`123456`, `654321`), or on `AuthenticationConfig.commonPins`, a short list of common PINs. The check applies when the PIN is created and when it is changed. Extend the list to match your policy. |
 | Device screen lock | During setup the PIN screen checks `KeyguardManager.isDeviceSecure()`. On a device without a screen lock it shows a warning and setup continues; with `AuthenticationConfig.requireDeviceSecure = true` setup stops until a lock is set, and the check runs again when the user returns from the device settings. Changing the PIN of a wallet already set up is not affected. Wallet Core does not refuse `userAuthenticationRequired = true` on a device without a screen lock: when `EudiWallet` is built it sets the option to false and creates keys without user authentication (`EudiWallet.Builder.ensureUserAuthIsSupported`), and StrongBox falls back the same way. Where key-level protection is required, also set `requireDeviceSecure = true`, and decide what happens if the user removes the screen lock later. |

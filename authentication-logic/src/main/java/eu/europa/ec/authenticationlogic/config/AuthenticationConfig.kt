@@ -49,9 +49,9 @@ interface AuthenticationConfig {
     val idleLockTimeout: Duration
 
     /**
-     * How long the app may stay in the background while an issuance, presentation or signing is
-     * in progress, in place of [backgroundLockTimeout]. Issuance and signing send the user to a
-     * website and back. A flow is in progress while the screen in front is one of
+     * How long the app may stay in the background while an issuance, presentation, signing or
+     * factory reset is in progress, in place of [backgroundLockTimeout]. Issuance and signing send
+     * the user to a website and back, and a reset must not be interrupted. A flow is in progress while the screen in front is one of
      * `ConfigUILogic.protectedFlowScreens`, or while a flow started elsewhere, such as a
      * re-issuance from document details, is marked with `SessionController.beginExternalFlow`.
      * It is also the longest time another screen of the app, such as the RQES SDK's, may stay in

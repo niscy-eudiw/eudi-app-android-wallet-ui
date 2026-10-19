@@ -132,8 +132,8 @@ You will also need to download the EUDI Verifier app. More information can be fo
 
 Once unlocked, the Wallet locks again after 60 seconds in the background or 5 minutes without
 interaction (a touch, key press or screen-reader action on any of its screens or sheets), and asks
-for the PIN or a biometric. While an issuance, presentation or signing is in progress it waits up
-to 10 minutes in the background, so that a visit to the issuer's website does not end the session.
+for the PIN or a biometric. While an issuance, presentation, signing or wallet reset is in progress
+it waits up to 10 minutes in the background, so that a visit to the issuer's website does not end the session.
 The signing service's screens get the same 10 minutes, since the Wallet cannot see interaction
 there. A link that arrives while the Wallet is locked, such as a presentation request or a
 credential offer, opens after you log in; if the Wallet locked in the middle of an issuance, start

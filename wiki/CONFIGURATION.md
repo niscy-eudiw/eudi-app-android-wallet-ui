@@ -495,7 +495,7 @@ complete production process, see [GO_LIVE.md](GO_LIVE.md).
 | RQES QTSP endpoint                         | `business-logic/src/<flavor>/java/.../RQESConfigImpl.kt`                                                                                  | Production CSC/QTSP endpoint provided by the selected qualified trust service provider.                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | RQES TSA URL                               | `RQESConfigImpl.kt`                                                                                                                       | Production timestamp authority URL required by the QTSP/signature profile.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | RQES client ID/secret                      | `RQESConfigImpl.kt`                                                                                                                       | Do not hardcode confidential secrets in the app. Use an approved public-client or backend-mediated design.                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| RQES redirect URI                          | `BuildConfig.RQES_DEEPLINK`                                                                                                               | Redirect URI registered with the QTSP and declared in the Android manifest.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| RQES redirect URI                          | `BuildConfig.RQES_DEEPLINK`                                                                                                               | Redirect URI registered with the QTSP and declared in the Android manifest. The wallet resumes a signing only on its host and path (`rqesHost`, `rqesPath`).                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | RQES document retrieval host              | `rqesDocRetrievalHost` in `AndroidLibraryConventionPlugin.kt` | The host of the QTSP's document-retrieval links. The reference `*` accepts any host and is for development only. |
 | RQES document retrieval trust              | `DocumentRetrievalConfig`                                                                                                                 | Production certificates or trust material required for retrieving signing documents.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | RQES transaction logging                   | `signingLogger` in `RQESConfigImpl`, supplied through `ConfigLogicImpl`                                                                   | Keep the provided logger configured so signing activity appears in transaction history, including with `printLogs = false`.                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -813,6 +813,7 @@ hash with a random salt and an iteration count, backed by the encrypted `PrefsCo
 encrypted preferences use Jetpack DataStore with Google Tink AEAD and an Android Keystore master
 key. For production, confirm the iteration count, lockout behavior, device binding, migration,
 backup exclusion, and recovery policy against your security requirements.
+`PrefsPinStorageProvider.setPin` refuses an empty PIN; a provider of your own should do the same.
 
 The factory reset clears the PIN, with every other preference except the session id and the
 database key, through `PrefKeys.clearAllExceptSessionIdAndDbKey()`. A provider that keeps its data
@@ -873,12 +874,19 @@ Config Construction via Koin DI Example:
 ```kotlin
 @Single
 fun provideStorageConfig(
+    context: Context,
     prefsController: PrefsController,
     authenticationConfig: AuthenticationConfig,
 ): StorageConfig = StorageConfigImpl(
     pinImpl = PrefsPinStorageProvider(prefsController),
     biometryImpl = PrefsBiometryStorageProvider(prefsController),
-    pinThrottleImpl = PrefsPinThrottleProvider(prefsController, authenticationConfig)
+    pinThrottleImpl = PrefsPinThrottleProvider(
+        prefsController = prefsController,
+        authenticationConfig = authenticationConfig,
+        bootCount = {
+            Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+        },
+    )
 )
 ```
 
@@ -928,7 +936,8 @@ interface AuthenticationConfig {
     val idleLockTimeout: Duration
 
     /**
-     * The background limit while an issuance, presentation or signing is in progress.
+     * The background limit while an issuance, presentation, signing or factory reset is in
+     * progress.
      * Duration.INFINITE never locks during such a flow.
      */
     val protectedFlowLockTimeout: Duration
