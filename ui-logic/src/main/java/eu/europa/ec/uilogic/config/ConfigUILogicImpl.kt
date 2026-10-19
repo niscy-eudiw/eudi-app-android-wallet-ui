@@ -50,6 +50,7 @@ class ConfigUILogicImpl : ConfigUILogic {
             ProximityScreens.Request,
             ProximityScreens.Loading,
             DashboardScreens.DocumentSign,
+            DashboardScreens.ResetWallet,
             CommonScreens.Biometric,
         )
 

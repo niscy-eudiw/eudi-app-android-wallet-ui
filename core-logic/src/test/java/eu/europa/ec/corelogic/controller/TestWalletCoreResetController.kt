@@ -97,7 +97,7 @@ class TestWalletCoreResetController {
     }
 
     @Test
-    fun `Given documents and a PID, When the wallet is reset, Then every step runs in order and work is scheduled again`() {
+    fun `Given documents and a PID, When the wallet is reset, Then every step runs in order and no work is scheduled`() {
         coroutineRule.runTest {
             givenDocuments(listOf(pid, mdl), mainPid = pid)
 
@@ -117,7 +117,6 @@ class TestWalletCoreResetController {
                     "delete logs",
                     "delete cache",
                     "lock",
-                    "schedule work",
                 ),
                 steps
             )
@@ -139,6 +138,24 @@ class TestWalletCoreResetController {
         }
     }
 
+    /**
+     * An [Error] is not caught as a failed step, but the reset must still stop reporting itself
+     * running, or every link and Digital Credential API request would be dropped until the process
+     * ends.
+     */
+    @Test
+    fun `Given a step that throws an Error, When the wallet is reset, Then the status no longer says it runs`() {
+        coroutineRule.runTest {
+            givenDocuments(emptyList(), mainPid = null)
+
+            runCatching {
+                buildController(clearDatabase = { throw StackOverflowError() }).resetWallet()
+            }
+
+            assertFalse(resetStatus.isResetting.value)
+        }
+    }
+
     @Test
     fun `Given a worker still working, When the wallet is reset, Then nothing is deleted and a failure returned`() {
         coroutineRule.runTest {
@@ -150,6 +167,25 @@ class TestWalletCoreResetController {
             assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), result)
             assertEquals(listOf("stop work", "schedule work"), steps)
             assertFalse(resetStatus.isResetting.value)
+        }
+    }
+
+    /**
+     * The background work is scheduled once the reset no longer reports itself running, so that
+     * nothing it starts sees a reset in progress.
+     */
+    @Test
+    fun `Given a failed reset, When work is scheduled again, Then the reset has already ended`() {
+        coroutineRule.runTest {
+            givenDocuments(listOf(mdl), mainPid = null)
+            val statusWhenScheduled = mutableListOf<Boolean>()
+
+            buildController(
+                stopBackgroundWork = { false },
+                scheduleBackgroundWork = { statusWhenScheduled.add(resetStatus.isResetting.value) },
+            ).resetWallet()
+
+            assertEquals(listOf(false), statusWhenScheduled)
         }
     }
 
@@ -264,7 +300,7 @@ class TestWalletCoreResetController {
 
             assertEquals(ResetWalletPartialState.Failure(errorMessage = "error"), first)
             assertEquals(ResetWalletPartialState.Success, second)
-            assertEquals("schedule work", steps.last())
+            assertEquals("lock", steps.last())
         }
     }
 
@@ -289,6 +325,7 @@ class TestWalletCoreResetController {
         clearDatabase: () -> Unit = { steps.add("clear database") },
         deleteLogFiles: () -> Unit = { steps.add("delete logs") },
         deleteCacheFiles: () -> Unit = { steps.add("delete cache") },
+        scheduleBackgroundWork: () -> Unit = { steps.add("schedule work") },
     ) = WalletCoreResetControllerImpl(
         walletCoreDocumentsController = walletCoreDocumentsController,
         walletCoreDCAPIRegistrationController = registration,
@@ -297,7 +334,7 @@ class TestWalletCoreResetController {
         resourceProvider = resourceProvider,
         resetStatus = resetStatus,
         stopBackgroundWork = stopBackgroundWork,
-        scheduleBackgroundWork = { steps.add("schedule work") },
+        scheduleBackgroundWork = scheduleBackgroundWork,
         clearTransactionLogs = clearTransactionLogs,
         clearDatabase = clearDatabase,
         deleteLogFiles = deleteLogFiles,

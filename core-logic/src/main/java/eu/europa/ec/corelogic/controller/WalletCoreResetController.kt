@@ -48,10 +48,11 @@ interface WalletCoreResetController {
      * Core, so that its keys are removed as Wallet Core intends, while the Digital Credential API
      * registration is held and cleared at the end. The database tables are emptied, the preferences
      * cleared, the log and cached files deleted, and the session is locked. Background work is
-     * scheduled again in every case. Once started, the reset runs to the end even if its caller is
-     * cancelled, and [WalletResetStatus.isResetting] is true meanwhile. A document that could not be
-     * deleted, or a failed step, returns [ResetWalletPartialState.Failure]; running the reset again is
-     * safe.
+     * scheduled again only after a failure; after a successful reset it starts with the dashboard,
+     * after the next login. Once started, the reset runs to the end even if its caller is
+     * cancelled, and [WalletResetStatus.isResetting] is true meanwhile. A document that could not
+     * be deleted, or a failed step, returns [ResetWalletPartialState.Failure]; running the reset
+     * again is safe.
      */
     suspend fun resetWallet(): ResetWalletPartialState
 }
@@ -93,39 +94,50 @@ class WalletCoreResetControllerImpl(
 
     /**
      * Inside [NonCancellable] a cancellation can only come from a step itself, so it counts as a
-     * failed step like any other exception. The transaction history is cleared through its own
-     * queue before the tables are, so that a deletion entry Wallet Core logged for a removed
-     * document cannot be written after the tables are empty.
+     * failed step like any other exception. The flag is cleared on every path, and before the
+     * background work is scheduled again after a failure, as on iOS.
      */
     override suspend fun resetWallet(): ResetWalletPartialState =
         withContext(dispatcher + NonCancellable) {
             resetStatus.setResetting(true)
-            try {
-                if (!stopBackgroundWork()) {
-                    return@withContext failure()
-                }
-                val documentsDeleted =
-                    walletCoreDCAPIRegistrationController.clearAround { deleteDocuments() }
-                if (!documentsDeleted) {
-                    return@withContext failure()
-                }
-                clearTransactionLogs()
-                clearDatabase()
-                prefKeys.clearAllExceptSessionIdAndDbKey()
-                deleteLogFiles()
-                deleteCacheFiles()
-                sessionController.lock()
-                ResetWalletPartialState.Success
+            val result = try {
+                runSteps()
             } catch (_: Exception) {
                 failure()
             } finally {
+                resetStatus.setResetting(false)
+            }
+            if (result is ResetWalletPartialState.Failure) {
                 try {
                     scheduleBackgroundWork()
                 } catch (_: Exception) {
                 }
-                resetStatus.setResetting(false)
             }
+            result
         }
+
+    /**
+     * The reset's steps in order. The transaction history is cleared through its own queue before
+     * the tables are, so that a deletion entry Wallet Core logged for a removed document cannot be
+     * written after the tables are empty.
+     */
+    private suspend fun runSteps(): ResetWalletPartialState {
+        if (!stopBackgroundWork()) {
+            return failure()
+        }
+        val documentsDeleted =
+            walletCoreDCAPIRegistrationController.clearAround { deleteDocuments() }
+        if (!documentsDeleted) {
+            return failure()
+        }
+        clearTransactionLogs()
+        clearDatabase()
+        prefKeys.clearAllExceptSessionIdAndDbKey()
+        deleteLogFiles()
+        deleteCacheFiles()
+        sessionController.lock()
+        return ResetWalletPartialState.Success
+    }
 
     /**
      * Deletes every document Wallet Core stores, the main PID last, as

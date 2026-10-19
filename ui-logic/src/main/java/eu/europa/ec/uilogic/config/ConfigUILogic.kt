@@ -36,10 +36,10 @@ interface ConfigUILogic {
     val loginScreens: List<Screen>
 
     /**
-     * Screens on which an issuance, presentation or signing is in progress. On them the background
-     * lock waits for `AuthenticationConfig.protectedFlowLockTimeout` instead of
-     * `backgroundLockTimeout`, because issuance and signing send the user to a website and back.
-     * The idle lock applies as on any other screen.
+     * Screens on which an issuance, presentation, signing or factory reset is in progress. On them
+     * the background lock waits for `AuthenticationConfig.protectedFlowLockTimeout` instead of
+     * `backgroundLockTimeout`, because issuance and signing send the user to a website and back,
+     * and a reset must not be interrupted. The idle lock applies as on any other screen.
      */
     val protectedFlowScreens: List<Screen>
 

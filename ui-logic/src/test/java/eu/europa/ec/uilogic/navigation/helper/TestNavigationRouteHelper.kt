@@ -81,6 +81,7 @@ class TestNavigationRouteHelper {
                 ProximityScreens.Request,
                 ProximityScreens.Loading,
                 DashboardScreens.DocumentSign,
+                DashboardScreens.ResetWallet,
                 CommonScreens.Biometric,
             ),
             config.protectedFlowScreens,
