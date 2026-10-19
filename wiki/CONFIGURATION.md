@@ -406,7 +406,10 @@ configureOpenId4Vp {
 
 Keep this alongside the other OpenID4VP settings in any flavor that supports these requests.
 The configured types are also used to display recorded signing-request details in transaction
-history. See [Transaction history](GO_LIVE.md#transaction-history) for the displayed information.
+history. A type that is not configured is refused by the OpenID4VP library. Add another type only
+once the app can display it: Wallet Core passes a configured type the app does not display through
+unparsed, and the wallet declines such a request rather than show it in part. See
+[Transaction history](GO_LIVE.md#transaction-history) for the displayed information.
 
 ## Trust Mark configuration
 
@@ -547,6 +550,9 @@ The reference configuration uses broad wildcard hosts for several custom-scheme 
 production, restrict hosts and paths where the protocol allows it, register redirect URIs with the
 issuer/verifier/QTSP, and validate every inbound URI before acting on it.
 
+`rqesHost` and `rqesPath` are also exported as `BuildConfig.RQES_HOST` and
+`BuildConfig.RQES_PATH`, and a signing callback resumes the signing only when its host and path
+match (`DeepLinkType.parse`), as on iOS; any other link in the `rqes` scheme is ignored.
 `rqesDocRetrievalHost` is also exported as `BuildConfig.RQES_DOC_RETRIEVAL_HOST`, and a document
 retrieval link starts a signing only when its host matches. The reference value `*`
 (`DeepLinkType.ANY_HOST`) matches any host and is meant for development; set the exact host of your
@@ -650,7 +656,11 @@ Android Manifest (inside assembly-logic module):
 DeepLinkType (enum in `ui-logic/src/main/java/eu/europa/ec/uilogic/navigation/helper/DeepLinkAction.kt`):
 
 ```kotlin
-enum class DeepLinkType(val schemas: List<String>, val host: String? = null) {
+enum class DeepLinkType(
+    val schemas: List<String>,
+    val host: String? = null,
+    val path: String? = null
+) {
 
     OPENID4VP(
         schemas = listOf(
@@ -676,7 +686,8 @@ enum class DeepLinkType(val schemas: List<String>, val host: String? = null) {
     ),
     RQES(
         schemas = listOf(BuildConfig.RQES_SCHEME),
-        host = BuildConfig.RQES_HOST
+        host = BuildConfig.RQES_HOST,
+        path = BuildConfig.RQES_PATH
     ),
     RQES_DOC_RETRIEVAL(
         schemas = listOf(BuildConfig.RQES_DOC_RETRIEVAL_SCHEME),
@@ -882,8 +893,11 @@ The application protects against brute-force PIN attempts via an
 escalating lockout mechanism. After a configurable number of consecutive
 failed attempts the PIN input is disabled for an increasing duration.
 Lockout state is persisted in the encrypted *PrefsController* DataStore,
-so it survives process death and device reboot. State is reset on any
-successful PIN or biometric authentication.
+so it survives process death. It runs on the elapsed real time, not the
+wall clock, so a device restart begins it again in full and a change of
+the date does not end it early; preferences that cannot be read count as
+the longest lockout. State is reset on any successful PIN or biometric
+authentication.
 
 The policy is configurable via the *AuthenticationConfig* interface
 inside the authentication-logic module:
@@ -974,8 +988,9 @@ Resulting behavior with the defaults:
 | 3 more wrong attempts                       | Third lockout: 5 minutes.                    |
 | Each subsequent batch of 3 wrong attempts   | 5 minutes (last list entry reused).          |
 | Successful PIN or biometric authentication  | Failure counter and lockout level reset.     |
-| App kill or device reboot                   | Active lockout window persists (wall-clock). |
-| Device clock rolled back                    | Detected; user remains locked.               |
+| App kill                                    | Active lockout window persists.              |
+| Device reboot                               | The lockout begins again in full.            |
+| Device date or time changed                 | No effect on the lockout.                    |
 
 You can change the policy by providing your own *AuthenticationConfigImpl*
 and wiring it in *LogicAuthenticationModule*:

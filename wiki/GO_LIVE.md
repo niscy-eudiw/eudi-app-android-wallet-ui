@@ -150,7 +150,7 @@ Keep these files under strict review:
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinStorageProvider.kt`  | PIN hashing, salt, iteration count, constant-time comparison.                                        |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/config/AuthenticationConfig.kt`      | PIN lockout policy, and the session lock timeouts.                                                   |
 | `ui-logic/src/main/java/eu/europa/ec/uilogic/config/ConfigUILogicImpl.kt` | Login and protected-flow screen lists used by the session lock, and the claims that hold a picture of the holder. |
-| `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinThrottleProvider.kt` | Persisted PIN failure counter, lockout level, lockout window timestamps; clock-rollback detection.   |
+| `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinThrottleProvider.kt` | Persisted PIN failure counter, lockout level, and the lockout on the elapsed real time and boot.     |
 | `business-logic/src/main/java/eu/europa/ec/businesslogic/controller/storage/PrefsController.kt`           | Encrypted DataStore and database key storage.                                                        |
 | `storage-logic/src/main/java/eu/europa/ec/storagelogic/di/LogicStorageModule.kt`                          | SQLCipher database setup and migration behavior.                                                     |
 | `resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeColors.kt`                   | Brand color palette (light and dark) plus extra semantic colors. See [THEMING.md](THEMING.md).       |
@@ -680,6 +680,15 @@ which the relying party chooses freely, are marked "Chosen by the relying party;
 the wallet". A document the request carries inline is shown as included, with its type and size;
 its content is not displayed. A document given by reference can be opened in the browser.
 
+A request whose transaction data cannot be shown in full is declined with "This request asks you to
+sign data that the wallet cannot show in full, so it was declined.", never shown in part
+(`PresentationRequestInteractorImpl.canShowTransactionData`), as on iOS: an entry of a configured
+type the app cannot display, which Wallet Core passes through unparsed, or an entry bound to a
+match the consent screen does not show, such as one for a revoked document. Each option is checked
+against its own transaction data; an option that is not offered, because none of its documents can
+be shown, is not checked. The wallet sends the verifier no error response for a declined request,
+as on iOS.
+
 The wallet displays hashes and checksums as the relying party supplied them. It does not verify
 them: neither the app nor Wallet Core compares a document opened from its link with them, so the
 screen cannot show that a hash belongs to that document. **Share** does not depend on the section
@@ -1117,6 +1126,9 @@ settings, which would send that issuer's client identifier and attestation to a 
   point. A refused offer fails with "This offer comes from an issuer that this wallet is not set up
   to use", and a link that is not a usable offer with "Unable to fetch and process the credential
   offer".
+* An offer whose transaction code has no length, a length outside 4 to 6 digits, or text input is
+  refused with the transaction-code error (`DocumentOfferInteractor.resolveDocumentOffer`), as on
+  iOS.
 * Re-issuance, deferred issuance and the authorization redirect use the configured issuer that
   issued the document, and fail if there is none.
 * Issuer identifiers are compared exactly. Set `issuerUrl` to the issuer's `credential_issuer` value as
@@ -1387,9 +1399,9 @@ The app enqueues `RevocationWorkManager`, which:
   work.
 * Once scheduled, the periodic checks stay scheduled with WorkManager and run on their interval
   whether or not the wallet is unlocked: while the app is closed, and, as overdue work, when the
-  process starts before login. A factory reset schedules them again when it ends, whether or not it
-  succeeded, but not the start-up check; after a successful reset they run on the emptied wallet
-  before the user has set it up again. A periodic run that starts as the process starts, or one
+  process starts before login. A factory reset that fails schedules them again, but not the
+  start-up check; after a successful reset they start with the dashboard, after the next login. A
+  periodic run that starts as the process starts, or one
   already running when the user opens the wallet, reads the previous run's session id and opens a
   second Wallet Core instance on the same storage, as in earlier releases. Removing that needs one
   session id shared by the process's workers and screens. To run no check before login, make the
@@ -1541,6 +1553,9 @@ What the app enforces:
   scheme is ignored, and the user stays in the wallet.
 * **Privacy-policy links** from a verifier's or an issuer's registration certificate follow the same
   rule: one that is not `https` is not shown as a link.
+* **RQES callback.** An `rqes` link resumes a signing only when its host and path are those of the
+  callback the wallet registered with the QTSP (`BuildConfig.RQES_HOST`, `BuildConfig.RQES_PATH`),
+  as on iOS; any other link in the scheme is ignored.
 * **RQES document retrieval.** A link with the `eudi-rqes` scheme starts a signing only when its host
   matches `rqesDocRetrievalHost` (`BuildConfig.RQES_DOC_RETRIEVAL_HOST`), compared without regard
   to case. Set an exact host: the manifest's `*.domain` form is not supported by the check, so no
@@ -1822,10 +1837,12 @@ Persisted state keys (encrypted DataStore):
 * `PinFailedAttempts` — current consecutive failure counter.
 * `PinLockoutLevel` — monotonic counter indexing
   `AuthenticationConfig.pinLockoutDurations`.
-* `PinLockoutStartedAt` — wall-clock timestamp when the current lockout
-  began. Used for clock-rollback detection.
-* `PinLockoutEndsAt` — wall-clock timestamp when the current lockout
-  ends.
+* `PinLockoutStartedAtElapsed` — the elapsed real time (`SystemClock.elapsedRealtime()`, which
+  counts sleep and ignores the date and time settings) when the current lockout began.
+* `PinLockoutDuration` — the length of the current lockout, in milliseconds.
+* `PinLockoutBootCount` — the boot the lockout began in (`Settings.Global.BOOT_COUNT`).
+* `PinLockoutStartedAt`, `PinLockoutEndsAt` — wall-clock values of earlier builds, removed with a
+  successful authentication.
 
 Default policy (`AuthenticationConfigImpl`):
 
@@ -1836,8 +1853,12 @@ Default policy (`AuthenticationConfigImpl`):
 | 3 more failures after that                  | Third lockout: 5 minutes.                    |
 | Each subsequent batch of 3 failures         | 5 minutes (last list entry reused).          |
 | Successful PIN or biometric authentication  | Counters and lockout level reset.            |
-| App kill or device reboot                   | Lockout window persists (wall-clock based).  |
-| Device clock rolled back                    | Detected via stored start timestamp; user remains locked for the full duration. |
+| App kill                                    | Lockout window persists.                     |
+| Device reboot                               | The lockout begins again in full: the elapsed real time restarts at boot. |
+| Device date or time changed                 | No effect: the lockout runs on the elapsed real time, so moving the date forward does not end it early. |
+| Preferences cannot be read                  | Counts as a lockout of the longest configured duration, never as extra attempts. |
+| Lockout over, then device reboot            | No new lockout: an ended lockout is cleared, its level kept. |
+| App update during a lockout                 | Ends it: the wall-clock values of earlier builds are not read; the level is kept. |
 | App reinstall                               | State is wiped together with app data. Require re-enrollment unless secure backup/recovery is explicitly implemented. |
 
 Lockout counters are persisted in the encrypted DataStore, not just in
@@ -1859,8 +1880,6 @@ Production gaps to address:
   client-side and is wiped by reinstall.
 * Add telemetry for lockout events without logging PIN values.
 * Combine with RASP and server-side risk checks where applicable.
-* Clock-rollback mitigation is best-effort; a fully tampered device
-  with reset clock could still bypass parts of the wall-clock window.
 
 ### SQLCipher Room Database
 
@@ -1992,18 +2011,20 @@ running:
    the logos of issuers and relying parties;
 6. locks the session.
 
-Whether or not these steps succeed, the reset then schedules the periodic revocation and
-re-issuance checks again (`WalletWorkScheduler.schedule`), but not the start-up check. After a
-successful reset they therefore run while the wallet is locked.
+If a step fails, the reset schedules the periodic revocation and re-issuance checks again
+(`WalletWorkScheduler.schedule`). After a successful reset they start with the dashboard, after the
+next login, as after a first install.
 
 The wallet then starts again at the splash screen, which leads to onboarding, as after a first
 install. The app does not close. Once started, the reset runs to the end even if its screen is
-closed. A link or Digital Credential API request that arrives while it runs is dropped, and a link
-the app kept for after login is forgotten. If a document cannot be deleted or a step fails, the
-user can retry, or close the screen, which also starts the wallet again at the splash screen. A
-reset screen restored after the process ended finds the wallet locked and does not start; the lock
-routes to the login screen. When the database key is missing at start-up, any existing database
-file is deleted, since it could not be opened, and a new database is created.
+closed, and its screen is a protected-flow screen (`protectedFlowScreens`), so the background lock
+waits `protectedFlowLockTimeout` while it runs. A link or Digital Credential API request that
+arrives while it runs is dropped, and a link the app kept for after login is forgotten. If a
+document cannot be deleted or a step fails, the user can retry, or close the screen, which also
+starts the wallet again at the splash screen. A reset screen restored after the process ended finds
+the wallet locked and does not start; the lock routes to the login screen. When the database key
+is missing at start-up, any existing database file is deleted, since it could not be opened, and a
+new database is created.
 
 The reset keeps the following, none of which holds the user's personal data:
 
