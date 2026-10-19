@@ -264,6 +264,45 @@ class TestDocumentOfferInteractor {
             }
         }
 
+    /**
+     * A transaction code whose length the offer does not give is refused before the code screen,
+     * as on iOS: the screen could not size its input, and the issuance would fail at the issuer.
+     */
+    @Test
+    fun `Given an offer whose transaction code has no length, When resolveDocumentOffer is called, Then the code format failure is returned`() =
+        coroutineRule.runTest {
+            val mockedOffer = mockOffer(
+                issuerName = mockedIssuerName,
+                offeredDocuments = mockedOfferedDocumentsList,
+                txCodeSpec = mockOfferTxCodeSpec(
+                    inputMode = TxCodeInputMode.NUMERIC,
+                    length = null
+                )
+            )
+            whenever(
+                resourceProvider.getString(
+                    R.string.issuance_document_offer_error_invalid_txcode_format,
+                    4,
+                    6
+                )
+            ).thenReturn(mockedInvalidCodeFormatMessage)
+            mockWalletDocumentsControllerResolveOfferEventEmission(
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = mockedVerifiedIssuerRegistration,
+                )
+            )
+
+            interactor.resolveDocumentOffer(mockedUriPath1).runFlowTest {
+                assertEquals(
+                    ResolveDocumentOfferInteractorPartialState.Failure(
+                        errorMessage = mockedInvalidCodeFormatMessage
+                    ),
+                    awaitItem()
+                )
+            }
+        }
+
     // Case 3:
     // 1. walletCoreDocumentsController.resolveDocumentOffer() returns ResolveDocumentOfferPartialState.Success with:
     // - invalid response.offer.txCodeSpec?.inputMode (TxCodeSpec.InputMode.TEXT),

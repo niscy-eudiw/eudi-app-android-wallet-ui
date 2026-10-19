@@ -23,7 +23,6 @@ import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.extension.safeAsync
-import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
@@ -183,12 +182,12 @@ class DocumentOfferInteractorImpl(
                             val codeMinLength = 4
                             val codeMaxLength = 6
 
-                            safeLet(
-                                response.offer.txCodeSpec?.inputMode,
-                                response.offer.txCodeSpec?.length
-                            ) { inputMode, length ->
-
-                                if ((length !in codeMinLength..codeMaxLength) || inputMode == TxCodeInputMode.TEXT) {
+                            response.offer.txCodeSpec?.let { txCodeSpec ->
+                                val length = txCodeSpec.length
+                                if (length == null ||
+                                    length !in codeMinLength..codeMaxLength ||
+                                    txCodeSpec.inputMode == TxCodeInputMode.TEXT
+                                ) {
                                     return@map ResolveDocumentOfferInteractorPartialState.Failure(
                                         errorMessage = resourceProvider.getString(
                                             R.string.issuance_document_offer_error_invalid_txcode_format,
