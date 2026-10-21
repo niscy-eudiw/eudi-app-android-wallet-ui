@@ -943,6 +943,13 @@ Production requirements for a trusted-list deployment:
   TS 119 411-8 for access certificates) from every list. The second turns off CRL and OCSP checking during chain
   validation; a certificate a list names directly is not checked for revocation in either case. Both
   are workarounds for development PKI and must not ship.
+* Revocation information must be served over HTTPS. The wallet uses HTTPS only, and revocation is
+  no exception: CRL and OCSP downloads over `http://` are refused like any other cleartext request.
+  Every certificate below a list entry, in every chain the wallet validates against the trusted
+  lists, must give its CRL distribution points and OCSP address as `https://` URLs. A certificate
+  that gives only `http://` addresses, which is common, always fails. This is a requirement on the
+  trust framework's certificate authorities; see
+  [Production Backend Requirements](#production-backend-requirements).
 * Classify every credential type you issue or check the status of (`classifications`), and decide
   how the classifications will be maintained. The reference flavors classify only the PID.
   Classification decides what is evaluated. Under `ENFORCE`, issuance of an unclassified type is
@@ -1704,8 +1711,9 @@ Production network rules:
 
 * Never use the trust-all self-signed certificate code from the local build documentation in
   production.
-* All issuer, verifier, wallet provider, QTSP, TSA, status, analytics, and telemetry endpoints must
-  use HTTPS.
+* All issuer, verifier, wallet provider, QTSP, TSA, status, certificate revocation (CRL and OCSP),
+  analytics, and telemetry endpoints must use HTTPS. For CRL and OCSP this binds the certificate
+  authorities that publish them; see [ETSI Trusted Lists (LoTE)](#etsi-trusted-lists-lote).
 * Certificate errors must fail closed.
 * Hostname verification must remain enabled.
 * Consider certificate pinning for your own high-value backend endpoints.
@@ -2765,7 +2773,9 @@ Must provide:
 * OpenID4VCI metadata.
 * Authorization server metadata.
 * Production credential configurations.
-* Credential signing keys and certificate chains.
+* Credential signing keys and certificate chains. Every certificate in a chain below its
+  trusted-list entry gives its CRL distribution points and OCSP address as `https://` URLs; the
+  wallet does not fetch revocation information over `http://`.
 * Wallet/client attestation validation.
 * PAR and DPoP behavior according to profile.
 * Credential status/revocation support.
@@ -2787,6 +2797,8 @@ Must provide:
 
 * OpenID4VP request creation.
 * Client identity through X.509, preregistration, or other approved scheme.
+* Certificate chains, for request signing and registration, whose certificates below the
+  trusted-list entry give their CRL distribution points and OCSP address as `https://` URLs.
 * Request signing where required.
 * Redirect handling.
 * Data minimization by request.
