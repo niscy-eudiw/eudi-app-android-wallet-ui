@@ -26,6 +26,7 @@ import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractorImpl
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.uilogic.config.ConfigUILogic
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -40,12 +41,14 @@ class FeaturePresentationModule
 fun providePresentationRequestInteractor(
     resourceProvider: ResourceProvider,
     uuidProvider: UuidProvider,
-    walletCoreDocumentsController: WalletCoreDocumentsController
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+    configUILogic: ConfigUILogic,
 ): PresentationRequestInteractor {
     return PresentationRequestInteractorImpl(
         resourceProvider,
         uuidProvider,
-        walletCoreDocumentsController
+        walletCoreDocumentsController,
+        configUILogic,
     )
 }
 
@@ -63,10 +66,12 @@ fun providePresentationSuccessInteractor(
     walletCoreDocumentsController: WalletCoreDocumentsController,
     resourceProvider: ResourceProvider,
     uuidProvider: UuidProvider,
+    configUILogic: ConfigUILogic,
 ): PresentationSuccessInteractor {
     return PresentationSuccessInteractorImpl(
         walletCoreDocumentsController,
         resourceProvider,
         uuidProvider,
+        configUILogic,
     )
 }

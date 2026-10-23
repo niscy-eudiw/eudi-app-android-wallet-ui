@@ -322,12 +322,20 @@ class BiometricViewModel(
     }
 
     private fun authenticationSuccess() {
+        if (biometricUiConfig.isPreAuthorization) {
+            biometricInteractor.unlockSession()
+        }
         doNavigation(
             navigation = biometricUiConfig.onSuccessNavigation,
             flowSucceeded = true
         )
     }
 
+    /**
+     * Counts the lockout down on screen. When the count reaches zero the state is read again, as on
+     * iOS: that clears a lockout that has run its course, so a later restart does not begin it
+     * again, and a lockout that is still running, for example after a restart, goes on.
+     */
     private fun startLockoutTick(initialRemainingMs: Long) {
         lockoutTickJob?.cancel()
         if (initialRemainingMs <= 0L) {
@@ -352,7 +360,12 @@ class BiometricViewModel(
                     copy(lockoutMessage = buildLockoutMessage(remaining))
                 }
             }
-            stopLockoutTick()
+            when (val lockoutState = biometricInteractor.getPinLockoutState()) {
+                is PinLockoutState.Active ->
+                    startLockoutTick(lockoutState.remaining.inWholeMilliseconds)
+
+                PinLockoutState.Idle -> stopLockoutTick()
+            }
         }
     }
 

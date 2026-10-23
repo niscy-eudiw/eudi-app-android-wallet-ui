@@ -113,16 +113,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="${deepLinkHost}"
-                    android:scheme="${deepLinkScheme}" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
                     android:host="${eudiOpenid4vpHost}"
                     android:scheme="${eudiOpenid4vpScheme}" />
 
@@ -224,6 +214,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name="eu.europa.ec.eudi.rqesui.presentation.ui.container.EudiRQESContainer"
+            android:exported="false"
+            tools:replace="android:exported" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

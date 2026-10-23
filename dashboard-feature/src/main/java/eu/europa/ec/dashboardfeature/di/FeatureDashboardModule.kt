@@ -16,6 +16,7 @@
 
 package eu.europa.ec.dashboardfeature.di
 
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
@@ -24,9 +25,13 @@ import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.config.WalletCoreConfig
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.controller.WalletCoreResetController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
+import eu.europa.ec.corelogic.provider.DCAPISettingProvider
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -37,6 +42,8 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.ResetWalletInteractor
+import eu.europa.ec.dashboardfeature.interactor.ResetWalletInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
@@ -59,8 +66,12 @@ class FeatureDashboardModule
 @Factory
 fun provideDashboardInteractor(
     resourceProvider: ResourceProvider,
+    walletWorkScheduler: WalletWorkScheduler,
+    sessionController: SessionController,
 ): DashboardInteractor = DashboardInteractorImpl(
     resourceProvider,
+    walletWorkScheduler,
+    sessionController,
 )
 
 @Factory
@@ -70,12 +81,25 @@ fun provideSettingsInteractor(
     logController: LogController,
     resourceProvider: ResourceProvider,
     prefKeys: PrefKeys,
+    dcapiSettingProvider: DCAPISettingProvider,
+    walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
 ): SettingsInteractor = SettingsInteractorImpl(
     biometricInteractor,
     configLogic,
     logController,
     resourceProvider,
     prefKeys,
+    dcapiSettingProvider,
+    walletCoreDCAPIRegistrationController,
+)
+
+@Factory
+fun provideResetWalletInteractor(
+    walletCoreResetController: WalletCoreResetController,
+    sessionController: SessionController,
+): ResetWalletInteractor = ResetWalletInteractorImpl(
+    walletCoreResetController,
+    sessionController,
 )
 
 @Factory
@@ -131,6 +155,7 @@ fun provideDocumentDetailsInteractor(
     uuidProvider: UuidProvider,
     configLogic: ConfigLogic,
     prefKeys: PrefKeys,
+    sessionController: SessionController,
 ): DocumentDetailsInteractor =
     DocumentDetailsInteractorImpl(
         walletCoreDocumentsController,
@@ -139,6 +164,7 @@ fun provideDocumentDetailsInteractor(
         uuidProvider,
         configLogic,
         prefKeys,
+        sessionController,
     )
 
 @Factory

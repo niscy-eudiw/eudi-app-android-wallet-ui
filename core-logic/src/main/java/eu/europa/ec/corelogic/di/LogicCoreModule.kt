@@ -17,38 +17,55 @@
 package eu.europa.ec.corelogic.di
 
 import android.content.Context
+import androidx.credentials.registry.provider.ClearCredentialRegistryRequest
+import androidx.credentials.registry.provider.RegistryManager
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.di.LogicBusinessModule
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.config.WalletCoreConfigImpl
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationController
+import eu.europa.ec.corelogic.controller.WalletCoreDCAPIRegistrationControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreLogController
 import eu.europa.ec.corelogic.controller.WalletCoreLogControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationControllerImpl
+import eu.europa.ec.corelogic.controller.WalletCoreResetController
+import eu.europa.ec.corelogic.controller.WalletCoreResetControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
 import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkControllerImpl
+import eu.europa.ec.corelogic.controller.WalletResetStatus
+import eu.europa.ec.corelogic.provider.DCAPISettingProvider
+import eu.europa.ec.corelogic.provider.DCAPISettingProviderImpl
 import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.corelogic.provider.RegistrationCheckProviderImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
+import eu.europa.ec.corelogic.util.DocumentManagerWithoutExcluded
+import eu.europa.ec.corelogic.worker.WalletWorkScheduler
+import eu.europa.ec.corelogic.worker.WalletWorkSchedulerImpl
 import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
 import eu.europa.ec.eudi.wallet.EudiWallet
+import eu.europa.ec.eudi.wallet.dcapi.registration.DefaultDCAPIRegistration
 import eu.europa.ec.eudi.wallet.transactionLogging.DefaultTransactionLogManager
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.networklogic.repository.WalletAttestationRepository
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
+import eu.europa.ec.storagelogic.dao.IssuerTrustDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
+import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
+import eu.europa.ec.storagelogic.service.DatabaseEraser
 import io.ktor.client.HttpClient
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
@@ -72,17 +89,49 @@ fun provideEudiWallet(
     walletCoreLogController: WalletCoreLogController,
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
     walletCoreAttestationProvider: WalletCoreAttestationProvider,
-    httpClient: HttpClient
-): EudiWallet = EudiWallet(
-    context = context,
-    config = walletCoreConfig.config,
-    walletProvider = walletCoreAttestationProvider,
-    trustMarkSource = walletCoreConfig.trustMarkSource,
-) {
-    withLogger(walletCoreLogController)
-    withTransactionLogger(walletCoreTransactionLogController)
-    withKtorHttpClientFactory { httpClient }
+    httpClient: HttpClient,
+    walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
+): EudiWallet {
+    val eudiWallet = EudiWallet(
+        context = context,
+        config = walletCoreConfig.config,
+        walletProvider = walletCoreAttestationProvider,
+        trustMarkSource = walletCoreConfig.trustMarkSource,
+    ) {
+        withLogger(walletCoreLogController)
+        withTransactionLogger(walletCoreTransactionLogController)
+        withKtorHttpClientFactory { httpClient }
+        withDCAPIRegistration(walletCoreDCAPIRegistrationController)
+    }
+    eudiWallet.addTransferEventListener(walletCoreTransactionLogController)
+    walletCoreDCAPIRegistrationController.attach {
+        DefaultDCAPIRegistration(
+            context = context,
+            documentManager = DocumentManagerWithoutExcluded(eudiWallet) {
+                walletCoreDCAPIRegistrationController.excludedDocumentIds
+            },
+            supportedProtocols = walletCoreConfig.config.dcapiConfig?.supportedProtocols?.toList()
+                .orEmpty(),
+            logger = walletCoreLogController,
+        )
+    }
+    return eudiWallet
 }
+
+@Single
+fun provideWalletCoreDCAPIRegistrationController(
+    context: Context,
+    dcapiSettingProvider: DCAPISettingProvider,
+    revokedDocumentDao: RevokedDocumentDao,
+): WalletCoreDCAPIRegistrationController = WalletCoreDCAPIRegistrationControllerImpl(
+    clearRegistry = {
+        RegistryManager.create(context).clearCredentialRegistry(
+            ClearCredentialRegistryRequest(isDeleteAll = true)
+        )
+    },
+    isEnabled = { dcapiSettingProvider.isAvailable && dcapiSettingProvider.isEnabled() },
+    getBlockedDocumentIds = { revokedDocumentDao.retrieveAll().map { it.identifier }.toSet() },
+)
 
 @Factory
 fun provideWalletCoreTrustMarkController(
@@ -101,8 +150,13 @@ fun provideWalletCoreConfig(
 )
 
 @Factory
-fun provideWalletCoreLogController(logController: LogController): WalletCoreLogController =
-    WalletCoreLogControllerImpl(logController)
+fun provideWalletCoreLogController(
+    logController: LogController,
+    walletCoreConfig: WalletCoreConfig,
+): WalletCoreLogController = WalletCoreLogControllerImpl(
+    logController = logController,
+    logLevel = walletCoreConfig.config.logLevel,
+)
 
 // Single, not a factory: the controller owns the queue that keeps transaction writes in order, so
 // a second instance would be a second queue writing the same rows.
@@ -155,22 +209,77 @@ fun provideRegistrationCheckProvider(
 )
 
 @Factory
+fun provideDCAPISettingProvider(
+    prefKeys: PrefKeys,
+    walletCoreConfig: WalletCoreConfig,
+): DCAPISettingProvider = DCAPISettingProviderImpl(
+    prefKeys = prefKeys,
+    walletCoreConfig = walletCoreConfig,
+)
+
+@Factory
 fun provideWalletCoreDocumentsController(
     resourceProvider: ResourceProvider,
     walletCoreConfig: WalletCoreConfig,
     bookmarkDao: BookmarkDao,
     revokedDocumentDao: RevokedDocumentDao,
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
-    prefKeys: PrefKeys
+    issuerTrustDao: IssuerTrustDao,
+    statusRefreshFailureDao: StatusRefreshFailureDao,
+    prefKeys: PrefKeys,
+    walletWorkScheduler: WalletWorkScheduler,
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
-        resourceProvider,
-        walletCoreConfig,
-        bookmarkDao,
-        revokedDocumentDao,
-        failedReIssuedDocumentDao,
-        prefKeys
+        resourceProvider = resourceProvider,
+        walletCoreConfig = walletCoreConfig,
+        bookmarkDao = bookmarkDao,
+        revokedDocumentDao = revokedDocumentDao,
+        failedReIssuedDocumentDao = failedReIssuedDocumentDao,
+        issuerTrustDao = issuerTrustDao,
+        statusRefreshFailureDao = statusRefreshFailureDao,
+        prefKeys = prefKeys,
+        walletWorkScheduler = walletWorkScheduler,
     )
+
+@Factory
+fun provideWalletCoreResetController(
+    context: Context,
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletCoreDCAPIRegistrationController: WalletCoreDCAPIRegistrationController,
+    prefKeys: PrefKeys,
+    sessionController: SessionController,
+    resourceProvider: ResourceProvider,
+    walletResetStatus: WalletResetStatus,
+    walletWorkScheduler: WalletWorkScheduler,
+    databaseEraser: DatabaseEraser,
+    logController: LogController,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
+): WalletCoreResetController = WalletCoreResetControllerImpl(
+    walletCoreDocumentsController = walletCoreDocumentsController,
+    walletCoreDCAPIRegistrationController = walletCoreDCAPIRegistrationController,
+    prefKeys = prefKeys,
+    sessionController = sessionController,
+    resourceProvider = resourceProvider,
+    resetStatus = walletResetStatus,
+    stopBackgroundWork = { walletWorkScheduler.stop() },
+    scheduleBackgroundWork = { walletWorkScheduler.schedule() },
+    clearTransactionLogs = { walletCoreTransactionLogController.deleteAllTransactionLogs() },
+    clearDatabase = { databaseEraser.clearAllTables() },
+    deleteLogFiles = { logController.deleteLogFiles() },
+    deleteCacheFiles = { context.cacheDir.listFiles()?.forEach { it.deleteRecursively() } },
+)
+
+@Single
+fun provideWalletResetStatus(): WalletResetStatus = WalletResetStatus()
+
+@Single
+fun provideWalletWorkScheduler(
+    context: Context,
+    walletCoreConfig: WalletCoreConfig,
+): WalletWorkScheduler = WalletWorkSchedulerImpl(
+    context = context,
+    walletCoreConfig = walletCoreConfig,
+)
 
 @Scope(WalletPresentationScope::class)
 @Scoped
@@ -208,7 +317,8 @@ inline fun <reified T : Any> getOrCreateKoinScope(scopeId: String): org.koin.cor
  * Retrieves an existing Koin scope by its identifier.
  *
  * @param scopeId The unique identifier of the scope to retrieve.
- * @return The [org.koin.core.scope.Scope] instance if it exists, or null if no scope with the given ID is found.
+ * @return The [org.koin.core.scope.Scope] instance if it exists, or null if no scope with the given ID is found
+ * or Koin has not been started.
  */
 fun getOrNullKoinScope(scopeId: String): org.koin.core.scope.Scope? =
-    KoinPlatform.getKoin().getScopeOrNull(scopeId)
+    KoinPlatform.getKoinOrNull()?.getScopeOrNull(scopeId)

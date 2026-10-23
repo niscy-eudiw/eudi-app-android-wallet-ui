@@ -198,6 +198,24 @@ class PresentationRequestViewModel(
                             )
                         }
                     }
+
+                    is PresentationRequestInteractorPartialState.Declined -> {
+                        val relyingPartyHeader = response.relyingParty.toRelyingPartyHeaderUi(
+                            fallbackName = resourceProvider.getString(
+                                R.string.request_relying_party_default_name
+                            )
+                        )
+
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                relyingPartyHeader = relyingPartyHeader,
+                                registrationWarning = null,
+                                requestDataUi = RequestDataUi.Declined(reason = response.reason),
+                            )
+                        }
+                    }
                 }
             }
         }

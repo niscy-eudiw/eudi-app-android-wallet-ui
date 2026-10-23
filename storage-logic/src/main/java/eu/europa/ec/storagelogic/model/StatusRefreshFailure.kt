@@ -14,11 +14,22 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.corelogic.model
+package eu.europa.ec.storagelogic.model
 
-import eu.europa.ec.authenticationlogic.model.BiometricCrypto
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
-data class AuthenticationData(
-    val crypto: BiometricCrypto,
-    val onAuthenticationSuccess: () -> Unit
+/**
+ * The last failed attempt to refresh a document's status: the status list could not be fetched,
+ * parsed or verified. Removed by the next successful check.
+ *
+ * @property failedAt when the attempt failed, in milliseconds since the epoch.
+ * @property reason a short description of the failure, for diagnosis.
+ */
+@Entity(tableName = "statusRefreshFailures")
+data class StatusRefreshFailure(
+    @PrimaryKey
+    val identifier: String,
+    val failedAt: Long,
+    val reason: String,
 )

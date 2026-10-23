@@ -16,6 +16,8 @@
 
 package eu.europa.ec.authenticationlogic.di
 
+import android.content.Context
+import android.provider.Settings
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfigImpl
 import eu.europa.ec.authenticationlogic.config.StorageConfig
@@ -24,6 +26,10 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthe
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthenticationControllerImpl
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationController
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationControllerImpl
+import eu.europa.ec.authenticationlogic.controller.device.DeviceLockController
+import eu.europa.ec.authenticationlogic.controller.device.DeviceLockControllerImpl
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
+import eu.europa.ec.authenticationlogic.controller.session.SessionControllerImpl
 import eu.europa.ec.authenticationlogic.controller.storage.BiometryStorageController
 import eu.europa.ec.authenticationlogic.controller.storage.BiometryStorageControllerImpl
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
@@ -50,14 +56,30 @@ class LogicAuthenticationModule
 @Single
 fun provideAuthenticationConfig(): AuthenticationConfig = AuthenticationConfigImpl()
 
+@Factory
+fun provideDeviceLockController(context: Context): DeviceLockController =
+    DeviceLockControllerImpl(context)
+
+@Single
+fun provideSessionController(
+    authenticationConfig: AuthenticationConfig
+): SessionController = SessionControllerImpl(authenticationConfig)
+
 @Single
 fun provideStorageConfig(
+    context: Context,
     prefsController: PrefsController,
     authenticationConfig: AuthenticationConfig,
 ): StorageConfig = StorageConfigImpl(
     pinImpl = PrefsPinStorageProvider(prefsController),
     biometryImpl = PrefsBiometryStorageProvider(prefsController),
-    pinThrottleImpl = PrefsPinThrottleProvider(prefsController, authenticationConfig)
+    pinThrottleImpl = PrefsPinThrottleProvider(
+        prefsController = prefsController,
+        authenticationConfig = authenticationConfig,
+        bootCount = {
+            Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+        },
+    )
 )
 
 @Factory

@@ -283,7 +283,8 @@ class TestBiometricViewModel {
         lockViewModelOut(30.seconds)
         assertEquals("locked:$MAX_ATTEMPTS:00:30", viewModel.viewState.value.lockoutMessage)
 
-        whenever(interactor.getPinLockoutState()).thenReturn(lockout(90.seconds))
+        whenever(interactor.getPinLockoutState())
+            .thenReturn(lockout(90.seconds), PinLockoutState.Idle)
         viewModel.handleEvents(Event.Init)
         coroutineRule.testScope.runCurrent()
 
@@ -350,7 +351,8 @@ class TestBiometricViewModel {
     @Test
     fun `init restores an active lockout and counts it down to release`() = coroutineRule.runTest {
         whenever(interactor.getBiometricUserSelection()).thenReturn(false)
-        whenever(interactor.getPinLockoutState()).thenReturn(lockout(3.seconds))
+        whenever(interactor.getPinLockoutState())
+            .thenReturn(lockout(3.seconds), PinLockoutState.Idle)
 
         viewModel.handleEvents(Event.Init)
         coroutineRule.testScope.runCurrent()
@@ -368,6 +370,30 @@ class TestBiometricViewModel {
         assertFalse(viewModel.viewState.value.isLockedOut)
         assertNull(viewModel.viewState.value.lockoutMessage)
     }
+
+    /**
+     * At zero the state is read again: a lockout that is still running goes on, and the read that
+     * finds it over clears it in the provider.
+     */
+    @Test
+    fun `Given a countdown that reaches zero, When the lockout still runs, Then it goes on until the state is idle`() =
+        coroutineRule.runTest {
+            whenever(interactor.getBiometricUserSelection()).thenReturn(false)
+            whenever(interactor.getPinLockoutState())
+                .thenReturn(lockout(1.seconds), lockout(2.seconds), PinLockoutState.Idle)
+
+            viewModel.handleEvents(Event.Init)
+            coroutineRule.testScope.advanceTimeBy(1_500.milliseconds)
+            coroutineRule.testScope.runCurrent()
+
+            assertTrue(viewModel.viewState.value.isLockedOut)
+            assertEquals("locked:$MAX_ATTEMPTS:00:02", viewModel.viewState.value.lockoutMessage)
+
+            coroutineRule.testScope.advanceUntilIdle()
+
+            assertFalse(viewModel.viewState.value.isLockedOut)
+            verify(interactor, times(3)).getPinLockoutState()
+        }
 
     @Test
     fun `init releases a lockout that has already expired`() = coroutineRule.runTest {
@@ -522,6 +548,7 @@ class TestBiometricViewModel {
     @Test
     fun `a wrong pin that exhausts the attempts starts the lockout`() = coroutineRule.runTest {
         whenever(interactor.recordPinFailure()).thenReturn(lockout(30.seconds))
+        whenever(interactor.getPinLockoutState()).thenReturn(PinLockoutState.Idle)
 
         val pin = enterPin("123456", QuickPinInteractorPinValidPartialState.Failed("Wrong PIN"))
 
@@ -694,6 +721,34 @@ class TestBiometricViewModel {
             }
         }
 
+    @Test
+    fun `a successful login unlocks the session`() = coroutineRule.runTest {
+        val vm = newViewModel("login", config(isPreAuthorization = true))
+
+        vm.effect.runFlowTest {
+            vm.handleEvents(Event.OnBiometricsClicked(context, true))
+            callbacks.last().invoke(BiometricsAuthenticate.Success)
+            coroutineRule.testScope.runCurrent()
+
+            assertEquals(Effect.Navigation.Pop, awaitItem())
+            verify(interactor).unlockSession()
+        }
+    }
+
+    @Test
+    fun `a confirmation before release does not unlock the session`() = coroutineRule.runTest {
+        val vm = newViewModel("confirmation", config(isPreAuthorization = false))
+
+        vm.effect.runFlowTest {
+            vm.handleEvents(Event.OnBiometricsClicked(context, true))
+            callbacks.last().invoke(BiometricsAuthenticate.Success)
+            coroutineRule.testScope.runCurrent()
+
+            assertEquals(Effect.Navigation.Pop, awaitItem())
+            verify(interactor, never()).unlockSession()
+        }
+    }
+
     private fun completeAuthentication(result: BiometricsAuthenticate) {
         callbacks.single().invoke(result)
     }
@@ -716,7 +771,8 @@ class TestBiometricViewModel {
 
     private suspend fun lockViewModelOut(remaining: Duration = 30.seconds) {
         whenever(interactor.getBiometricUserSelection()).thenReturn(false)
-        whenever(interactor.getPinLockoutState()).thenReturn(lockout(remaining))
+        whenever(interactor.getPinLockoutState())
+            .thenReturn(lockout(remaining), PinLockoutState.Idle)
 
         viewModel.handleEvents(Event.Init)
         coroutineRule.testScope.runCurrent()

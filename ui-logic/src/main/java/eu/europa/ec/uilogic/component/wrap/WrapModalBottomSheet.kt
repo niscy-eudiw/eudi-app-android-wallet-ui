@@ -16,6 +16,7 @@
 
 package eu.europa.ec.uilogic.component.wrap
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,12 +39,15 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,7 +71,10 @@ import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.utils.VSpacer
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
+import eu.europa.ec.uilogic.extension.findActivityOrNull
 import eu.europa.ec.uilogic.extension.optionalTestTag
+import eu.europa.ec.uilogic.extension.reportAccessibilityInteraction
+import eu.europa.ec.uilogic.extension.reportingUserInteractionTo
 import eu.europa.ec.uilogic.extension.throttledClickable
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.util.TestTag
@@ -124,17 +131,35 @@ fun WrapModalBottomSheet(
     dragHandle: @Composable (() -> Unit) = { BottomSheetDefaultHandle() },
     sheetContent: @Composable ColumnScope.() -> Unit,
 ) {
+    val activity = LocalContext.current.findActivityOrNull()
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = Modifier
             .exposeTestTagsAsResourceId()
             .statusBarsPadding()
+            .reportingUserInteractionTo(activity)
             .then(modifier),
         sheetState = sheetState,
         shape = shape,
         dragHandle = dragHandle,
-        content = sheetContent,
+        content = {
+            ReportAccessibilityInteraction(activity)
+            sheetContent()
+        },
     )
+}
+
+/**
+ * Reports screen-reader actions inside a bottom sheet to [activity] as user interaction. The sheet
+ * has a window of its own, which the activity's reporting does not see.
+ */
+@Composable
+private fun ReportAccessibilityInteraction(activity: Activity?) {
+    val root = LocalView.current.rootView
+    DisposableEffect(root, activity) {
+        val remove = activity?.let { root.reportAccessibilityInteraction(it::onUserInteraction) }
+        onDispose { remove?.invoke() }
+    }
 }
 
 /**

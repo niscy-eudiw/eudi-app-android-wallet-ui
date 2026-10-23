@@ -19,6 +19,8 @@ package eu.europa.ec.commonfeature.di
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthenticationController
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationController
+import eu.europa.ec.authenticationlogic.controller.device.DeviceLockController
+import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.authenticationlogic.controller.storage.BiometryStorageController
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
@@ -62,13 +64,17 @@ fun provideQuickPinInteractor(
     pinStorageController: PinStorageController,
     resourceProvider: ResourceProvider,
     pinThrottleController: PinThrottleController,
-    authenticationConfig: AuthenticationConfig
+    authenticationConfig: AuthenticationConfig,
+    sessionController: SessionController,
+    deviceLockController: DeviceLockController,
 ): QuickPinInteractor {
     return QuickPinInteractorImpl(
         pinStorageController,
         resourceProvider,
         pinThrottleController,
-        authenticationConfig
+        authenticationConfig,
+        sessionController,
+        deviceLockController,
     )
 }
 
@@ -78,14 +84,16 @@ fun provideBiometricInteractor(
     biometricAuthenticationController: BiometricAuthenticationController,
     quickPinInteractor: QuickPinInteractor,
     pinThrottleController: PinThrottleController,
-    authenticationConfig: AuthenticationConfig
+    authenticationConfig: AuthenticationConfig,
+    sessionController: SessionController
 ): BiometricInteractor {
     return BiometricInteractorImpl(
         biometryStorageController,
         biometricAuthenticationController,
         quickPinInteractor,
         pinThrottleController,
-        authenticationConfig
+        authenticationConfig,
+        sessionController
     )
 }
 

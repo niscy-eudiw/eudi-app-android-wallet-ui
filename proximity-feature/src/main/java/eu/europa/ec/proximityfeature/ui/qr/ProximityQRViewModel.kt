@@ -72,6 +72,12 @@ class ProximityQRViewModel(
 
     private var interactorJob: Job? = null
 
+    /** True once a reader has connected and the request screen has taken the session over. */
+    private var sessionHandedOver = false
+
+    /** True once the session has been stopped, so that it is stopped only once. */
+    private var cleanedUp = false
+
     override fun setInitialState(): State = State()
 
     override fun handleEvents(event: Event) {
@@ -146,6 +152,7 @@ class ProximityQRViewModel(
 
                     is ProximityQRPartialState.Connected -> {
                         unsubscribe()
+                        sessionHandedOver = true
                         setEffect {
                             Effect.Navigation.SwitchScreen(
                                 screenRoute = generateComposableNavigationLink(
@@ -180,8 +187,21 @@ class ProximityQRViewModel(
      * Stop presentation and remove scope/listeners
      * */
     private fun cleanUp() {
+        cleanedUp = true
         unsubscribe()
         interactor.cancelTransfer()
         getOrNullKoinScope(viewState.value.presentationScopeId)?.close()
+    }
+
+    /**
+     * Stops the session, with its BLE advertising and its presentation scope, whenever the screen
+     * is removed without handing it over: by Back, by a link that takes the user elsewhere, or by
+     * the session lock. After a reader has connected, the request screen owns the session and
+     * stops it. A screen removed before its session started has nothing to stop.
+     */
+    override fun onCleared() {
+        if (!sessionHandedOver && !cleanedUp && viewState.value.presentationScopeId.isNotEmpty()) {
+            cleanUp()
+        }
     }
 }

@@ -86,6 +86,7 @@ sealed class DocumentOfferCodeBottomSheetContent {
 
     data class PartialSuccessWithUntrustedIssuer(
         val issuedDocumentIds: List<DocumentId>,
+        val notIssuedDocuments: List<String>,
     ) : DocumentOfferCodeBottomSheetContent()
 }
 
@@ -159,6 +160,7 @@ class DocumentOfferCodeViewModel(
                         goToDocumentIssuanceSuccessScreen(
                             documentIds = content.issuedDocumentIds,
                             onSuccessNavigation = viewState.value.offerCodeUiConfig.onSuccessNavigation,
+                            notIssuedDocuments = content.notIssuedDocuments,
                         )
                     }
                 }
@@ -225,7 +227,8 @@ class DocumentOfferCodeViewModel(
                         }
                         showBottomSheet(
                             sheetContent = DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer(
-                                issuedDocumentIds = response.issuedDocumentIds
+                                issuedDocumentIds = response.issuedDocumentIds,
+                                notIssuedDocuments = response.notIssuedDocuments,
                             )
                         )
                     }
@@ -242,6 +245,7 @@ class DocumentOfferCodeViewModel(
                         goToDocumentIssuanceSuccessScreen(
                             documentIds = response.documentIds,
                             onSuccessNavigation = viewState.value.offerCodeUiConfig.onSuccessNavigation,
+                            notIssuedDocuments = response.notIssuedDocuments,
                         )
                     }
 
@@ -276,6 +280,7 @@ class DocumentOfferCodeViewModel(
     private fun goToDocumentIssuanceSuccessScreen(
         documentIds: List<DocumentId>,
         onSuccessNavigation: ConfigNavigation,
+        notIssuedDocuments: List<String> = emptyList(),
     ) {
         setEffect {
             Effect.Navigation.SwitchScreen(
@@ -286,6 +291,7 @@ class DocumentOfferCodeViewModel(
                             IssuanceSuccessUiConfig.serializedKeyName to uiSerializer.toBase64(
                                 model = IssuanceSuccessUiConfig(
                                     documentIds = documentIds,
+                                    notIssuedDocuments = notIssuedDocuments,
                                     onSuccessNavigation = onSuccessNavigation,
                                 ),
                                 parser = IssuanceSuccessUiConfig.Parser

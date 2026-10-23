@@ -22,7 +22,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.commonfeature.ui.loading.Effect
 import eu.europa.ec.commonfeature.ui.loading.Event
 import eu.europa.ec.commonfeature.ui.loading.LoadingViewModel
-import eu.europa.ec.corelogic.model.AuthenticationData
+import eu.europa.ec.corelogic.model.AuthenticationDataDomain
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingObserveResponsePartialState
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingSendRequestedDocumentPartialState
@@ -161,7 +161,7 @@ class ProximityLoadingViewModel(
     private fun openAuthenticationPrompt(
         context: Context,
         popEffect: Effect,
-        authenticationDataList: List<AuthenticationData>,
+        authenticationDataList: List<AuthenticationDataDomain>,
         sendRequestedDocumentsAction: () -> Unit,
         index: Int = 0,
     ) {

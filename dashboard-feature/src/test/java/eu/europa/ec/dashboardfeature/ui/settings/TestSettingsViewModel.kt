@@ -24,6 +24,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelStore
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
+import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
@@ -32,6 +33,10 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
+import eu.europa.ec.uilogic.config.NavigationType
+import eu.europa.ec.uilogic.navigation.CommonScreens
+import eu.europa.ec.uilogic.navigation.DashboardScreens
+import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runCurrent
 import org.junit.After
@@ -45,6 +50,7 @@ import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.eq
@@ -65,6 +71,9 @@ class TestSettingsViewModel {
 
     @Mock
     private lateinit var resources: ResourceProvider
+
+    @Mock
+    private lateinit var uiSerializer: UiSerializer
 
     @Mock
     private lateinit var context: Context
@@ -100,7 +109,8 @@ class TestSettingsViewModel {
 
         viewModel = SettingsViewModel(
             settingsInteractor = interactor,
-            resourceProvider = resources
+            resourceProvider = resources,
+            uiSerializer = uiSerializer,
         )
         store.put("settings", viewModel)
     }
@@ -282,6 +292,22 @@ class TestSettingsViewModel {
         }
 
     @Test
+    fun `toggling the Digital Credential API applies the setting and refreshes the items`() =
+        coroutineRule.runTest {
+            val updatedItems = listOf(settingsItem)
+            whenever(interactor.getSettingsItemsUi(null)).thenReturn(updatedItems)
+
+            viewModel.handleEvents(
+                Event.ItemClicked(SettingsMenuItemType.DC_API, context)
+            )
+            coroutineRule.testScope.runCurrent()
+
+            verify(interactor).toggleDCAPI()
+            assertEquals(updatedItems, viewModel.viewState.value.settingsItems)
+            verify(interactor, never()).authenticateWithBiometrics(any(), any(), any())
+        }
+
+    @Test
     fun `toggling the registration check refreshes the items and asks for a restart`() =
         coroutineRule.runTest {
             val updatedItems = listOf(settingsItem)
@@ -366,13 +392,79 @@ class TestSettingsViewModel {
         }
     }
 
+    @Test
+    fun `reset wallet asks for confirmation first`() = coroutineRule.runTest {
+        viewModel.effect.runFlowTest {
+            viewModel.handleEvents(Event.ItemClicked(SettingsMenuItemType.RESET_WALLET, context))
+
+            assertEquals(Effect.ShowBottomSheet, awaitItem())
+            expectNoEvents()
+        }
+        verify(uiSerializer, never()).toBase64(any<BiometricUiConfig>(), any())
+    }
+
+    @Test
+    fun `the confirmation sheet state follows the screen`() = coroutineRule.runTest {
+        viewModel.handleEvents(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+        assertTrue(viewModel.viewState.value.isBottomSheetOpen)
+
+        viewModel.handleEvents(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+        assertFalse(viewModel.viewState.value.isBottomSheetOpen)
+    }
+
+    @Test
+    fun `confirming the reset asks for the PIN, which leads to the reset screen`() =
+        coroutineRule.runTest {
+            val config = argumentCaptor<BiometricUiConfig>()
+            whenever(uiSerializer.toBase64(config.capture(), any())).thenReturn(SERIALIZED_CONFIG)
+
+            viewModel.effect.runFlowTest {
+                viewModel.handleEvents(Event.BottomSheet.ResetWallet.PrimaryButtonPressed)
+
+                assertEquals(Effect.CloseBottomSheet, awaitItem())
+                expectNoEvents()
+
+                viewModel.handleEvents(Event.BottomSheet.FinishedClosing)
+                assertEquals(
+                    Effect.Navigation.SwitchScreen(
+                        screenRoute = "${CommonScreens.Biometric.screenName}?${BiometricUiConfig.serializedKeyName}=$SERIALIZED_CONFIG"
+                    ),
+                    awaitItem()
+                )
+            }
+
+            assertFalse(viewModel.viewState.value.resetAfterSheetCloses)
+            assertFalse(config.firstValue.isPreAuthorization)
+            assertEquals(
+                NavigationType.PushScreen(screen = DashboardScreens.ResetWallet),
+                config.firstValue.onSuccessNavigation.navigationType
+            )
+            assertEquals(
+                NavigationType.PopTo(DashboardScreens.Settings),
+                config.firstValue.onBackNavigationConfig.onBackNavigation?.navigationType
+            )
+        }
+
+    @Test
+    fun `cancelling the reset only closes the sheet`() = coroutineRule.runTest {
+        viewModel.effect.runFlowTest {
+            viewModel.handleEvents(Event.BottomSheet.ResetWallet.SecondaryButtonPressed)
+
+            assertEquals(Effect.CloseBottomSheet, awaitItem())
+            viewModel.handleEvents(Event.BottomSheet.FinishedClosing)
+            expectNoEvents()
+        }
+        verify(uiSerializer, never()).toBase64(any<BiometricUiConfig>(), any())
+    }
+
     private fun completeAuthentication(result: BiometricsAuthenticate) {
         callbacks.single().invoke(result)
     }
 
     private fun newViewModel(key: String): SettingsViewModel = SettingsViewModel(
         settingsInteractor = interactor,
-        resourceProvider = resources
+        resourceProvider = resources,
+        uiSerializer = uiSerializer,
     ).also { store.put(key, it) }
 
     private companion object {
@@ -380,5 +472,6 @@ class TestSettingsViewModel {
         const val RESTART_STRING = "Restart required"
         const val LOGS_CHOOSER_TITLE = "Share logs"
         const val CHANGELOG_URL = "https://example.org/changelog"
+        const val SERIALIZED_CONFIG = "serializedConfig"
     }
 }
