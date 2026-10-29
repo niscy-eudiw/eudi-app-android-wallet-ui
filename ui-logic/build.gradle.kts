@@ -49,6 +49,7 @@ dependencies {
     testImplementation(libs.androidx.navigation.testing)
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test)
+    testImplementation(libs.androidx.compose.ui.testManifest)
     testImplementation(libs.androidx.test.espresso.core)
 }
 
