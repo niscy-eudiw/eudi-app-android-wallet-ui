@@ -47,6 +47,11 @@ data class State(
 sealed class Event : ViewEvent {
     data object Init : Event()
     data object GoBack : Event()
+    data class OnStop(
+        val isChangingConfigurations: Boolean,
+        val isCurrentScreen: Boolean
+    ) : Event()
+
     data class NfcEngagement(
         val componentActivity: ComponentActivity,
         val enable: Boolean
@@ -93,7 +98,15 @@ class ProximityQRViewModel(
                 setEffect { Effect.Navigation.Pop }
             }
 
+            is Event.OnStop -> {
+                if (shouldStopOnLeavingForeground(event.isChangingConfigurations)) {
+                    cleanUp()
+                    if (event.isCurrentScreen) setEffect { Effect.Navigation.Pop }
+                }
+            }
+
             is Event.NfcEngagement -> {
+                if (event.enable && cleanedUp) return
                 interactor.toggleNfcEngagement(
                     event.componentActivity,
                     event.enable
@@ -101,6 +114,24 @@ class ProximityQRViewModel(
             }
         }
     }
+
+    /**
+     * Whether the activity stopping stops the session, so that the wallet does not keep
+     * advertising over BLE for a reader while the user is elsewhere or the screen is off. An
+     * activity stopped only to be recreated by a configuration change keeps the session, and so
+     * does a session the request screen has taken over. One already stopped, or never started, has
+     * nothing to stop. The screen then closes only while it is the current one
+     * ([Event.OnStop.isCurrentScreen]): when the activity stops while another screen, such as the
+     * login screen after a lock, is taking its place, closing it would remove that screen instead.
+     *
+     * @param isChangingConfigurations Whether the activity stops only to be recreated.
+     * @return True when the session is to be stopped and the screen closed.
+     */
+    private fun shouldStopOnLeavingForeground(isChangingConfigurations: Boolean): Boolean =
+        !isChangingConfigurations &&
+                !sessionHandedOver &&
+                !cleanedUp &&
+                viewState.value.presentationScopeId.isNotEmpty()
 
     private fun initializeConfig() {
         val requestUriConfig = uiSerializer.fromBase64(
@@ -196,8 +227,9 @@ class ProximityQRViewModel(
     /**
      * Stops the session, with its BLE advertising and its presentation scope, whenever the screen
      * is removed without handing it over: by Back, by a link that takes the user elsewhere, or by
-     * the session lock. After a reader has connected, the request screen owns the session and
-     * stops it. A screen removed before its session started has nothing to stop.
+     * the session lock. Leaving the app stops it earlier, on [Event.OnStop]. After a reader has
+     * connected, the request screen owns the session and stops it. A screen removed before its
+     * session started has nothing to stop.
      */
     override fun onCleared() {
         if (!sessionHandedOver && !cleanedUp && viewState.value.presentationScopeId.isNotEmpty()) {

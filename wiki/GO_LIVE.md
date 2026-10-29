@@ -2273,6 +2273,11 @@ Session lock:
   `protectedFlowScreens`, on which the background limit is `protectedFlowLockTimeout`. Add any screen you
   introduce to the right list; a protected-flow screen left off the list locks after the normal
   background timeout, and a login screen left off it sends the user back to login.
+* The proximity QR screen is not on `protectedFlowScreens`. When the activity stops while it waits for
+  a reader (the user leaves the app or turns the screen off), it stops the session (BLE advertising
+  and NFC engagement) and closes, unless another screen, such as the login screen after a lock, has
+  taken its place (`ProximityQRViewModel`, `Event.OnStop`). A configuration change, a dialog over the
+  screen, or a session already handed to the request screen keeps it running.
 * A flow that leaves the app from a screen that is not on the protected list, such as a re-issuance from
   document details, is marked with `SessionController.beginExternalFlow()` and `endExternalFlow()` so
   that the same limit applies. Mark any such flow you add. Another activity of the app, such as the RQES
@@ -2894,7 +2899,8 @@ Before release candidate approval, test:
 * Presentation from a verifier with no valid registration certificate, and from one asking beyond
   its registered scope.
 * Relayed OpenID4VP request and response handling.
-* Proximity QR/BLE.
+* Proximity QR/BLE, including leaving the app and turning the screen off on the QR screen: the
+  session stops and the screen closes.
 * NFC engagement, if supported.
 * Relayed proximity engagement where feasible.
 * RQES signing.

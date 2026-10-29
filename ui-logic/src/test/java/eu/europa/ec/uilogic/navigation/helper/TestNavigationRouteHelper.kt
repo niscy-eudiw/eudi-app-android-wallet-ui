@@ -77,7 +77,6 @@ class TestNavigationRouteHelper {
                 IssuanceScreens.DocumentOfferCode,
                 PresentationScreens.PresentationRequest,
                 PresentationScreens.PresentationLoading,
-                ProximityScreens.QR,
                 ProximityScreens.Request,
                 ProximityScreens.Loading,
                 DashboardScreens.DocumentSign,

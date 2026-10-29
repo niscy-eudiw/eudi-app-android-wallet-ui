@@ -39,7 +39,8 @@ interface ConfigUILogic {
      * Screens on which an issuance, presentation, signing or factory reset is in progress. On them
      * the background lock waits for `AuthenticationConfig.protectedFlowLockTimeout` instead of
      * `backgroundLockTimeout`, because issuance and signing send the user to a website and back,
-     * and a reset must not be interrupted. The idle lock applies as on any other screen.
+     * and a reset must not be interrupted. The idle lock applies as on any other screen. The
+     * proximity QR screen is not one: leaving the app there stops the session and closes it.
      */
     val protectedFlowScreens: List<Screen>
 

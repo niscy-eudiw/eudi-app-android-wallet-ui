@@ -137,7 +137,8 @@ it waits up to 10 minutes in the background, so that a visit to the issuer's web
 The signing service's screens get the same 10 minutes, since the Wallet cannot see interaction
 there. A link that arrives while the Wallet is locked, such as a presentation request or a
 credential offer, opens after you log in; if the Wallet locked in the middle of an issuance, start
-the issuance again. The timeouts are set in `AuthenticationConfig`; see
+the issuance again. The proximity QR code is the exception: leaving the app there stops the
+session (see the [Proximity flow](#proximity-flow)). The timeouts are set in `AuthenticationConfig`; see
 [wiki/CONFIGURATION.md](wiki/CONFIGURATION.md#pin-throttle-configuration).
 
 ### Issuance flow (Scoped - Wallet initiated)
@@ -258,7 +259,9 @@ documents from the picker and declines such requests.
 3. Tap the "Authenticate" button on the first informative card. A modal with two options will appear.
 4. Select "In person".
 5. You will be prompted to enable Bluetooth (if it is not already enabled) and grant the necessary permissions for the app to use it (if you have not already done so).
-6. The Verifier scans the presented QR code.
+6. The Verifier scans the presented QR code. The code works only while the app stays in front:
+   leaving the app or turning the screen off stops the session and closes the screen, and you start
+   again from step 3.
 7. The app's "Request" screen will load. Here, you can select or deselect which attributes to share
    with the Verifier. You must select at least one attribute to proceed. As in the remote flow, and
    only while registration-certificate checking is enabled, a reader whose registration certificate

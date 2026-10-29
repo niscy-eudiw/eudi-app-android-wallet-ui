@@ -985,7 +985,8 @@ until a lock is set.
 
 The three timeouts drive the session lock (*SessionController*). The screens it treats as login
 screens and as protected-flow screens are listed in *ConfigUILogic* (`loginScreens`,
-`protectedFlowScreens`, in `ui-logic`); keep both lists in step with the screens you add. See
+`protectedFlowScreens`, in `ui-logic`); keep both lists in step with the screens you add. The
+proximity QR screen is not a protected-flow screen: leaving the app there stops the session. See
 [GO_LIVE.md](GO_LIVE.md) for the behaviour.
 
 Resulting behavior with the defaults:
