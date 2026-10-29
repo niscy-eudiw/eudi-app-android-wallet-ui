@@ -44,13 +44,6 @@ class TestHttpClientConfigExtensions {
     @get:Rule
     val coroutineRule = CoroutineTestRule()
 
-    private val networkConfig = object : NetworkConfig {
-        override val connectTimeout: Duration = 1.seconds
-        override val socketTimeout: Duration = 1.seconds
-        override val requestTimeout: Duration = 200.milliseconds
-        override val maxResponseBodySize: Long = LIMIT.toLong()
-    }
-
     @Test
     fun `Given the limits installed, When a server answers within them, Then the response arrives`() =
         coroutineRule.runTest {
@@ -64,7 +57,7 @@ class TestHttpClientConfigExtensions {
     @Test
     fun `Given the limits installed, When a server takes longer than the request timeout, Then the request fails`() =
         coroutineRule.runTest {
-            createClient {
+            createClient(timeout = SHORT_REQUEST_TIMEOUT) {
                 delay(5.seconds)
                 respond(ByteArray(1), HttpStatusCode.OK)
             }.use { client ->
@@ -91,19 +84,33 @@ class TestHttpClientConfigExtensions {
         }
 
     /**
-     * Creates a client with the limits of [networkConfig], whose every request is answered by
-     * [handler].
+     * Creates a client with a [LIMIT]-byte body limit and the given request timeout, whose every
+     * request is answered by [handler]. Only the timeout test passes a short timeout: on a slow
+     * machine a short one would fail the other tests before their checks run.
      *
+     * @param timeout The request timeout.
      * @param handler The mock server.
      * @return The client.
      */
-    private fun createClient(handler: MockRequestHandler): HttpClient =
-        HttpClient(MockEngine(handler)) {
+    private fun createClient(
+        timeout: Duration = DEFAULT_TIMEOUT,
+        handler: MockRequestHandler
+    ): HttpClient {
+        val networkConfig = object : NetworkConfig {
+            override val connectTimeout: Duration = DEFAULT_TIMEOUT
+            override val socketTimeout: Duration = DEFAULT_TIMEOUT
+            override val requestTimeout: Duration = timeout
+            override val maxResponseBodySize: Long = LIMIT.toLong()
+        }
+        return HttpClient(MockEngine(handler)) {
             installNetworkLimits(networkConfig)
         }
+    }
 
     private companion object {
         const val LIMIT = 1024
         const val URL = "https://issuer.example/metadata"
+        val DEFAULT_TIMEOUT = 30.seconds
+        val SHORT_REQUEST_TIMEOUT = 200.milliseconds
     }
 }
