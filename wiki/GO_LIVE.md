@@ -1615,8 +1615,8 @@ Production rules:
   recognise, the wallet opens the link again: a request already used then fails, and one still
   valid asks for consent and the PIN again. A change to the host activity's launch mode or task
   handling needs this re-tested on the target devices.
-* Check the merged manifest for components that libraries export. The RQES SDK declares its container activity
-  exported; `assembly-logic` overrides it to `exported="false"`, because the app starts it explicitly.
+* Check the merged manifest for components that libraries export. A component that only the app itself starts can
+  be overridden in the app's manifest with `android:exported="false"` and `tools:replace="android:exported"`.
 * Do not export internal navigation. Screens are reached by route inside the app. An exported intent filter for an
   internal scheme, or a `navDeepLink` on a navigation-graph destination, lets any app or web page open that screen
   without passing the wallet's login. If screen deep links are needed for UI tests, keep them in a debug-only

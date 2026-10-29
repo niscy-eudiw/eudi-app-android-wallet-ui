@@ -215,11 +215,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name="eu.europa.ec.eudi.rqesui.presentation.ui.container.EudiRQESContainer"
-            android:exported="false"
-            tools:replace="android:exported" />
-
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
