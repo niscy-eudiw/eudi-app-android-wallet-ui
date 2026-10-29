@@ -2177,8 +2177,8 @@ logged in clear.
 Wallet Core applies `EudiWalletConfig.logLevel` only in its own logger, which it uses when no logger
 is supplied, so the logger the app supplies receives every record. The app therefore applies
 `logLevel` itself: `WalletCoreLogController` drops the records above it before they reach
-`LogController`, which writes to logcat and to the log files that **Settings → Retrieve logs**
-shares. `WalletCoreConfigImpl` sets `LEVEL_DEBUG` for debug builds and `LEVEL_INFO` for release
+`LogController`, which writes to logcat and, in debug builds, to the log files that **Settings →
+Retrieve logs** shares. `WalletCoreConfigImpl` sets `LEVEL_DEBUG` for debug builds and `LEVEL_INFO` for release
 builds, so a release build keeps none of Wallet Core's debug records. Those include the HTTP
 traffic above and other protocol data: the remote OpenID4VP `vp_token` before it is sent, whether
 or not the response is encrypted, the Digital Credential API request and `vp_token`, and the mdoc
@@ -2186,7 +2186,8 @@ or not the response is encrypted, the Digital Credential API request and `vp_tok
 `LEVEL_INFO` or lower for release. Logging from the app's own code is not filtered this way; see
 below.
 
-Current `LogControllerImpl` always plants a `Timber.DebugTree()` and a file logger. For production,
+Current `LogControllerImpl` always plants a `Timber.DebugTree()`, release builds included; it plants
+the file logger only when `shouldWriteLogFile` is true (debug builds). For production,
 consider:
 
 * Planting a production-safe tree only for release.
