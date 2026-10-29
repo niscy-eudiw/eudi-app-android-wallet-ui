@@ -38,6 +38,7 @@ import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
+import eu.europa.ec.eudi.wallet.trust.PkixRevocationPolicy
 import eu.europa.ec.eudi.wallet.trust.TrustPolicy
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Duration.Companion.hours
@@ -124,7 +125,7 @@ internal class WalletCoreConfigImpl(
                         )
 
                         relaxCertificateProfiles()
-                        relaxPkixRevocation()
+                        pkixRevocationPolicy(PkixRevocationPolicy.Disabled)
                     }
 
                     configureIssuerTrust {

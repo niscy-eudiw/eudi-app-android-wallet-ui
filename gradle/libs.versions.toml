@@ -47,7 +47,7 @@ ktor = "3.6.0"
 koin = "4.2.2"
 
 # EUDI wallet SDKs
-eudiWalletCore = "0.31.0"
+eudiWalletCore = "0.31.1"
 rqesUiSDK = "0.4.3"
 eudiLibKmpEtsi1196x2 = "0.4.0-alpha.5"
 
