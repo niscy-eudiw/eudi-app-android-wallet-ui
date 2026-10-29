@@ -940,7 +940,7 @@ from the signed metadata it was resolved with.
 Production requirements for a trusted-list deployment:
 
 * Use production LoTE URLs from the approved trust framework, over HTTPS.
-* Remove `relaxCertificateProfiles()` and `relaxPkixRevocation()`. The first removes the end-entity
+* Remove `relaxCertificateProfiles()` and `pkixRevocationPolicy(PkixRevocationPolicy.Disabled)`. The first removes the end-entity
   certificate profile checks (ETSI TS 119 412-6 for PID and wallet-provider signing certificates,
   TS 119 411-8 for access certificates) from every list. The second turns off CRL and OCSP checking during chain
   validation; a certificate a list names directly is not checked for revocation in either case. Both
