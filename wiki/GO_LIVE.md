@@ -846,6 +846,11 @@ Use the configured ETSI trusted lists or supply explicit trust anchors for reade
 Explicit `trustedCertificates(...)` take precedence over the shared trusted-list configuration for
 reader authentication.
 
+Reader anchors do not vouch for registration certificates. Without `configureEtsiTrust`, supply
+`configureWrpRegistrationTrust(...)` and `configureIssuerRegistrationTrust(...)`: with the registration
+check on, Wallet Core 0.31.1 refuses to build `EudiWallet` (`IllegalArgumentException`) when nothing
+vouches for registration certificates (for issuers, when signed metadata is required).
+
 The repository still ships development/demo trust-anchor resources, although the reference
 flavors no longer load them for reader trust. If your deployment uses the static model, in
 production:
@@ -944,7 +949,10 @@ Production requirements for a trusted-list deployment:
   certificate profile checks (ETSI TS 119 412-6 for PID and wallet-provider signing certificates,
   TS 119 411-8 for access certificates) from every list. The second turns off CRL and OCSP checking during chain
   validation; a certificate a list names directly is not checked for revocation in either case. Both
-  are workarounds for development PKI and must not ship.
+  are workarounds for development PKI and must not ship. Without the call, Wallet Core 0.31.1 uses
+  `PkixRevocationPolicy.CRLPriority`: the CRL first, OCSP only when the CRL cannot be fetched, and the
+  chain fails when neither answers. Do not ship `SoftFail` either: it checks the CRL only and accepts a
+  chain whose CRL cannot be fetched.
 * Revocation information must be served over HTTPS. The wallet uses HTTPS only, and revocation is
   no exception: CRL and OCSP downloads over `http://` are refused like any other cleartext request.
   Every certificate below a list entry, in every chain the wallet validates against the trusted
@@ -1008,7 +1016,7 @@ Trust is evaluated on two independent layers, and passing one says nothing about
 |---|---|---|
 | Answers | *who is this party* | *what is it registered to do* |
 | Establishes | authentication of the issuer or verifier | the registered identity, declared purpose, privacy policy, the provider role the party is entitled to, and the attestation types and claims it may issue or request |
-| Trust source | its own trusted list | the registration-certificate trusted list, from the same LoTE configuration |
+| Trust source | its own trusted list | the registration-certificate trusted list, from the same LoTE configuration, or the anchors given to `configureWrpRegistrationTrust` / `configureIssuerRegistrationTrust`, which take precedence |
 
 The two layers are not interchangeable: an authenticated issuer that is not registered for what it
 offers is refused, and a registered issuer that fails authentication is refused too.
@@ -2115,8 +2123,8 @@ Wallet Core records a relying party's registration details in the entry even whe
 registration certificate failed its binding, validity or revocation checks, and does not record
 the outcome. The app records it beside the entry (`registrationCheck` in `transactionLogs`) when
 the request arrives, matching the
-request to the pending entry Wallet Core has just written: in Wallet Core 0.31.0 its transaction
-listener is registered first and writes that entry before the app's listener sees the request.
+request to the pending entry Wallet Core has just written: in Wallet Core 0.31.1, as in 0.31.0, its
+transaction listener is registered first and writes that entry before the app's listener sees the request.
 The app checks that the relying party in the entry is the one in the request before recording
 anything. If a second entry is written before the first request reaches the app's listener, as
 can happen when two requests are dispatched from different threads, neither outcome is recorded.
