@@ -33,6 +33,7 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
+import eu.europa.ec.uilogic.config.FlowCompletion
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.navigation.CommonScreens
 import eu.europa.ec.uilogic.navigation.DashboardScreens
@@ -126,17 +127,88 @@ class TestSettingsViewModel {
     }
 
     @Test
-    fun `rapid taps open one authentication attempt`() = coroutineRule.runTest {
-        repeat(30) { viewModel.handleEvents(click) }
+    fun `Given biometric unlock off, When the check succeeds 30 times, Then one biometric prompt opens`() =
+        coroutineRule.runTest {
+            repeat(30) { confirmBiometricSwitch() }
 
-        assertEquals(1, callbacks.size)
-        verify(interactor).authenticateWithBiometrics(eq(context), eq(false), any())
-        verify(interactor, times(1)).getBiometricsAvailability()
-        verify(interactor, never()).toggleBiometricsAuthentication()
-    }
+            assertEquals(1, callbacks.size)
+            verify(interactor).authenticateWithBiometrics(eq(context), eq(false), any())
+            verify(interactor, never()).toggleBiometricsAuthentication()
+        }
 
     @Test
-    fun `success saves and refreshes once while further taps wait for persistence`() =
+    fun `Given biometric unlock available, When the switch is tapped, Then the PIN or biometric check opens first`() =
+        coroutineRule.runTest {
+            val config = argumentCaptor<BiometricUiConfig>()
+            whenever(uiSerializer.toBase64(config.capture(), any())).thenReturn(SERIALIZED_CONFIG)
+
+            viewModel.effect.runFlowTest {
+                viewModel.handleEvents(click)
+
+                assertEquals(
+                    Effect.Navigation.SwitchScreen(
+                        screenRoute = "${CommonScreens.Biometric.screenName}?" +
+                                "${BiometricUiConfig.serializedKeyName}=$SERIALIZED_CONFIG"
+                    ),
+                    awaitItem()
+                )
+            }
+
+            assertEquals(0, callbacks.size)
+            verify(interactor, never()).toggleBiometricsAuthentication()
+            assertEquals(
+                NavigationType.PopTo(DashboardScreens.Settings),
+                config.firstValue.onSuccessNavigation.navigationType
+            )
+            assertEquals(
+                FlowCompletion.SUCCESS,
+                config.firstValue.onSuccessNavigation.indicateFlowCompletion
+            )
+            assertEquals(
+                NavigationType.PopTo(DashboardScreens.Settings),
+                config.firstValue.onBackNavigationConfig.onBackNavigation?.navigationType
+            )
+            assertEquals(
+                FlowCompletion.NONE,
+                config.firstValue.onBackNavigationConfig.onBackNavigation?.indicateFlowCompletion
+            )
+        }
+
+    @Test
+    fun `Given biometric unlock on, When the check succeeds, Then it is turned off without another prompt`() =
+        coroutineRule.runTest {
+            val updatedItems = listOf(settingsItem)
+            whenever(interactor.getSettingsItemsUi(null)).thenReturn(updatedItems)
+
+            confirmBiometricSwitch(isBiometricUnlockOn = true)
+
+            verify(interactor, times(1)).toggleBiometricsAuthentication()
+            assertEquals(0, callbacks.size)
+            assertEquals(updatedItems, viewModel.viewState.value.settingsItems)
+        }
+
+    @Test
+    fun `Given biometric unlock off, When the check succeeds, Then a biometric is asked for before it is turned on`() =
+        coroutineRule.runTest {
+            whenever(interactor.getSettingsItemsUi(null)).thenReturn(listOf(settingsItem))
+
+            confirmBiometricSwitch(isBiometricUnlockOn = false)
+
+            assertEquals(1, callbacks.size)
+            verify(interactor, never()).toggleBiometricsAuthentication()
+
+            completeAuthentication(BiometricsAuthenticate.Success)
+            coroutineRule.testScope.runCurrent()
+
+            verify(interactor, times(1)).toggleBiometricsAuthentication()
+        }
+
+    /**
+     * Further confirmations arrive both before the persistence coroutine starts and while it
+     * suspends.
+     */
+    @Test
+    fun `Given biometric unlock off, When the check succeeds and more confirmations follow, Then it is saved and refreshed once`() =
         coroutineRule.runTest {
             val saveFinished = CompletableDeferred<Unit>()
             val updatedItems = listOf(settingsItem)
@@ -146,13 +218,12 @@ class TestSettingsViewModel {
             }
             whenever(interactor.getSettingsItemsUi(null)).thenReturn(updatedItems)
 
-            viewModel.handleEvents(click)
+            confirmBiometricSwitch()
             completeAuthentication(BiometricsAuthenticate.Success)
 
-            // Covers both before the persistence coroutine starts and while it suspends.
-            viewModel.handleEvents(click)
+            confirmBiometricSwitch()
             coroutineRule.testScope.runCurrent()
-            repeat(30) { viewModel.handleEvents(click) }
+            repeat(30) { confirmBiometricSwitch() }
 
             assertEquals(1, callbacks.size)
 
@@ -162,7 +233,7 @@ class TestSettingsViewModel {
             verify(interactor, times(1)).toggleBiometricsAuthentication()
             assertEquals(updatedItems, viewModel.viewState.value.settingsItems)
 
-            viewModel.handleEvents(click)
+            confirmBiometricSwitch()
 
             assertEquals(2, callbacks.size)
         }
@@ -177,14 +248,14 @@ class TestSettingsViewModel {
             coroutineRule.testScope.runCurrent()
 
             viewModel.effect.runFlowTest {
-                viewModel.handleEvents(click)
+                confirmBiometricSwitch()
                 completeAuthentication(BiometricsAuthenticate.Failed("Sensor locked"))
 
                 assertEquals(Effect.ShowSnackbar("Sensor locked"), awaitItem())
                 assertEquals(originalItems, viewModel.viewState.value.settingsItems)
                 verify(interactor, never()).toggleBiometricsAuthentication()
 
-                viewModel.handleEvents(click)
+                confirmBiometricSwitch()
 
                 assertEquals(2, callbacks.size)
                 expectNoEvents()
@@ -195,14 +266,14 @@ class TestSettingsViewModel {
     fun `cancellation preserves settings without snackbar and permits retry`() =
         coroutineRule.runTest {
             viewModel.effect.runFlowTest {
-                viewModel.handleEvents(click)
+                confirmBiometricSwitch()
                 completeAuthentication(BiometricsAuthenticate.Cancelled)
                 coroutineRule.testScope.runCurrent()
 
                 verify(interactor, never()).toggleBiometricsAuthentication()
                 expectNoEvents()
 
-                viewModel.handleEvents(click)
+                confirmBiometricSwitch()
 
                 assertEquals(2, callbacks.size)
             }
@@ -459,6 +530,18 @@ class TestSettingsViewModel {
 
     private fun completeAuthentication(result: BiometricsAuthenticate) {
         callbacks.single().invoke(result)
+    }
+
+    /**
+     * Sends what Settings receives once the PIN or biometric check before the switch has
+     * succeeded, and runs the work it starts.
+     *
+     * @param isBiometricUnlockOn Whether biometric unlock is on before the switch.
+     */
+    private suspend fun confirmBiometricSwitch(isBiometricUnlockOn: Boolean = false) {
+        whenever(interactor.getBiometricUserSelection()).thenReturn(isBiometricUnlockOn)
+        viewModel.handleEvents(Event.OnBiometricSwitchAuthenticated(context))
+        coroutineRule.testScope.runCurrent()
     }
 
     private fun newViewModel(key: String): SettingsViewModel = SettingsViewModel(

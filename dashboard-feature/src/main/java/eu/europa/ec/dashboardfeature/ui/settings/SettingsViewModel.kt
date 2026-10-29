@@ -32,6 +32,7 @@ import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.config.ConfigNavigation
+import eu.europa.ec.uilogic.config.FlowCompletion
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
@@ -62,6 +63,7 @@ sealed class Event : ViewEvent {
     data object Init : Event()
     data object Pop : Event()
     data object LaunchBiometricSystemScreen : Event()
+    data class OnBiometricSwitchAuthenticated(val context: Context) : Event()
     data class ItemClicked(
         val itemType: SettingsMenuItemType,
         val context: Context
@@ -124,10 +126,11 @@ class SettingsViewModel(
                 settingsInteractor.launchBiometricSystemScreen()
             }
 
-            is Event.ItemClicked -> handleSettingsMenuItemClicked(
-                itemType = event.itemType,
-                context = event.context
+            is Event.OnBiometricSwitchAuthenticated -> handleBiometricSwitchAuthenticated(
+                event.context
             )
+
+            is Event.ItemClicked -> handleSettingsMenuItemClicked(itemType = event.itemType)
 
             is Event.BottomSheet.UpdateBottomSheetState -> setState {
                 copy(isBottomSheetOpen = event.isOpen)
@@ -170,15 +173,16 @@ class SettingsViewModel(
         }
     }
 
-    private fun handleSettingsMenuItemClicked(
-        itemType: SettingsMenuItemType,
-        context: Context,
-    ) {
+    private fun handleSettingsMenuItemClicked(itemType: SettingsMenuItemType) {
         when (itemType) {
             SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> {
                 if (isBiometricAuthenticating) return
                 when (val availability = settingsInteractor.getBiometricsAvailability()) {
-                    is BiometricsAvailability.CanAuthenticate -> authenticate(context)
+                    is BiometricsAvailability.CanAuthenticate -> setEffect {
+                        Effect.Navigation.SwitchScreen(
+                            screenRoute = getBiometricSwitchAuthenticationRoute()
+                        )
+                    }
 
                     is BiometricsAvailability.NonEnrolled -> {
                         setEffect {
@@ -276,6 +280,70 @@ class SettingsViewModel(
             }
 
             SettingsMenuItemType.RESET_WALLET -> setEffect { Effect.ShowBottomSheet }
+        }
+    }
+
+    /**
+     * The PIN or biometric check that must succeed before biometric unlock is switched. With
+     * biometric unlock off it asks for the PIN, so that a biometric enrolled by someone holding the
+     * unlocked phone cannot turn it on; turning it off also accepts a biometric. On success it
+     * returns to Settings, which then makes the change
+     * ([handleBiometricSwitchAuthenticated]); going back changes nothing.
+     */
+    private fun getBiometricSwitchAuthenticationRoute(): String = generateComposableNavigationLink(
+        screen = CommonScreens.Biometric,
+        arguments = generateComposableArguments(
+            mapOf(
+                BiometricUiConfig.serializedKeyName to uiSerializer.toBase64(
+                    BiometricUiConfig(
+                        mode = BiometricMode.Default(
+                            descriptionWhenBiometricsEnabled = resourceProvider.getString(
+                                R.string.settings_biometrics_switch_enabled_description
+                            ),
+                            descriptionWhenBiometricsNotEnabled = resourceProvider.getString(
+                                R.string.settings_biometrics_switch_not_enabled_description
+                            ),
+                            textAbovePin = resourceProvider.getString(
+                                R.string.biometric_default_mode_text_above_pin_field
+                            ),
+                        ),
+                        isPreAuthorization = false,
+                        shouldInitializeBiometricAuthOnCreate = true,
+                        onSuccessNavigation = ConfigNavigation(
+                            navigationType = NavigationType.PopTo(DashboardScreens.Settings),
+                            indicateFlowCompletion = FlowCompletion.SUCCESS,
+                        ),
+                        onBackNavigationConfig = OnBackNavigationConfig(
+                            onBackNavigation = ConfigNavigation(
+                                navigationType = NavigationType.PopTo(DashboardScreens.Settings),
+                            ),
+                            hasToolbarBackIcon = true
+                        )
+                    ),
+                    BiometricUiConfig.Parser
+                ).orEmpty()
+            )
+        )
+    )
+
+    /**
+     * Switches biometric unlock once the PIN or biometric check has confirmed the user. Turning it
+     * off needs nothing more; turning it on then asks for a biometric, so that the one enrolled is
+     * known to work before the wallet relies on it.
+     *
+     * @param context The context the biometric prompt is shown in.
+     */
+    private fun handleBiometricSwitchAuthenticated(context: Context) {
+        viewModelScope.launch {
+            if (settingsInteractor.getBiometricUserSelection()) {
+                settingsInteractor.toggleBiometricsAuthentication()
+                val settingsItems = settingsInteractor.getSettingsItemsUi(
+                    changelogUrl = viewState.value.changelogUrl
+                )
+                setState { copy(settingsItems = settingsItems) }
+            } else {
+                authenticate(context)
+            }
         }
     }
 

@@ -345,6 +345,8 @@
     <string name="settings_bottom_sheet_reset_wallet_secondary_button_text">@string/generic_cancel</string>
     <string name="settings_reset_wallet_biometrics_enabled_description">Use your biometrics to reset the wallet.</string>
     <string name="settings_reset_wallet_biometrics_not_enabled_description">To reset the wallet you need to verify your identity.</string>
+    <string name="settings_biometrics_switch_enabled_description">Use your biometrics or your PIN to turn off authentication with biometrics.</string>
+    <string name="settings_biometrics_switch_not_enabled_description">Enter your PIN to turn on authentication with biometrics.</string>
     <!--endregion-->
 
     <!-- region Reset Wallet Screen -->

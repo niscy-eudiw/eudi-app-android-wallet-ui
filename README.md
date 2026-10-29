@@ -141,6 +141,9 @@ the issuance again. The proximity QR code is the exception: leaving the app ther
 session (see the [Proximity flow](#proximity-flow)). The timeouts are set in `AuthenticationConfig`; see
 [wiki/CONFIGURATION.md](wiki/CONFIGURATION.md#pin-throttle-configuration).
 
+To log in with a biometric, turn on "Authenticate with biometrics" in "Settings": the Wallet asks
+for your PIN, then for your biometric. Turning it off asks for the PIN or a biometric.
+
 ### Issuance flow (Scoped - Wallet initiated)
 
 1. Navigate to the "Dashboard" screen, go to the "Documents" tab, and tap on the "+" icon (top-right of the screen). Select "From list". A new wallet opens the Dashboard after you set up your PIN. With `forcePidActivation` enabled in `ConfigLogic` (off by default), a wallet without documents opens this screen instead, after you set up or enter your PIN.

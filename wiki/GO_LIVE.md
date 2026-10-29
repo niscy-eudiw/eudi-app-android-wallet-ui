@@ -2265,6 +2265,7 @@ Production decisions:
 | Biometric strength | Prefer `BIOMETRIC_STRONG` for sensitive operations. |
 | Device credential fallback | Decide whether fallback is allowed for each operation. For highest assurance, do not silently weaken biometric-only requirements. |
 | Key invalidation | Keep invalidation on new biometric enrollment. |
+| Biometric unlock switch | Turning biometric unlock on in Settings first asks for the wallet PIN (`CommonScreens.Biometric`, as the factory reset does), then for a biometric; turning it off accepts the PIN or a biometric. Someone holding the unlocked phone who has enrolled a new biometric therefore cannot turn biometric unlock on with it. Keep the PIN step if you change the Settings screen. |
 | Session duration | The wallet locks after `AuthenticationConfig.backgroundLockTimeout` in the background (default 60 seconds) and after `idleLockTimeout` without interaction on any of the wallet's screens (default 5 minutes). The RQES SDK's signing screens are a separate activity whose interaction the wallet cannot see: while they are in front the idle lock gives way to `protectedFlowLockTimeout`, and returning to the wallet after that long requires login. While an issuance, presentation, signing or factory reset is in progress, the background limit is `protectedFlowLockTimeout` instead (default 10 minutes), because issuance and signing send the user to a website and back, and a reset must not be interrupted. Tune all three for your assurance level; production wallets usually lock sooner. Every credential release already asks for the PIN or a biometric. |
 | PIN length | Current UI defaults to 6 digits. Confirm policy. |
 | PIN strength | A new PIN is refused when it is one digit repeated (`000000`), an ascending or descending run (`123456`, `654321`), or on `AuthenticationConfig.commonPins`, a short list of common PINs. The check applies when the PIN is created and when it is changed. Extend the list to match your policy. |
@@ -2690,6 +2691,7 @@ Project-specific actions:
 * Consider `userAuthenticationRequired = true` for document keys.
 * Test biometric enrollment changes.
 * Test authentication bypass attempts.
+* Confirm that turning biometric unlock on asks for the PIN.
 
 ### MASVS-NETWORK
 
@@ -2903,7 +2905,7 @@ Before release candidate approval, test:
 * Login on a device whose screen lock was removed after setup, with `requireDeviceSecure` false and
   true.
 * PIN change.
-* Biometric enablement.
+* Biometric enablement (asks for the PIN first) and disablement (PIN or biometric).
 * Biometric enrollment change.
 * PID issuance from list.
 * Credential offer issuance by QR.

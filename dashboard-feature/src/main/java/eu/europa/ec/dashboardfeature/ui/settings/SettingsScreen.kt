@@ -46,6 +46,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
@@ -61,6 +63,7 @@ import eu.europa.ec.uilogic.component.content.ContentTitle
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.OncePerViewModelEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
@@ -70,6 +73,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.extension.openIntentChooser
 import eu.europa.ec.uilogic.extension.openUrl
+import eu.europa.ec.uilogic.extension.wasFlowSucceeded
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -144,6 +148,15 @@ fun SettingsScreen(
     OncePerViewModelEffect(viewModel) {
         viewModel.setEvent(Event.Init)
     }
+
+    LifecycleEffect(
+        lifecycleOwner = LocalLifecycleOwner.current,
+        lifecycleEvent = Lifecycle.Event.ON_RESUME
+    ) {
+        if (navController.wasFlowSucceeded()) {
+            viewModel.setEvent(Event.OnBiometricSwitchAuthenticated(context))
+        }
+    }
 }
 
 private fun handleNavigationEffect(
@@ -159,7 +172,9 @@ private fun handleNavigationEffect(
 
         is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url)
 
-        is Effect.Navigation.SwitchScreen -> navController.navigate(navigationEffect.screenRoute)
+        is Effect.Navigation.SwitchScreen -> navController.navigate(navigationEffect.screenRoute) {
+            launchSingleTop = true
+        }
     }
 }
 
