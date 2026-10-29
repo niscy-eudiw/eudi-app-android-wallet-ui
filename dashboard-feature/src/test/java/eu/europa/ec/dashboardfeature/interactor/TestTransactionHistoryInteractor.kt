@@ -555,9 +555,11 @@ class TestTransactionHistoryInteractor {
     fun `Given Case 12, When observeHistory is retried, Then Case 12 Expected Result is returned`() {
         coroutineRule.runTest {
             // Given
+            val historyReceived = CompletableDeferred<Unit>()
             mockHistoryCall(
                 attempts = flow {
                     emit(listOf(mockedDpar))
+                    historyReceived.await()
                     throw mockedExceptionWithMessage
                 },
                 parent = mockedParent,
@@ -571,6 +573,7 @@ class TestTransactionHistoryInteractor {
                 // Then
                 assertEquals(TransactionHistoryInteractorPartialState.Loading, awaitItem())
                 assertTrue(awaitItem() is TransactionHistoryInteractorPartialState.Success)
+                historyReceived.complete(Unit)
                 assertEquals(
                     TransactionHistoryInteractorPartialState.Failure(
                         mockedExceptionWithMessage.localizedMessage ?: mockedGenericErrorMessage,

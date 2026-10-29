@@ -2997,9 +2997,11 @@ class TestTransactionDetailsInteractor {
         coroutineRule.runTest {
             listOf(mockedExceptionWithMessage, mockedExceptionWithNoMessage).forEach { exception ->
                 // Given
+                val contentReceived = CompletableDeferred<Unit>()
                 mockObservePresentationActionsCall(
                     flow {
                         emit(listOf(mockedDataDeletionLogDomain))
+                        contentReceived.await()
                         throw exception
                     }
                 )
@@ -3010,6 +3012,7 @@ class TestTransactionDetailsInteractor {
                         // Then
                         assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
                         assertEquals(PresentationActionCountsUiState.Content(1, 0), awaitItem())
+                        contentReceived.complete(Unit)
                         assertEquals(
                             PresentationActionCountsUiState.Failure(
                                 exception.localizedMessage ?: mockedGenericErrorMessage
