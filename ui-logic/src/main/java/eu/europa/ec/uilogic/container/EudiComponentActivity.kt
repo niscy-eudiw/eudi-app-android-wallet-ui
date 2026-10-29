@@ -39,9 +39,11 @@ import eu.europa.ec.corelogic.controller.WalletResetStatus
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.corelogic.provider.DCAPISettingProvider
 import eu.europa.ec.resourceslogic.theme.ThemeManager
+import eu.europa.ec.uilogic.config.ConfigUILogic
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
 import eu.europa.ec.uilogic.extension.launchingPackage
 import eu.europa.ec.uilogic.extension.reportAccessibilityInteraction
+import eu.europa.ec.uilogic.extension.setScreenCapturePrevented
 import eu.europa.ec.uilogic.navigation.DashboardScreens
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.RouterHost
@@ -74,6 +76,7 @@ import kotlin.time.Duration.Companion.seconds
 open class EudiComponentActivity : FragmentActivity() {
 
     private val routerHost: RouterHost by inject()
+    private val configUILogic: ConfigUILogic by inject()
     private val sessionController: SessionController by inject()
     private val walletResetStatus: WalletResetStatus by inject()
     private val viewModel: EudiComponentActivityViewModel by viewModel()
@@ -107,9 +110,12 @@ open class EudiComponentActivity : FragmentActivity() {
      * as [shouldOpenLaunchIntent] allows and unless it replays the link that first started this task
      * (see [EudiComponentActivityViewModel.shouldOpenLaunchLink]). Screen-reader actions in the
      * activity's window count as interaction for the idle lock ([reportAccessibilityInteraction]).
+     * The window is kept out of screen capture when
+     * [ConfigUILogic.shouldPreventScreenCapture] asks.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(getStateToRestore(savedInstanceState, navigationStartedInProcess))
+        setScreenCapturePrevented(configUILogic.shouldPreventScreenCapture)
         opensItsLaunchIntent =
             shouldOpenLaunchIntent(savedInstanceState) && viewModel.shouldOpenLaunchLink(
                 intent = intent,

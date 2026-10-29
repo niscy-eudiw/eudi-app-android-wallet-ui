@@ -18,6 +18,7 @@ package eu.europa.ec.uilogic.extension
 
 import android.app.Activity
 import android.content.Intent
+import android.view.WindowManager
 
 /**
  * The package that started [this] activity, as Android recorded it. [Activity.getReferrer] returns
@@ -32,5 +33,21 @@ internal fun Activity.launchingPackage(): String? {
         referrer?.host
     } finally {
         intent = launch
+    }
+}
+
+/**
+ * Keeps [this] activity's window out of screenshots, screen recordings and the recent-apps preview
+ * when [isPrevented] is true, with [WindowManager.LayoutParams.FLAG_SECURE]; dialogs and bottom
+ * sheets shown over the window inherit it. When false the flag is cleared.
+ *
+ * @param isPrevented Whether screen capture is prevented, as
+ * `ConfigUILogic.shouldPreventScreenCapture` sets it.
+ */
+internal fun Activity.setScreenCapturePrevented(isPrevented: Boolean) {
+    if (isPrevented) {
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    } else {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 }

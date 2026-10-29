@@ -17,6 +17,7 @@
 package eu.europa.ec.uilogic.config
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class TestConfigUILogic {
@@ -26,5 +27,10 @@ class TestConfigUILogic {
     @Test
     fun `Given the reference configuration, When userImageClaimKeys is read, Then it lists the portrait and picture claims`() {
         assertEquals(setOf("portrait", "picture"), config.userImageClaimKeys)
+    }
+
+    @Test
+    fun `Given the reference configuration, When shouldPreventScreenCapture is read, Then screen capture is allowed`() {
+        assertFalse(config.shouldPreventScreenCapture)
     }
 }

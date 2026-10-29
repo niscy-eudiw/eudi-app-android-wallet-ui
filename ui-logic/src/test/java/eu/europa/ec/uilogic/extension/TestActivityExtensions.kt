@@ -19,9 +19,12 @@ package eu.europa.ec.uilogic.extension
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.view.WindowManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -53,6 +56,28 @@ class TestActivityExtensions {
 
         assertSame(launch, activity.intent)
     }
+
+    @Test
+    fun `Given screen capture prevented, When it is set, Then the window is secure`() {
+        val activity = Robolectric.buildActivity(Activity::class.java).get()
+
+        activity.setScreenCapturePrevented(true)
+
+        assertTrue(activity.isWindowSecure())
+    }
+
+    @Test
+    fun `Given a secure window, When screen capture is allowed, Then the window is no longer secure`() {
+        val activity = Robolectric.buildActivity(Activity::class.java).get()
+        activity.setScreenCapturePrevented(true)
+
+        activity.setScreenCapturePrevented(false)
+
+        assertFalse(activity.isWindowSecure())
+    }
+
+    private fun Activity.isWindowSecure(): Boolean =
+        window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0
 
     private fun activityStartedWith(intent: Intent): Activity =
         Robolectric.buildActivity(Activity::class.java, intent).get()

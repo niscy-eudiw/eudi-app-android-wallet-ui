@@ -51,4 +51,13 @@ interface ConfigUILogic {
      * biometric-data notice and asks for confirmation before the picture is shared.
      */
     val userImageClaimKeys: Set<String>
+
+    /**
+     * Whether the wallet's screens are kept out of screenshots, screen recordings and the
+     * recent-apps preview (`FLAG_SECURE` on the host activity's window, which its dialogs and
+     * bottom sheets inherit). Off in the reference configuration, so that its screens can be
+     * captured in development and testing; a production build should turn it on. Screens of
+     * another activity, such as the RQES SDK's, are not covered.
+     */
+    val shouldPreventScreenCapture: Boolean
 }

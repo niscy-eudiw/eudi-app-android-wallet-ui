@@ -87,6 +87,7 @@ Use this checklist before the first production release.
 | Deep links              | All inbound URI schemes, hosts, and parameters are validated and threat-modeled; `rqesDocRetrievalHost` names the production document-retrieval host instead of `*`.                                                                                                                                                                                              |
 | Presentation relay risk | Relay attack risk is documented, verifier compensating controls are defined, and residual risk is accepted for each presentation scenario.                                                                                                                                    |
 | Logs                    | Production logs do not include PID, credentials, tokens, request objects, signatures, keys, or user decisions.                                                                                                                                                                |
+| Screen capture          | `ConfigUILogic.shouldPreventScreenCapture` is true, so screenshots, screen recordings and the recent-apps thumbnail show no wallet content (the RQES SDK's screens excepted). See [Screenshots, Overlays, And Sensitive UI](#screenshots-overlays-and-sensitive-ui). |
 | RASP                    | Play Integrity, commercial protection such as DexGuard, or a manual RASP strategy is implemented.                                                                                                                                                                             |
 | MASVS                   | Controls are mapped to evidence and tested with static, dynamic, and manual security testing.                                                                                                                                                                                 |
 | Privacy                 | DPIA, data minimization, retention, telemetry, consent, and privacy notice are complete.                                                                                                                                                                                      |
@@ -2209,12 +2210,19 @@ Recommended controls:
 * Keep `HIDE_OVERLAY_WINDOWS` only if tested and justified.
 * Do not show PID attributes in notifications.
 
-The reference app implements none of these controls, and leaves them to implementers. No window
-sets `FLAG_SECURE`, `setRecentsScreenshotEnabled(false)` is not called, and no dialog uses
-`SecureFlagPolicy.SecureOn`, so screenshots, screen recording and the recent-apps thumbnail show
-every screen. The manifest requests `HIDE_OVERLAY_WINDOWS`, but no window calls
-`setHideOverlayWindows(true)`, so the permission has no effect. Apply the controls at least to the
-screens listed above, and remove the permission if you do not use it.
+The reference app offers the first control as a setting. With
+`ConfigUILogic.shouldPreventScreenCapture` set to true, the host activity's window carries
+`FLAG_SECURE`: screenshots and screen recordings show no wallet content, the recent-apps thumbnail
+is blank, and the Compose dialogs and bottom sheets shown over the window inherit the flag. It is
+false in the reference configuration, so that the screens can be captured in development and
+testing: set it to true for production. `ConfigUILogicImpl` is in `ui-logic`'s main source set and
+applies to every flavor; to keep capture in development builds only, derive the value from
+`ConfigLogic.appFlavor` or `appBuildType`. It does not cover the RQES SDK's screens, which run in an
+activity of their own. With the setting on, `setRecentsScreenshotEnabled(false)` and
+`SecureFlagPolicy.SecureOn` add nothing for the wallet's window. The remaining controls are left to
+implementers: the manifest requests `HIDE_OVERLAY_WINDOWS`, but no window calls
+`setHideOverlayWindows(true)`, so the permission has no effect. Remove the permission if you do
+not use it.
 
 Test cases:
 
@@ -2627,6 +2635,7 @@ Project-specific actions:
 * Replace destructive DB migration.
 * Redact or remove file logging.
 * Add tests that inspect app data after flows.
+* Set `ConfigUILogic.shouldPreventScreenCapture` to true.
 
 ### MASVS-CRYPTO
 
@@ -2907,6 +2916,7 @@ Before release candidate approval, test:
 * RQES cancellation.
 * Network unavailable.
 * Backend unavailable.
+* Screenshot, screen recording and recents with `shouldPreventScreenCapture` true.
 * Expired credential.
 * Revoked credential.
 * Malformed deep links.

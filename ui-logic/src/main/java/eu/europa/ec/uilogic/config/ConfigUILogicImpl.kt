@@ -55,4 +55,7 @@ class ConfigUILogicImpl : ConfigUILogic {
 
     override val userImageClaimKeys: Set<String>
         get() = setOf("portrait", "picture")
+
+    override val shouldPreventScreenCapture: Boolean
+        get() = false
 }
