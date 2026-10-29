@@ -43,7 +43,12 @@ interface SessionController {
     /** True between a successful authentication and the next lock. */
     val isUnlocked: Boolean
 
-    /** Called when the user has authenticated to open the wallet. */
+    /**
+     * Called when the user has authenticated to open the wallet. If the app left before the
+     * authentication completed, the background record is kept, so the background timeout still
+     * applies when the app returns. A record from an earlier absence is already gone:
+     * [onForeground] clears it when the app returns while locked.
+     */
     fun unlock()
 
     /** Ends the session. */
@@ -135,7 +140,6 @@ class SessionControllerImpl(
     override fun unlock() {
         unlocked = true
         lastInteractionAt = elapsedRealtime()
-        backgroundSince = null
     }
 
     override fun lock() {

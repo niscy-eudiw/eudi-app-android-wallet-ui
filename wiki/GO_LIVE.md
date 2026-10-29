@@ -2283,6 +2283,12 @@ Session lock:
   once from `Application`). Another activity of the app, such as the RQES screens, does not count.
 * Whether the screen was a protected-flow screen is recorded when the app leaves, so nothing opened or
   restored on return can extend the limit.
+* The background time counts from when the app left, also when a login completes after that, for example a
+  PIN check that finishes as the user switches away: the app locks on return once `backgroundLockTimeout`
+  has passed. The PIN or biometric screen is on `protectedFlowScreens` as a flow's confirmation, but the
+  login itself does not count: it counts only when the back stack also holds a screen past login
+  (`RouterHost.isInProtectedFlow()`). A background from an earlier absence was already cleared when the app
+  came back while locked (`SessionController.onForeground()`). As on iOS.
 * Touches and screen-reader actions count as interaction for the idle lock, both in the activity's
   window and in bottom sheets built with `WrapModalBottomSheet`, which draw in a window of their own
   (`reportAccessibilityInteraction`, `reportingUserInteractionTo`). A dialog or popup you add in its

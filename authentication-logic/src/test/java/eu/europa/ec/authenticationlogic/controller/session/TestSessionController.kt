@@ -151,6 +151,38 @@ class TestSessionController {
     }
 
     @Test
+    fun `Given an authentication completed after the app left, When the app returns at the background timeout, Then it locks`() {
+        controller.onBackground()
+        controller.unlock()
+        advance(60.seconds)
+
+        assertTrue(controller.onForeground())
+        assertFalse(controller.isUnlocked)
+    }
+
+    @Test
+    fun `Given an authentication completed after the app left, When the app returns before the background timeout, Then it stays unlocked`() {
+        controller.onBackground()
+        controller.unlock()
+        advance(59.seconds)
+
+        assertFalse(controller.onForeground())
+        assertTrue(controller.isUnlocked)
+    }
+
+    @Test
+    fun `Given a locked session that returned before authentication, When it is unlocked, Then the earlier background is forgotten`() {
+        controller.onBackground()
+        advance(2.minutes)
+        assertFalse(controller.onForeground())
+
+        controller.unlock()
+
+        assertFalse(controller.onForeground())
+        assertTrue(controller.isUnlocked)
+    }
+
+    @Test
     fun `Given a locked session in the background, When it comes to the foreground, Then no new lock is reported`() {
         controller.onBackground()
         advance(10.minutes)

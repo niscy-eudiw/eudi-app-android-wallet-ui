@@ -60,6 +60,8 @@ class TestRouterHost {
 
     private val signing = Screen(name = "SIGNING")
 
+    private val login = Screen(name = "LOGIN")
+
     @Before
     fun before() {
         whenever(configUILogic.loginScreens).thenReturn(listOf(StartupScreens.Splash))
@@ -77,6 +79,7 @@ class TestRouterHost {
                 composable(DashboardScreens.Dashboard.screenRoute) {}
                 composable(addDocument.screenRoute) {}
                 composable(signing.screenRoute) {}
+                composable(login.screenRoute) {}
             }
         routerHost.attach(navController = navController, context = context)
     }
@@ -147,6 +150,19 @@ class TestRouterHost {
         assertFalse(routerHost.isInProtectedFlow())
 
         navController.navigate(signing.screenRoute)
+        assertTrue(routerHost.isInProtectedFlow())
+    }
+
+    @Test
+    fun `Given a protected-flow screen that is also a login screen, When isInProtectedFlow is read, Then it is true only past login`() {
+        whenever(configUILogic.loginScreens).thenReturn(listOf(StartupScreens.Splash, login))
+        whenever(configUILogic.protectedFlowScreens).thenReturn(listOf(login))
+
+        navController.navigate(login.screenRoute)
+        assertFalse(routerHost.isInProtectedFlow())
+
+        navController.navigate(DashboardScreens.Dashboard.screenRoute)
+        navController.navigate(login.screenRoute)
         assertTrue(routerHost.isInProtectedFlow())
     }
 }

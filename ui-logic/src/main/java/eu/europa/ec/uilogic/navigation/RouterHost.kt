@@ -59,7 +59,8 @@ interface RouterHost {
     /**
      * True while the screen in front belongs to an issuance, presentation or signing that is in
      * progress ([ConfigUILogic.protectedFlowScreens]). The background lock waits longer on such
-     * a screen.
+     * a screen. The PIN or biometric screen is on that list as a flow's confirmation; it counts
+     * only when the back stack also holds a screen past login, so not while it is the login itself.
      */
     fun isInProtectedFlow(): Boolean
 
@@ -135,17 +136,19 @@ class RouterHostImpl(
         return isProtectedRoute(
             route = navController.currentDestination?.route,
             protectedFlowScreens = configUILogic.protectedFlowScreens,
-        )
+        ) && requiresLogin(backStackRoutes(), configUILogic.loginScreens)
     }
 
     override fun requireLoginIfLocked() {
         if (sessionController.isUnlocked || !isNavigationReady()) return
-        val backStackRoutes = navController.graph.destinationRoutes()
-            .filter { route -> runCatching { navController.getBackStackEntry(route) }.isSuccess }
-        if (requiresLogin(backStackRoutes, configUILogic.loginScreens)) {
+        if (requiresLogin(backStackRoutes(), configUILogic.loginScreens)) {
             lockToLogin()
         }
     }
+
+    private fun backStackRoutes(): List<String> =
+        navController.graph.destinationRoutes()
+            .filter { route -> runCatching { navController.getBackStackEntry(route) }.isSuccess }
 
     private fun lockToLogin() {
         navController.navigate(ModuleRoute.StartupModule.route) {
