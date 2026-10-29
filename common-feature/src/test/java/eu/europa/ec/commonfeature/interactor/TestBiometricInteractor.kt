@@ -266,6 +266,14 @@ class TestBiometricInteractor {
         }
     //endregion
 
+    @Test
+    fun `Given a device without a screen lock, When the login notice is read, Then it is the notice setup shows`() {
+        val notice = DeviceLockNotice.Blocking("Set a screen lock to use the wallet.")
+        whenever(quickPinInteractor.getDeviceLockNotice()).thenReturn(notice)
+
+        assertEquals(notice, interactor.getDeviceLockNotice())
+    }
+
     //region Mocked objects
     private val mockedPin = "1234"
     //endregion

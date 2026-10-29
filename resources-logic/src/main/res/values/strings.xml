@@ -167,7 +167,7 @@
     <string name="quick_pin_non_match">Pins do not match</string>
     <string name="quick_pin_weak">This PIN is too easy to guess. Avoid one digit repeated, sequences such as 123456, and common PINs.</string>
     <string name="quick_pin_device_lock_missing">This device has no screen lock. Set one in the device settings to better protect your wallet.</string>
-    <string name="quick_pin_device_lock_required">Set a screen lock in the device settings before you set up the wallet.</string>
+    <string name="quick_pin_device_lock_required">Set a screen lock in the device settings to use the wallet.</string>
     <string name="quick_pin_locked_out">You have entered the wrong PIN %1$d times in a row.\nPlease wait %2$s before trying again.</string>
 
     <string name="quick_pin_create_title">Welcome to your Wallet</string>

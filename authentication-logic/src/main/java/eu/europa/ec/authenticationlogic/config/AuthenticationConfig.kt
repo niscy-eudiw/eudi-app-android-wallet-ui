@@ -68,8 +68,9 @@ interface AuthenticationConfig {
     val commonPins: Set<String>
 
     /**
-     * Whether the wallet can be set up only on a device with a screen lock. When false, a device
-     * without one gets a warning on the PIN screen and setup continues.
+     * Whether the wallet can be set up, and logged in to, only on a device with a screen lock. When
+     * false, a device without one gets a warning on the PIN screen at setup and on the login
+     * screen, and the user goes on.
      */
     val requireDeviceSecure: Boolean
 }

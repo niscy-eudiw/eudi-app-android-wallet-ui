@@ -40,9 +40,9 @@ interface QuickPinInteractor {
     fun getWeakPinError(pin: SecurePin): String?
 
     /**
-     * What to tell the user before the wallet is set up on a device without a screen lock, or null
-     * when the device has one. Setup is blocked when `AuthenticationConfig.requireDeviceSecure` is
-     * true, and only warned about otherwise.
+     * What to tell the user, at setup and at each login, on a device without a screen lock, or null
+     * when the device has one. Setup and login are blocked when
+     * `AuthenticationConfig.requireDeviceSecure` is true, and only warned about otherwise.
      */
     fun getDeviceLockNotice(): DeviceLockNotice?
 
@@ -191,7 +191,10 @@ class QuickPinInteractorImpl(
         }
 }
 
-/** What the PIN screen says about a missing device screen lock; [Blocking] stops the setup. */
+/**
+ * What the PIN and login screens say about a missing device screen lock; [Blocking] stops the
+ * setup or the login.
+ */
 sealed interface DeviceLockNotice {
     val message: String
 

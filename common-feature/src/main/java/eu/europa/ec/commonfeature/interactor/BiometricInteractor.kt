@@ -48,6 +48,13 @@ interface BiometricInteractor {
     suspend fun recordPinFailure(): PinLockoutState
     suspend fun resetPinThrottle()
 
+    /**
+     * What the login screen says on a device without a screen lock, or null when the device has
+     * one, under the same rules as setup ([QuickPinInteractor.getDeviceLockNotice]), so that a
+     * screen lock removed after setup is noticed.
+     */
+    fun getDeviceLockNotice(): DeviceLockNotice?
+
     /** Marks the wallet as unlocked after a successful login. */
     fun unlockSession()
 }
@@ -76,6 +83,9 @@ class BiometricInteractorImpl(
     override suspend fun resetPinThrottle() {
         pinThrottleController.recordSuccess()
     }
+
+    override fun getDeviceLockNotice(): DeviceLockNotice? =
+        quickPinInteractor.getDeviceLockNotice()
 
     override suspend fun storeBiometricsUsageDecision(shouldUseBiometrics: Boolean) {
         biometryStorageController.setUseBiometricsAuth(shouldUseBiometrics)

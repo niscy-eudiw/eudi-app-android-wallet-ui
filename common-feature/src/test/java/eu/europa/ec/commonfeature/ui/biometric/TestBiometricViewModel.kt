@@ -27,6 +27,7 @@ import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.commonfeature.interactor.DeviceLockNotice
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -749,6 +750,81 @@ class TestBiometricViewModel {
         }
     }
 
+    @Test
+    fun `Given a device without a screen lock, When the login screen starts, Then it warns and the PIN still logs in`() =
+        coroutineRule.runTest {
+            whenever(interactor.getPinLockoutState()).thenReturn(PinLockoutState.Idle)
+            whenever(interactor.getBiometricUserSelection()).thenReturn(false)
+            whenever(interactor.getDeviceLockNotice())
+                .thenReturn(DeviceLockNotice.Warning(DEVICE_LOCK_WARNING))
+
+            viewModel.handleEvents(Event.Init)
+            coroutineRule.testScope.runCurrent()
+
+            assertEquals(DEVICE_LOCK_WARNING, viewModel.viewState.value.deviceLockNotice)
+            assertFalse(viewModel.viewState.value.isBlockedByDeviceLock)
+            val pin = enterPin("123456", QuickPinInteractorPinValidPartialState.Success)
+            verify(interactor).isPinValid(pin)
+        }
+
+    @Test
+    fun `Given a screen lock required and none set, When the login screen starts, Then the PIN and biometrics are refused`() =
+        coroutineRule.runTest {
+            whenever(interactor.getPinLockoutState()).thenReturn(PinLockoutState.Idle)
+            whenever(interactor.getBiometricUserSelection()).thenReturn(false)
+            whenever(interactor.getDeviceLockNotice())
+                .thenReturn(DeviceLockNotice.Blocking(DEVICE_LOCK_REQUIRED))
+
+            viewModel.handleEvents(Event.Init)
+            coroutineRule.testScope.runCurrent()
+            val pin = SecurePinImpl("123456")
+            viewModel.handleEvents(Event.OnQuickPinEntered(pin))
+            viewModel.handleEvents(click)
+            coroutineRule.testScope.runCurrent()
+
+            assertEquals(DEVICE_LOCK_REQUIRED, viewModel.viewState.value.deviceLockNotice)
+            assertTrue(viewModel.viewState.value.isBlockedByDeviceLock)
+            verify(interactor, never()).isPinValid(any())
+            assertEquals(0, callbacks.size)
+        }
+
+    @Test
+    fun `Given a login blocked by the missing screen lock, When the user returns with one set, Then the login opens`() =
+        coroutineRule.runTest {
+            whenever(interactor.getPinLockoutState()).thenReturn(PinLockoutState.Idle)
+            whenever(interactor.getBiometricUserSelection()).thenReturn(false)
+            whenever(interactor.getDeviceLockNotice())
+                .thenReturn(DeviceLockNotice.Blocking(DEVICE_LOCK_REQUIRED), null)
+
+            viewModel.handleEvents(Event.Init)
+            coroutineRule.testScope.runCurrent()
+            viewModel.handleEvents(Event.OnResume)
+
+            assertNull(viewModel.viewState.value.deviceLockNotice)
+            assertFalse(viewModel.viewState.value.isBlockedByDeviceLock)
+            val pin = enterPin("123456", QuickPinInteractorPinValidPartialState.Success)
+            verify(interactor).isPinValid(pin)
+        }
+
+    @Test
+    fun `Given a confirmation before a presentation, When the screen resumes, Then the screen lock is not checked`() {
+        val confirmation = newViewModel(
+            "confirmation",
+            BiometricUiConfig(
+                mode = BiometricMode.Default("Biometrics", "PIN", "Enter PIN"),
+                onSuccessNavigation = ConfigNavigation(NavigationType.Pop),
+                onBackNavigationConfig = OnBackNavigationConfig(null, false)
+            )
+        )
+        whenever(interactor.getDeviceLockNotice())
+            .thenReturn(DeviceLockNotice.Blocking(DEVICE_LOCK_REQUIRED))
+
+        confirmation.handleEvents(Event.OnResume)
+
+        verify(interactor, never()).getDeviceLockNotice()
+        assertFalse(confirmation.viewState.value.isBlockedByDeviceLock)
+    }
+
     private fun completeAuthentication(result: BiometricsAuthenticate) {
         callbacks.single().invoke(result)
     }
@@ -824,5 +900,7 @@ class TestBiometricViewModel {
     private companion object {
         const val MAX_ATTEMPTS = 5
         const val DEEPLINK = "https://example.org/deeplink"
+        const val DEVICE_LOCK_WARNING = "This device has no screen lock."
+        const val DEVICE_LOCK_REQUIRED = "Set a screen lock to use the wallet."
     }
 }

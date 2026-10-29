@@ -503,7 +503,7 @@ complete production process, see [GO_LIVE.md](GO_LIVE.md).
 | Session lock                               | `AuthenticationConfig` and `ConfigUILogic` | Confirm `backgroundLockTimeout`, `idleLockTimeout` and `protectedFlowLockTimeout` for the assurance level, and keep `loginScreens` and `protectedFlowScreens` in step with the app's screens. |
 | Pictures of the holder                     | `ConfigUILogic.userImageClaimKeys` in `ui-logic` | The claims that hold a picture of the holder, `portrait` and `picture` in the reference configuration. They are shown as images, and a request that includes one raises the biometric-data notice and the confirmation on Share. Add any such claim your credentials use. |
 | Screen capture                             | `ConfigUILogic.shouldPreventScreenCapture` in `ui-logic` | False in the reference configuration, so that screens can be captured in development and testing. Set it to true for production: the wallet's window then carries `FLAG_SECURE`, and screenshots, screen recordings and the recent-apps thumbnail show no wallet content. The RQES SDK's screens are not covered. See [GO_LIVE.md](GO_LIVE.md#screenshots-overlays-and-sensitive-ui). |
-| PIN rules                                  | `AuthenticationConfig`                                                                                                                    | Extend `commonPins` to match the PIN policy, and set `requireDeviceSecure` to true if the wallet must not be set up on a device without a screen lock (the check runs at setup only).                                                                                                                                                                                                                                                                                                                                                                                   |
+| PIN rules                                  | `AuthenticationConfig`                                                                                                                    | Extend `commonPins` to match the PIN policy, and set `requireDeviceSecure` to true if the wallet must not be set up or opened on a device without a screen lock (the check runs at setup and at each login).                                                                                                                                                                                                                                                                                                                                                                                   |
 | PIN throttle policy                        | `authentication-logic` and `AuthenticationConfig`                                                                                         | Confirm `maxFailedPinAttempts` and `pinLockoutDurations` meet policy. Define what happens once the final lockout tier is reached (e.g. wipe, support flow, step-up).                                                                                                                                                                                                                                                                                                                                                                 |
 | Database key/storage                       | `storage-logic` and encrypted `PrefsController`                                                                                           | Ensure database keys are generated securely, encrypted at rest, excluded from backup, and migrated safely.                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Network logging                            | `network-logic/.../NetworkModule.kt` and `WalletCoreLogController`                                                                       | `LogLevel.NONE` for release on the app's client. This does not reach Wallet Core's issuance, presentation and Trust Mark requests, which Wallet Core logs at `LogLevel.ALL` through the configured logger as debug records; `WalletCoreLogController` drops records above `EudiWalletConfig.logLevel`, `LEVEL_INFO` in release builds (set with `configureLogging(level = if (BuildConfig.DEBUG) Logger.LEVEL_DEBUG else Logger.LEVEL_INFO)` in each `WalletCoreConfigImpl`; Wallet Core's default is `LEVEL_INFO`; see GO_LIVE §Diagnostic logging). Never log tokens, credentials, signatures, or document data. |
@@ -950,8 +950,9 @@ interface AuthenticationConfig {
     val commonPins: Set<String>
 
     /**
-     * Whether the wallet can be set up only on a device with a screen lock. When false, a device
-     * without one gets a warning on the PIN screen and setup continues.
+     * Whether the wallet can be set up, and logged in to, only on a device with a screen lock. When
+     * false, a device without one gets a warning on the PIN screen at setup and on the login
+     * screen, and the user goes on.
      */
     val requireDeviceSecure: Boolean
 }
@@ -978,11 +979,11 @@ class AuthenticationConfigImpl : AuthenticationConfig {
 }
 ```
 
-`commonPins` and `requireDeviceSecure` apply when the PIN is set. A PIN on the list, one digit
-repeated or an ascending or descending run is refused with the `quick_pin_weak` message.
-Without a screen lock the PIN screen shows `quick_pin_device_lock_missing` during setup, or,
-when `requireDeviceSecure` is true, shows `quick_pin_device_lock_required` and accepts no PIN
-until a lock is set.
+`commonPins` applies when the PIN is set: a PIN on the list, one digit repeated or an ascending
+or descending run is refused with the `quick_pin_weak` message. `requireDeviceSecure` applies at
+setup and at each login. Without a screen lock the PIN screen during setup, and the login screen,
+show `quick_pin_device_lock_missing`, or, when `requireDeviceSecure` is true, show
+`quick_pin_device_lock_required` and accept no PIN, and at login no biometric, until a lock is set.
 
 The three timeouts drive the session lock (*SessionController*). The screens it treats as login
 screens and as protected-flow screens are listed in *ConfigUILogic* (`loginScreens`,

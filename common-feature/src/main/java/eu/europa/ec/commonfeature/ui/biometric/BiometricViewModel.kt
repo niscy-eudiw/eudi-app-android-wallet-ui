@@ -24,8 +24,10 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvai
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.businesslogic.extension.toUri
+import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.commonfeature.interactor.DeviceLockNotice
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -58,6 +60,7 @@ sealed class Event : ViewEvent {
     data object OnNavigateBack : Event()
     data object OnErrorDismiss : Event()
     data object Init : Event()
+    data object OnResume : Event()
     data class OnQuickPinEntered(val quickPin: SecurePin) : Event()
     data class OnQuickPinLengthChanged(val length: Int) : Event()
 }
@@ -72,7 +75,9 @@ data class State(
     val notifyOnAuthenticationFailure: Boolean = false,
     val quickPinSize: Int = 6,
     val isLockedOut: Boolean = false,
-    val lockoutMessage: String? = null
+    val lockoutMessage: String? = null,
+    val deviceLockNotice: String? = null,
+    val isBlockedByDeviceLock: Boolean = false,
 ) : ViewState
 
 sealed class Effect : ViewSideEffect {
@@ -132,6 +137,7 @@ class BiometricViewModel(
     override fun handleEvents(event: Event) {
         when (event) {
             is Event.Init -> {
+                checkDeviceLock()
                 viewModelScope.launch {
                     val userBiometricsAreEnabled = biometricInteractor.getBiometricUserSelection()
                     setState {
@@ -153,7 +159,7 @@ class BiometricViewModel(
             }
 
             is Event.OnBiometricsClicked -> {
-                if (isAuthenticating) return
+                if (isAuthenticating || viewState.value.isBlockedByDeviceLock) return
                 setState { copy(error = null) }
                 when (val availability = biometricInteractor.getBiometricsAvailability()) {
                     is BiometricsAvailability.CanAuthenticate -> authenticate(
@@ -204,8 +210,10 @@ class BiometricViewModel(
                 copy(error = null)
             }
 
+            is Event.OnResume -> checkDeviceLock()
+
             is Event.OnQuickPinEntered -> {
-                if (viewState.value.isLockedOut) {
+                if (viewState.value.isLockedOut || viewState.value.isBlockedByDeviceLock) {
                     event.quickPin.close()
                     return
                 }
@@ -233,6 +241,23 @@ class BiometricViewModel(
     override fun onCleared() {
         lockoutTickJob?.cancel()
         lockoutTickJob = null
+    }
+
+    /**
+     * Shows at login, as setup does, whether the device lacks a screen lock, and blocks the PIN and
+     * biometrics while the configuration requires one, so that a screen lock removed after setup is
+     * noticed. Checked again on resume, after the user may have set one in the device settings.
+     * Other uses of this screen, such as confirming a presentation, are not affected.
+     */
+    private fun checkDeviceLock() {
+        if (biometricUiConfig.mode !is BiometricMode.Login) return
+        val notice = biometricInteractor.getDeviceLockNotice()
+        setState {
+            copy(
+                deviceLockNotice = notice?.message,
+                isBlockedByDeviceLock = notice is DeviceLockNotice.Blocking,
+            )
+        }
     }
 
     private fun authorizeWithPin(pin: SecurePin) {
