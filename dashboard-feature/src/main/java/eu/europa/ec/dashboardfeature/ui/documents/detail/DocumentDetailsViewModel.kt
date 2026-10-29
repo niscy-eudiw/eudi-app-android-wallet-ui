@@ -52,8 +52,6 @@ import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.InjectedParam
-import org.koin.core.annotation.KoinViewModel
 
 data class State(
     val isLoading: Boolean = true,
@@ -154,13 +152,12 @@ sealed class DocumentDetailsBottomSheetContent {
     data object IssuerNotTrusted : DocumentDetailsBottomSheetContent()
 }
 
-@KoinViewModel
 class DocumentDetailsViewModel(
     private val documentDetailsInteractor: DocumentDetailsInteractor,
     private val uiSerializer: UiSerializer,
     private val resourceProvider: ResourceProvider,
     private val configUILogic: ConfigUILogic,
-    @InjectedParam private val documentId: DocumentId,
+    private val documentId: DocumentId,
 ) : MviViewModel<Event, State, Effect>() {
     override fun setInitialState(): State = State()
 

@@ -52,18 +52,59 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
+import eu.europa.ec.dashboardfeature.ui.dashboard.DashboardViewModel
+import eu.europa.ec.dashboardfeature.ui.document_sign.DocumentSignViewModel
+import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsViewModel
+import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsViewModel
+import eu.europa.ec.dashboardfeature.ui.home.HomeViewModel
+import eu.europa.ec.dashboardfeature.ui.reset_wallet.ResetWalletViewModel
+import eu.europa.ec.dashboardfeature.ui.settings.SettingsViewModel
+import eu.europa.ec.dashboardfeature.ui.transactions.data_deletion.DataDeletionRequestViewModel
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.TransactionDetailsViewModel
+import eu.europa.ec.dashboardfeature.ui.transactions.dpa_report.DpaReportViewModel
+import eu.europa.ec.dashboardfeature.ui.transactions.history.TransactionHistoryViewModel
+import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsViewModel
+import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import org.koin.core.annotation.ComponentScan
-import org.koin.core.annotation.Configuration
-import org.koin.core.annotation.Factory
-import org.koin.core.annotation.Module
+import org.koin.core.module.dsl.factoryOf
+import org.koin.core.module.dsl.viewModel
+import org.koin.core.module.dsl.viewModelOf
+import org.koin.dsl.module
 
-@Module
-@Configuration
-@ComponentScan("eu.europa.ec.dashboardfeature")
-class FeatureDashboardModule
+val featureDashboardModule = module {
+    factoryOf(::provideDashboardInteractor)
+    factoryOf(::provideSettingsInteractor)
+    factoryOf(::provideResetWalletInteractor)
+    factoryOf(::provideHomeInteractor)
+    factoryOf(::provideDocumentsInteractor)
+    factoryOf(::provideTransactionInteractor)
+    factoryOf(::provideDocumentSignInteractor)
+    factoryOf(::provideDocumentDetailsInteractor)
+    factoryOf(::provideTransactionHistoryInteractor)
+    factoryOf(::provideTransactionDetailsInteractor)
 
-@Factory
+    viewModelOf(::DashboardViewModel)
+    viewModelOf(::DocumentSignViewModel)
+    viewModel { (documentId: DocumentId) ->
+        DocumentDetailsViewModel(get(), get(), get(), get(), documentId)
+    }
+    viewModelOf(::DocumentsViewModel)
+    viewModelOf(::HomeViewModel)
+    viewModelOf(::ResetWalletViewModel)
+    viewModelOf(::SettingsViewModel)
+    viewModel { (transactionId: String) ->
+        DataDeletionRequestViewModel(get(), get(), transactionId)
+    }
+    viewModel { (transactionId: String) ->
+        TransactionDetailsViewModel(get(), get(), transactionId)
+    }
+    viewModel { (transactionId: String) -> DpaReportViewModel(get(), get(), transactionId) }
+    viewModel { (transactionId: String, actionType: String) ->
+        TransactionHistoryViewModel(get(), transactionId, actionType)
+    }
+    viewModelOf(::TransactionsViewModel)
+}
+
 fun provideDashboardInteractor(
     resourceProvider: ResourceProvider,
     walletWorkScheduler: WalletWorkScheduler,
@@ -74,7 +115,6 @@ fun provideDashboardInteractor(
     sessionController,
 )
 
-@Factory
 fun provideSettingsInteractor(
     biometricInteractor: BiometricInteractor,
     configLogic: ConfigLogic,
@@ -93,7 +133,6 @@ fun provideSettingsInteractor(
     walletCoreDCAPIRegistrationController,
 )
 
-@Factory
 fun provideResetWalletInteractor(
     walletCoreResetController: WalletCoreResetController,
     sessionController: SessionController,
@@ -102,7 +141,6 @@ fun provideResetWalletInteractor(
     sessionController,
 )
 
-@Factory
 fun provideHomeInteractor(
     resourceProvider: ResourceProvider,
     walletCoreDocumentsController: WalletCoreDocumentsController,
@@ -113,7 +151,6 @@ fun provideHomeInteractor(
     walletCoreConfig,
 )
 
-@Factory
 fun provideDocumentsInteractor(
     resourceProvider: ResourceProvider,
     documentsController: WalletCoreDocumentsController,
@@ -129,7 +166,6 @@ fun provideDocumentsInteractor(
         prefKeys,
     )
 
-@Factory
 fun provideTransactionInteractor(
     resourceProvider: ResourceProvider,
     filterValidator: FilterValidator,
@@ -140,14 +176,12 @@ fun provideTransactionInteractor(
     walletCoreTransactionLogController
 )
 
-@Factory
 fun provideDocumentSignInteractor(
     resourceProvider: ResourceProvider,
 ): DocumentSignInteractor = DocumentSignInteractorImpl(
     resourceProvider,
 )
 
-@Factory
 fun provideDocumentDetailsInteractor(
     walletCoreDocumentsController: WalletCoreDocumentsController,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
@@ -167,7 +201,6 @@ fun provideDocumentDetailsInteractor(
         sessionController,
     )
 
-@Factory
 fun provideTransactionHistoryInteractor(
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
     resourceProvider: ResourceProvider,
@@ -176,7 +209,6 @@ fun provideTransactionHistoryInteractor(
     resourceProvider,
 )
 
-@Factory
 fun provideTransactionDetailsInteractor(
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
     walletCoreTransactionRecordingController: WalletCoreTransactionRecordingController,

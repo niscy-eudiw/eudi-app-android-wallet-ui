@@ -46,8 +46,6 @@ import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.InjectedParam
-import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 sealed class Event : ViewEvent {
@@ -106,12 +104,11 @@ sealed class Effect : ViewSideEffect {
     }
 }
 
-@KoinViewModel
 class BiometricViewModel(
     private val biometricInteractor: BiometricInteractor,
     private val resourceProvider: ResourceProvider,
     private val uiSerializer: UiSerializer,
-    @InjectedParam private val biometricConfig: String
+    private val biometricConfig: String
 ) : MviViewModel<Event, State, Effect>() {
 
     private val biometricUiConfig

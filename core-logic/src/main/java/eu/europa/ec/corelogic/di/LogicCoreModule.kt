@@ -22,7 +22,6 @@ import androidx.credentials.registry.provider.RegistryManager
 import eu.europa.ec.authenticationlogic.controller.session.SessionController
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
-import eu.europa.ec.businesslogic.di.LogicBusinessModule
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.config.WalletCoreConfigImpl
@@ -50,6 +49,8 @@ import eu.europa.ec.corelogic.provider.RegistrationCheckProviderImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
 import eu.europa.ec.corelogic.util.DocumentManagerWithoutExcluded
+import eu.europa.ec.corelogic.worker.ReIssuanceWorkManager
+import eu.europa.ec.corelogic.worker.RevocationWorkManager
 import eu.europa.ec.corelogic.worker.WalletWorkScheduler
 import eu.europa.ec.corelogic.worker.WalletWorkSchedulerImpl
 import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
@@ -67,22 +68,43 @@ import eu.europa.ec.storagelogic.dao.StatusRefreshFailureDao
 import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import eu.europa.ec.storagelogic.service.DatabaseEraser
 import io.ktor.client.HttpClient
-import org.koin.core.annotation.ComponentScan
-import org.koin.core.annotation.Configuration
-import org.koin.core.annotation.Factory
-import org.koin.core.annotation.Module
-import org.koin.core.annotation.Scope
-import org.koin.core.annotation.Scoped
-import org.koin.core.annotation.Single
+import org.koin.androidx.workmanager.dsl.workerOf
+import org.koin.core.module.dsl.bind
+import org.koin.core.module.dsl.factoryOf
+import org.koin.core.module.dsl.scopedOf
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 
-@Module([LogicBusinessModule::class])
-@Configuration
-@ComponentScan("eu.europa.ec.corelogic")
-class LogicCoreModule
+val logicCoreModule = module {
+    workerOf(::ReIssuanceWorkManager)
+    workerOf(::RevocationWorkManager)
 
-@Scope(WalletCoreScope::class)
-@Scoped
+    singleOf(::provideWalletCoreDCAPIRegistrationController)
+    factoryOf(::provideWalletCoreTrustMarkController)
+    singleOf(::provideWalletCoreConfig)
+    factoryOf(::provideWalletCoreLogController)
+    // Single, not a factory: the controller owns the queue that keeps transaction writes in order,
+    // so a second instance would be a second queue writing the same rows.
+    singleOf(::provideWalletCoreTransactionLogController)
+    singleOf(::provideWalletCoreTransactionLogManager)
+    singleOf(::provideWalletCoreTransactionRecordingController) { bind<RqesSigningLogger>() }
+    factoryOf(::provideWalletCoreAttestationProvider)
+    factoryOf(::provideRegistrationCheckProvider)
+    factoryOf(::provideDCAPISettingProvider)
+    factoryOf(::provideWalletCoreDocumentsController)
+    factoryOf(::provideWalletCoreResetController)
+    singleOf(::provideWalletResetStatus)
+    singleOf(::provideWalletWorkScheduler)
+
+    scope<WalletCoreScope> {
+        scopedOf(::provideEudiWallet)
+    }
+    scope<WalletPresentationScope> {
+        scopedOf(::provideWalletCorePresentationController)
+    }
+}
+
 fun provideEudiWallet(
     context: Context,
     walletCoreConfig: WalletCoreConfig,
@@ -118,7 +140,6 @@ fun provideEudiWallet(
     return eudiWallet
 }
 
-@Single
 fun provideWalletCoreDCAPIRegistrationController(
     context: Context,
     dcapiSettingProvider: DCAPISettingProvider,
@@ -133,7 +154,6 @@ fun provideWalletCoreDCAPIRegistrationController(
     getBlockedDocumentIds = { revokedDocumentDao.retrieveAll().map { it.identifier }.toSet() },
 )
 
-@Factory
 fun provideWalletCoreTrustMarkController(
     prefKeys: PrefKeys,
     resourceProvider: ResourceProvider,
@@ -142,14 +162,12 @@ fun provideWalletCoreTrustMarkController(
     resourceProvider = resourceProvider,
 )
 
-@Single
 fun provideWalletCoreConfig(
     registrationCheckProvider: RegistrationCheckProvider
 ): WalletCoreConfig = WalletCoreConfigImpl(
     registrationCheckProvider = registrationCheckProvider
 )
 
-@Factory
 fun provideWalletCoreLogController(
     logController: LogController,
     walletCoreConfig: WalletCoreConfig,
@@ -158,9 +176,6 @@ fun provideWalletCoreLogController(
     logLevel = walletCoreConfig.config.logLevel,
 )
 
-// Single, not a factory: the controller owns the queue that keeps transaction writes in order, so
-// a second instance would be a second queue writing the same rows.
-@Single
 fun provideWalletCoreTransactionLogController(
     transactionLogDao: TransactionLogDao,
     resourceProvider: ResourceProvider,
@@ -171,14 +186,12 @@ fun provideWalletCoreTransactionLogController(
     transactionDataTypes = walletCoreConfig.config.openId4VpConfig?.transactionDataTypes.orEmpty(),
 )
 
-@Single
 fun provideWalletCoreTransactionLogManager(
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
 ): TransactionLogManager = DefaultTransactionLogManager(
     storage = walletCoreTransactionLogController,
 )
 
-@Single(binds = [RqesSigningLogger::class])
 fun provideWalletCoreTransactionRecordingController(
     uuidProvider: UuidProvider,
     transactionLogManager: TransactionLogManager,
@@ -191,7 +204,6 @@ fun provideWalletCoreTransactionRecordingController(
     resourceProvider = resourceProvider,
 )
 
-@Factory
 fun provideWalletCoreAttestationProvider(
     walletAttestationRepository: WalletAttestationRepository,
     walletCoreConfig: WalletCoreConfig
@@ -201,14 +213,12 @@ fun provideWalletCoreAttestationProvider(
         walletAttestationRepository = walletAttestationRepository
     )
 
-@Factory
 fun provideRegistrationCheckProvider(
     prefKeys: PrefKeys
 ): RegistrationCheckProvider = RegistrationCheckProviderImpl(
     prefKeys = prefKeys
 )
 
-@Factory
 fun provideDCAPISettingProvider(
     prefKeys: PrefKeys,
     walletCoreConfig: WalletCoreConfig,
@@ -217,7 +227,6 @@ fun provideDCAPISettingProvider(
     walletCoreConfig = walletCoreConfig,
 )
 
-@Factory
 fun provideWalletCoreDocumentsController(
     resourceProvider: ResourceProvider,
     walletCoreConfig: WalletCoreConfig,
@@ -241,7 +250,6 @@ fun provideWalletCoreDocumentsController(
         walletWorkScheduler = walletWorkScheduler,
     )
 
-@Factory
 fun provideWalletCoreResetController(
     context: Context,
     walletCoreDocumentsController: WalletCoreDocumentsController,
@@ -269,10 +277,8 @@ fun provideWalletCoreResetController(
     deleteCacheFiles = { context.cacheDir.listFiles()?.forEach { it.deleteRecursively() } },
 )
 
-@Single
 fun provideWalletResetStatus(): WalletResetStatus = WalletResetStatus()
 
-@Single
 fun provideWalletWorkScheduler(
     context: Context,
     walletCoreConfig: WalletCoreConfig,
@@ -281,8 +287,6 @@ fun provideWalletWorkScheduler(
     walletCoreConfig = walletCoreConfig,
 )
 
-@Scope(WalletPresentationScope::class)
-@Scoped
 fun provideWalletCorePresentationController(
     resourceProvider: ResourceProvider,
     prefKeys: PrefKeys,
@@ -296,7 +300,6 @@ fun provideWalletCorePresentationController(
  * Koin scope that lives for all the document presentation flow. It is manually handled from the
  * ViewModels that start and participate on the presentation process
  * */
-@Scope
 class WalletPresentationScope
 
 /**
@@ -304,7 +307,6 @@ class WalletPresentationScope
  * This scope is used to manage the EUDI Wallet instance and its related
  * dependencies, ensuring they are preserved across the core logic operations.
  */
-@Scope
 class WalletCoreScope
 
 /**

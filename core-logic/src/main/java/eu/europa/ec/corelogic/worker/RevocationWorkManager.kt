@@ -35,7 +35,6 @@ import eu.europa.ec.storagelogic.model.StatusRefreshFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.koin.android.annotation.KoinWorker
 
 /**
  * [RevocationWorkManager] is a [CoroutineWorker] that checks the status of every issued document
@@ -72,7 +71,6 @@ import org.koin.android.annotation.KoinWorker
  * @param appContext The application context.
  * @param workerParams Parameters for the worker.
  */
-@KoinWorker
 class RevocationWorkManager(
     appContext: Context,
     workerParams: WorkerParameters,

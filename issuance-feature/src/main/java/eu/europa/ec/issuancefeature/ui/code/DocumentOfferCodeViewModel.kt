@@ -38,8 +38,6 @@ import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
 import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.InjectedParam
-import org.koin.core.annotation.KoinViewModel
 
 data class State(
     val offerCodeUiConfig: OfferCodeUiConfig,
@@ -90,11 +88,10 @@ sealed class DocumentOfferCodeBottomSheetContent {
     ) : DocumentOfferCodeBottomSheetContent()
 }
 
-@KoinViewModel
 class DocumentOfferCodeViewModel(
     private val resourceProvider: ResourceProvider,
     private val uiSerializer: UiSerializer,
-    @InjectedParam private val offerCodeSerializedConfig: String,
+    private val offerCodeSerializedConfig: String,
     documentOfferInteractor: DocumentOfferInteractor? = null
 ) : MviViewModel<Event, State, Effect>() {
 

@@ -28,7 +28,6 @@ import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.KoinViewModel
 
 data class State(
     val isLoading: Boolean = false,
@@ -56,7 +55,6 @@ sealed class Effect : ViewSideEffect {
  * login screen. The screen offers no way back while the data is being deleted. If the reset fails,
  * the user can retry, or close the screen, which also starts the wallet again at the splash screen.
  */
-@KoinViewModel
 class ResetWalletViewModel(
     private val resetWalletInteractor: ResetWalletInteractor,
     private val resourceProvider: ResourceProvider,

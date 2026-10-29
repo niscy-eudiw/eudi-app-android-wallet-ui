@@ -33,24 +33,22 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.ContentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import org.koin.core.annotation.ComponentScan
-import org.koin.core.annotation.Configuration
-import org.koin.core.annotation.Module
-import org.koin.core.annotation.Single
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.module
 
-@Module
-@Configuration
-@ComponentScan("eu.europa.ec.networklogic")
-class LogicNetworkModule
+val logicNetworkModule = module {
+    singleOf(::provideJson)
+    singleOf(::provideNetworkConfig)
+    singleOf(::provideHttpClient)
+    singleOf(::provideWalletAttestationRepository)
+}
 
-@Single
 fun provideJson(): Json = Json {
     ignoreUnknownKeys = true
     prettyPrint = true
     isLenient = true
 }
 
-@Single
 fun provideNetworkConfig(): NetworkConfig = NetworkConfigImpl()
 
 /**
@@ -59,7 +57,6 @@ fun provideNetworkConfig(): NetworkConfig = NetworkConfigImpl()
  * [NetworkConfig] ([installNetworkLimits]), so that a request a link starts cannot hang or fill
  * memory.
  */
-@Single
 fun provideHttpClient(
     json: Json,
     configLogic: ConfigLogic,
@@ -86,6 +83,5 @@ fun provideHttpClient(
     }
 }
 
-@Single
 fun provideWalletAttestationRepository(httpClient: HttpClient): WalletAttestationRepository =
     WalletAttestationRepositoryImpl(httpClient)

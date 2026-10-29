@@ -47,8 +47,6 @@ import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.InjectedParam
-import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class PinValidationState {
@@ -129,12 +127,11 @@ sealed class PinBottomSheetContent {
     data object CancelConfirmation : PinBottomSheetContent()
 }
 
-@KoinViewModel
 class PinViewModel(
     private val interactor: QuickPinInteractor,
     private val resourceProvider: ResourceProvider,
     private val uiSerializer: UiSerializer,
-    @InjectedParam private val pinFlow: PinFlow
+    private val pinFlow: PinFlow
 ) : MviViewModel<Event, State, Effect>() {
 
     private var enteredPin: SecurePin? = null

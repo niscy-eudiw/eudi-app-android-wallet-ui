@@ -55,8 +55,6 @@ import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.navigation.helper.isOpenableExternalLink
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.InjectedParam
-import org.koin.core.annotation.KoinViewModel
 import java.net.URI
 
 data class State(
@@ -134,11 +132,10 @@ sealed class DocumentOfferBottomSheetContent {
     ) : DocumentOfferBottomSheetContent()
 }
 
-@KoinViewModel
 class DocumentOfferViewModel(
     private val resourceProvider: ResourceProvider,
     private val uiSerializer: UiSerializer,
-    @InjectedParam private val offerSerializedConfig: String,
+    private val offerSerializedConfig: String,
     documentOfferInteractor: DocumentOfferInteractor? = null
 ) : MviViewModel<Event, State, Effect>() {
 

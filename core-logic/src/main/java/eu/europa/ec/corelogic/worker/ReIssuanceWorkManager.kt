@@ -35,7 +35,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.koin.android.annotation.KoinWorker
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -49,7 +48,6 @@ import kotlin.time.toKotlinInstant
  * Wallet Core finishes a re-issuance it has started even when the worker is cancelled, so the
  * worker follows each one to its outcome before it stops, and holds [runLock] while it runs.
  */
-@KoinWorker
 class ReIssuanceWorkManager(
     appContext: Context,
     workerParams: WorkerParameters,

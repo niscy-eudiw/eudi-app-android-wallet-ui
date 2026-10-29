@@ -31,22 +31,25 @@ import eu.europa.ec.storagelogic.service.DatabaseService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
-import org.koin.core.annotation.ComponentScan
-import org.koin.core.annotation.Configuration
-import org.koin.core.annotation.Module
-import org.koin.core.annotation.Single
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.module
 
-@Module
-@Configuration
-@ComponentScan("eu.europa.ec.storagelogic")
-class LogicStorageModule
+val logicStorageModule = module {
+    singleOf(::provideAppDatabase)
+    singleOf(::provideDatabaseEraser)
+    singleOf(::provideBookmarkDao)
+    singleOf(::provideRevokedDocumentDao)
+    singleOf(::provideTransactionLogDao)
+    singleOf(::provideFailedReIssuedDocumentDao)
+    singleOf(::provideIssuerTrustDao)
+    singleOf(::provideStatusRefreshFailureDao)
+}
 
 /**
  * Opens the database with the key kept in the preferences. Without a stored key, an existing
  * database file was written with a key that is gone, for example because the preferences were lost,
  * and cannot be opened; it is deleted before a new key is created.
  */
-@Single
 fun provideAppDatabase(
     context: Context,
     prefKeys: PrefKeys,
@@ -69,29 +72,22 @@ fun provideAppDatabase(
         .build()
 }
 
-@Single
 fun provideDatabaseEraser(service: DatabaseService): DatabaseEraser =
     DatabaseEraser(service)
 
-@Single
 fun provideBookmarkDao(service: DatabaseService): BookmarkDao = service.bookmarkDao()
 
-@Single
 fun provideRevokedDocumentDao(service: DatabaseService): RevokedDocumentDao =
     service.revokedDocumentDao()
 
-@Single
 fun provideTransactionLogDao(service: DatabaseService): TransactionLogDao =
     service.transactionLogDao()
 
-@Single
 fun provideFailedReIssuedDocumentDao(service: DatabaseService): FailedReIssuedDocumentDao =
     service.failedReIssuedDocumentDao()
 
-@Single
 fun provideIssuerTrustDao(service: DatabaseService): IssuerTrustDao =
     service.issuerTrustDao()
 
-@Single
 fun provideStatusRefreshFailureDao(service: DatabaseService): StatusRefreshFailureDao =
     service.statusRefreshFailureDao()

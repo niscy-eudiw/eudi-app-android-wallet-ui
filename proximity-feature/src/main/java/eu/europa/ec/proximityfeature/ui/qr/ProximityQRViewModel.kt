@@ -33,8 +33,6 @@ import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.InjectedParam
-import org.koin.core.annotation.KoinViewModel
 
 data class State(
     val isLoading: Boolean = true,
@@ -68,11 +66,10 @@ sealed class Effect : ViewSideEffect {
     }
 }
 
-@KoinViewModel
 class ProximityQRViewModel(
     private val interactor: ProximityQRInteractor,
     private val uiSerializer: UiSerializer,
-    @InjectedParam private val requestUriConfigRaw: String
+    private val requestUriConfigRaw: String
 ) : MviViewModel<Event, State, Effect>() {
 
     private var interactorJob: Job? = null

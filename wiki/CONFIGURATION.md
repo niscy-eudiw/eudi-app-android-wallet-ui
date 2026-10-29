@@ -17,7 +17,7 @@
 ## General configuration
 
 Wallet Core settings are exposed through the `WalletCoreConfig` interface inside the
-**core-logic** module. `LogicCoreModule` constructs and injects SDK dependencies using this
+**core-logic** module. `logicCoreModule` constructs and injects SDK dependencies using this
 configuration:
 
 ```kotlin
@@ -831,7 +831,7 @@ interface StorageConfig {
 ```
 
 You can provide your storage implementation by implementing the *PinStorageProvider* interface and then setting it as the default to the *StorageConfigImpl* pinStorageProvider variable.
-The project utilizes Koin for Dependency Injection (DI), thus requiring adjustment of the *LogicAuthenticationModule* graph to provide the configuration.
+The project utilizes Koin for Dependency Injection (DI), thus requiring adjustment of the *logicAuthenticationModule* graph to provide the configuration.
 
 Implementation Example:
 
@@ -874,7 +874,6 @@ class StorageConfigImpl(
 Config Construction via Koin DI Example:
 
 ```kotlin
-@Single
 fun provideStorageConfig(
     context: Context,
     prefsController: PrefsController,
@@ -890,6 +889,11 @@ fun provideStorageConfig(
         },
     )
 )
+
+val logicAuthenticationModule = module {
+    singleOf(::provideStorageConfig)
+    // ...
+}
 ```
 
 The *pinThrottleProvider* is consumed by *PinThrottleController* to enforce
@@ -1006,11 +1010,15 @@ Resulting behavior with the defaults:
 | Device date or time changed                 | No effect on the lockout.                    |
 
 You can change the policy by providing your own *AuthenticationConfigImpl*
-and wiring it in *LogicAuthenticationModule*:
+and wiring it in *logicAuthenticationModule*:
 
 ```kotlin
-@Single
 fun provideAuthenticationConfig(): AuthenticationConfig = AuthenticationConfigImpl()
+
+val logicAuthenticationModule = module {
+    singleOf(::provideAuthenticationConfig)
+    // ...
+}
 ```
 
 The lockout is enforced through the *PinThrottleController* and applied
@@ -1047,7 +1055,7 @@ interface AnalyticsConfig {
 
 You can provide your implementation by implementing the *AnalyticsProvider* interface and then adding it to your *AnalyticsConfigImpl* analyticsProviders variable.
 You will also need the provider's token/key, thus requiring a Map<String, AnalyticsProvider> configuration.
-The project utilizes Koin for Dependency Injection (DI), thus requiring adjustment of the *LogicAnalyticsModule* graph to provide the configuration.
+The project utilizes Koin for Dependency Injection (DI), thus requiring adjustment of the *logicAnalyticsModule* graph to provide the configuration.
 
 Implementation Example:
 
@@ -1085,6 +1093,10 @@ class AnalyticsConfigImpl : AnalyticsConfig {
 Config Construction via Koin DI Example:
 
 ```kotlin
-@Single
 fun provideAnalyticsConfig(): AnalyticsConfig = AnalyticsConfigImpl()
+
+val logicAnalyticsModule = module {
+    singleOf(::provideAnalyticsConfig)
+    // ...
+}
 ```

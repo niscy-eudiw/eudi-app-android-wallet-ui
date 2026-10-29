@@ -42,30 +42,31 @@ import eu.europa.ec.authenticationlogic.storage.PrefsPinThrottleProvider
 import eu.europa.ec.businesslogic.controller.crypto.CryptoController
 import eu.europa.ec.businesslogic.controller.storage.PrefsController
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import org.koin.core.annotation.ComponentScan
-import org.koin.core.annotation.Configuration
-import org.koin.core.annotation.Factory
-import org.koin.core.annotation.Module
-import org.koin.core.annotation.Single
+import org.koin.core.module.dsl.factoryOf
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.module
 
-@Module
-@Configuration
-@ComponentScan("eu.europa.ec.authenticationlogic")
-class LogicAuthenticationModule
+val logicAuthenticationModule = module {
+    singleOf(::provideAuthenticationConfig)
+    factoryOf(::provideDeviceLockController)
+    singleOf(::provideSessionController)
+    singleOf(::provideStorageConfig)
+    factoryOf(::provideBiometricAuthenticationController)
+    factoryOf(::provideDeviceAuthenticationController)
+    factoryOf(::providePinStorageController)
+    factoryOf(::provideBiometryStorageController)
+    factoryOf(::providePinThrottleController)
+}
 
-@Single
 fun provideAuthenticationConfig(): AuthenticationConfig = AuthenticationConfigImpl()
 
-@Factory
 fun provideDeviceLockController(context: Context): DeviceLockController =
     DeviceLockControllerImpl(context)
 
-@Single
 fun provideSessionController(
     authenticationConfig: AuthenticationConfig
 ): SessionController = SessionControllerImpl(authenticationConfig)
 
-@Single
 fun provideStorageConfig(
     context: Context,
     prefsController: PrefsController,
@@ -82,7 +83,6 @@ fun provideStorageConfig(
     )
 )
 
-@Factory
 fun provideBiometricAuthenticationController(
     cryptoController: CryptoController,
     biometryStorageController: BiometryStorageController,
@@ -94,7 +94,6 @@ fun provideBiometricAuthenticationController(
         biometryStorageController
     )
 
-@Factory
 fun provideDeviceAuthenticationController(
     resourceProvider: ResourceProvider,
     biometricAuthenticationController: BiometricAuthenticationController
@@ -104,17 +103,14 @@ fun provideDeviceAuthenticationController(
         biometricAuthenticationController
     )
 
-@Factory
 fun providePinStorageController(
     storageConfig: StorageConfig
 ): PinStorageController = PinStorageControllerImpl(storageConfig)
 
-@Factory
 fun provideBiometryStorageController(
     storageConfig: StorageConfig
 ): BiometryStorageController = BiometryStorageControllerImpl(storageConfig)
 
-@Factory
 fun providePinThrottleController(
     storageConfig: StorageConfig
 ): PinThrottleController = PinThrottleControllerImpl(storageConfig)

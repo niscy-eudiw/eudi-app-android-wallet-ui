@@ -44,7 +44,6 @@ import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
 import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
-import org.koin.core.annotation.KoinViewModel
 
 data class State(
     val isLoading: Boolean = false,
@@ -97,7 +96,6 @@ sealed class Effect : ViewSideEffect {
     data class ShowSnackbar(val message: String) : Effect()
 }
 
-@KoinViewModel
 class SettingsViewModel(
     private val settingsInteractor: SettingsInteractor,
     private val resourceProvider: ResourceProvider,

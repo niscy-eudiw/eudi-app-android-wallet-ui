@@ -49,7 +49,6 @@ import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
 import eu.europa.ec.uilogic.serializer.UiSerializer
-import org.koin.core.annotation.KoinViewModel
 
 data class State(
 
@@ -133,7 +132,6 @@ enum class SideMenuAnimation {
     SLIDE, FADE
 }
 
-@KoinViewModel
 class DashboardViewModel(
     private val dashboardInteractor: DashboardInteractor,
     private val uiSerializer: UiSerializer,

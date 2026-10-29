@@ -60,7 +60,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -367,7 +366,6 @@ open class EudiComponentActivity : FragmentActivity() {
     }
 }
 
-@KoinViewModel
 internal class EudiComponentActivityViewModel(
     private val prefKeys: PrefKeys,
     private val dcapiSettingProvider: DCAPISettingProvider,
