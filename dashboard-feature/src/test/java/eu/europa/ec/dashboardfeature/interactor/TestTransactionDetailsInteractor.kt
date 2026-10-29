@@ -98,6 +98,7 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
+import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.doThrow
@@ -111,6 +112,8 @@ import java.net.URLDecoder
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class TestTransactionDetailsInteractor {
 
@@ -3031,17 +3034,18 @@ class TestTransactionDetailsInteractor {
     fun `Given Case 5, When observePresentationActionCounts is called, Then Case 5 Expected Result is returned`() {
         coroutineRule.runTest {
             // Given
-            whenever(
-                walletCoreTransactionLogController.observePresentationActions(
-                    mockedPresentationLogDomain.id
-                )
-            )
-                .thenThrow(mockedExceptionWithMessage)
+            val loadingReceived = CountDownLatch(1)
+            doAnswer {
+                loadingReceived.await(3, TimeUnit.SECONDS)
+                throw mockedExceptionWithMessage
+            }.whenever(walletCoreTransactionLogController)
+                .observePresentationActions(mockedPresentationLogDomain.id)
 
             // When
             interactor.observePresentationActionCounts(mockedPresentationLogDomain.id).runFlowTest {
                 // Then
                 assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
+                loadingReceived.countDown()
                 assertEquals(
                     PresentationActionCountsUiState.Failure(
                         mockedExceptionWithMessage.localizedMessage ?: mockedGenericErrorMessage,
