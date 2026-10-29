@@ -37,7 +37,8 @@ internal fun getStateToRestore(
  * configuration change, or after Android ended the process, is given the intent of its first start
  * again; that link or request was handled then, and opening it again would replay it.
  */
-internal fun shouldOpenLaunchIntent(savedInstanceState: Bundle?): Boolean = savedInstanceState == null
+internal fun shouldOpenLaunchIntent(savedInstanceState: Bundle?): Boolean =
+    savedInstanceState == null
 
 /**
  * Whether an incoming link of [type] is dropped. A link that starts no wallet flow
