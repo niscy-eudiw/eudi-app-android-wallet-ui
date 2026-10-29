@@ -18,6 +18,9 @@ package eu.europa.ec.networklogic.di
 
 import eu.europa.ec.businesslogic.config.AppBuildType
 import eu.europa.ec.businesslogic.config.ConfigLogic
+import eu.europa.ec.networklogic.config.NetworkConfig
+import eu.europa.ec.networklogic.config.NetworkConfigImpl
+import eu.europa.ec.networklogic.extension.installNetworkLimits
 import eu.europa.ec.networklogic.repository.WalletAttestationRepository
 import eu.europa.ec.networklogic.repository.WalletAttestationRepositoryImpl
 import io.ktor.client.HttpClient
@@ -48,8 +51,23 @@ fun provideJson(): Json = Json {
 }
 
 @Single
-fun provideHttpClient(json: Json, configLogic: ConfigLogic): HttpClient {
+fun provideNetworkConfig(): NetworkConfig = NetworkConfigImpl()
+
+/**
+ * The HTTP client of the wallet, which Wallet Core uses for every issuer, verifier, trusted-list
+ * and status-list request. It applies the timeouts and the response-size limit of
+ * [NetworkConfig] ([installNetworkLimits]), so that a request a link starts cannot hang or fill
+ * memory.
+ */
+@Single
+fun provideHttpClient(
+    json: Json,
+    configLogic: ConfigLogic,
+    networkConfig: NetworkConfig,
+): HttpClient {
     return HttpClient(Android) {
+
+        installNetworkLimits(networkConfig)
 
         install(Logging) {
             logger = Logger.DEFAULT

@@ -80,7 +80,7 @@ Use this checklist before the first production release.
 | Registration            | Every production issuer and verifier presents a registration certificate that validates against the configured registration trusted list, every issuer is entitled for the provider role of what it offers, and every issuer's registered scope covers the documents it offers. Issuance is refused otherwise.                                  |
 | RQES                    | QTSP, TSA, client ID, redirect URI, and certificate retrieval settings are production values.                                                                                                                                                                                 |
 | Secrets                 | No production secret is hardcoded in Kotlin, Gradle, resources, or `BuildConfig`.                                                                                                                                                                                             |
-| Network                 | Cleartext traffic is disabled; trust-all certificate logic is absent; TLS policy and certificate pinning strategy are agreed.                                                                                                                                                 |
+| Network                 | Cleartext traffic is disabled; trust-all certificate logic is absent; TLS policy and certificate pinning strategy are agreed; the timeouts and response-size limit in `NetworkConfig` suit the production services.                                                        |
 | Storage                 | Wallet data, database keys, PIN material, and logs are protected, excluded from backup, and migration-safe.                                                                                                                                                                   |
 | Data deletion           | Removing a document deletes the app's records about it under the rules in [Data Deletion And Factory Reset](#data-deletion-and-factory-reset), and **Reset wallet** deletes the user's data and starts the app again at onboarding. Every local store added by the implementer is covered by both. |
 | Authentication          | PIN, PIN strength rules, device screen-lock requirement, biometrics, device credential fallback, key authentication, lockout, and recovery policies are approved.                                                                                                            |
@@ -105,7 +105,7 @@ The application is a modular Android project. Important modules for production a
 | `business-logic`             | Global app config, RQES config, logging, encrypted preference storage, crypto helpers.                                                 |
 | `authentication-logic`       | PIN and biometric storage providers and controllers, PIN throttle/lockout, authentication configuration.                               |
 | `storage-logic`              | SQLCipher-backed Room database and local transaction/revocation storage.                                                               |
-| `network-logic`              | Ktor client, logging level, wallet attestation repository.                                                                             |
+| `network-logic`              | Ktor client, its timeouts and response-size limit (`NetworkConfig`), logging level, wallet attestation repository.                     |
 | `resources-logic`            | Strings, images, raw certificate resources.                                                                                            |
 | `analytics-logic`            | Optional analytics provider integration.                                                                                               |
 | `build-logic`                | Gradle convention plugins, flavors, deep-link constants, lint, dependency check, managed devices.                                      |
@@ -144,13 +144,14 @@ Keep these files under strict review:
 | `core-logic/src/<flavor>/java/eu/europa/ec/corelogic/config/WalletCoreConfigImpl.kt`                      | Main wallet network, trust, issuer, document, and presentation configuration.                        |
 | `business-logic/src/<flavor>/java/eu/europa/ec/businesslogic/config/ConfigLogicImpl.kt`                   | Flavor identity, changelog URL, app behavior toggles.                                                |
 | `business-logic/src/<flavor>/java/eu/europa/ec/businesslogic/config/RQESConfigImpl.kt`                    | RQES QTSP/TSA/client config and document retrieval trust config.                                     |
-| `network-logic/src/main/java/eu/europa/ec/networklogic/di/NetworkModule.kt`                               | Ktor client behavior and release logging.                                                            |
+| `network-logic/src/main/java/eu/europa/ec/networklogic/di/NetworkModule.kt`                               | Ktor client behavior: timeouts and response-size limit (`NetworkConfig`), and release logging.       |
 | `network-logic/src/main/res/xml/network_security_config.xml`                                              | Cleartext and certificate trust policy.                                                              |
 | `business-logic/src/main/res/xml/backup_rules.xml`                                                        | Auto Backup policy for Android 11 and below: every domain excluded.                                  |
 | `business-logic/src/main/res/xml/data_extraction_rules.xml`                                               | Cloud backup and device transfer policy for Android 12 and above: every domain excluded from both.   |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinStorageProvider.kt`  | PIN hashing, salt, iteration count, constant-time comparison.                                        |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/config/AuthenticationConfig.kt`      | PIN lockout policy, and the session lock timeouts.                                                   |
-| `ui-logic/src/main/java/eu/europa/ec/uilogic/config/ConfigUILogicImpl.kt` | Login and protected-flow screen lists used by the session lock, and the claims that hold a picture of the holder. |
+| `network-logic/src/main/java/eu/europa/ec/networklogic/config/NetworkConfig.kt`                         | HTTP client timeouts and the response-size limit.                                                    |
+| `ui-logic/src/main/java/eu/europa/ec/uilogic/config/ConfigUILogicImpl.kt` | Login and protected-flow screen lists used by the session lock, the claims that hold a picture of the holder, and whether screen capture is prevented. |
 | `authentication-logic/src/main/java/eu/europa/ec/authenticationlogic/storage/PrefsPinThrottleProvider.kt` | Persisted PIN failure counter, lockout level, and the lockout on the elapsed real time and boot.     |
 | `business-logic/src/main/java/eu/europa/ec/businesslogic/controller/storage/PrefsController.kt`           | Encrypted DataStore and database key storage.                                                        |
 | `storage-logic/src/main/java/eu/europa/ec/storagelogic/di/LogicStorageModule.kt`                          | SQLCipher database setup and migration behavior.                                                     |
@@ -1742,6 +1743,21 @@ Current release behavior:
 Keep `LogLevel.NONE` for production. Add tests or release checks to ensure release network logging
 is disabled.
 
+Timeouts and response size: the same client, which Wallet Core uses for issuance, presentation,
+trusted lists, status lists and the Trust Mark (through `withKtorHttpClientFactory`), and which the
+app uses for wallet attestation, applies the limits of
+`NetworkConfig` in `network-logic`. In the reference configuration a connection must be set up
+within 15 seconds, data must keep arriving within 30 seconds, a whole request must end within 60
+seconds, and a response body may hold at most 10 MiB. A body whose `Content-Length` passes the limit
+is refused before it is read, and any other body as soon as more than the limit has arrived
+(`ResponseSizeLimit`). A request past a limit fails as a network error, so an issuance or
+presentation link cannot make the wallet wait on, or fill its memory from, a server the link names.
+The RQES SDK's requests, including the document retrieval an `eudi-rqes` link starts, use the SDK's
+own clients and are not covered. On the reference services the largest responses are issuer
+metadata (about 100 KB) and trusted lists (30 to 55 KB); set the limits for your own services and
+the networks your users have. `ResponseSizeLimit` reads an internal Ktor API; run its tests again
+after every Ktor upgrade.
+
 Images from metadata:
 
 * An issuer's logo is loaded only from an `https` URL on the issuer's own origin, or on an origin
@@ -2692,6 +2708,7 @@ Project-specific actions:
 * Remove self-signed development code from production source sets.
 * Pin production wallet-provider or issuer endpoints if policy requires it.
 * Verify issuer/verifier/QTSP TLS with automated tests.
+* Set the `NetworkConfig` limits for the production services.
 
 ### MASVS-PLATFORM
 
@@ -2918,6 +2935,7 @@ Before release candidate approval, test:
 * RQES cancellation.
 * Network unavailable.
 * Backend unavailable.
+* A slow or oversized response from an issuer, verifier or trusted list (fails as a network error).
 * Screenshot, screen recording and recents with `shouldPreventScreenCapture` true.
 * Expired credential.
 * Revoked credential.
