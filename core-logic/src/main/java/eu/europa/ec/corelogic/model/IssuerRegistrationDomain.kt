@@ -43,8 +43,9 @@ sealed interface IssuerRegistrationDomain {
     ) : IssuerRegistrationDomain
 
     /**
-     * The registration was not evaluated at all: policy disabled, unsigned metadata, or no
-     * certificate carried in the metadata.
+     * The registration was not evaluated at all: policy disabled or unsigned metadata. An issuer
+     * that publishes no registration certificate is [NotVerified] with `CERTIFICATE_ABSENT`
+     * (Wallet Core 0.31.1).
      */
     data object NotEvaluated : IssuerRegistrationDomain
 
